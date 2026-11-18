@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0">
+<canvas id="c" width="192" height="192"></canvas>
+<script type="module">
+import * as A from '../js/art.js';
+const c=document.getElementById('c'),g=c.getContext('2d');g.imageSmoothingEnabled=false;
+g.fillStyle='#1d1138';g.fillRect(0,0,192,192);
+g.fillStyle='#2e1d58';for(let y=0;y<192;y+=12)g.fillRect(0,y,192,6);
+const h=A.buildHero('miyu'); const s=A.stickerCanvas(h.idle[0].r);
+const k=Math.floor(170/Math.max(s.width,s.height)); g.drawImage(s,(192-s.width*k)/2,(192-s.height*k)/2+4,s.width*k,s.height*k);
+</script>

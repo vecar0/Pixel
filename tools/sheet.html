@@ -1,0 +1,10 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#2a2238">
+<canvas id="c" width="1400" height="900" style="image-rendering:pixelated"></canvas>
+<script type="module">
+import * as A from '../js/art.js';
+const c=document.getElementById('c'),g=c.getContext('2d');g.imageSmoothingEnabled=false;
+let x=10,y=10;
+const put=(cv,s=6)=>{g.drawImage(cv,x,y,cv.width*s,cv.height*s);x+=cv.width*s+10;};
+for(const id of ['miyu','luna','haru']){const h=A.buildHero(id);put(h.idle[0].r,8);put(A.stickerCanvas(h.idle[0].r),5);for(const f of h.run)put(f.r,4);put(h.jump[0].r,4);x=10;y+=h.h*8+20;if(y>600){}}
+window.done=true;
+</script>

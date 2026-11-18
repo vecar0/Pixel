@@ -1,0 +1,1 @@
+{"type":"module","name":"neon-paw","private":true,"scripts":{"test":"node tests/sim.test.mjs"}}

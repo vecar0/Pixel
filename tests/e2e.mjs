@@ -25,19 +25,36 @@ const log = p => p.evaluate(() => window.__log);
 const PC = { viewport: { width: 1280, height: 720 } };
 const PHONE = { ...devices['iPhone 13 landscape'] };
 
-await check('PC: 타이틀 → Enter → 플레이', PC, async p => {
+await check('PC: 타이틀 → Enter → 서약 → Enter → 플레이', PC, async p => {
   eq(await p.evaluate(() => window.__lk.mode), 'title');
+  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  eq(await p.evaluate(() => window.__lk.mode), 'oath');
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'play');
 });
+await check('런: 방 클리어 → 각인 3택1 → 문 2개 → 다음 방', PC, async p => {
+  await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
+  await p.evaluate(() => { const w = window.__lk.world; w.enemies.length = 0; w.waves = []; });
+  await p.waitForTimeout(300);
+  eq(await p.evaluate(() => window.__lk.mode), 'relic');
+  eq(await p.locator('.pick').count(), 3);
+  await p.screenshot({ path: path.join(out, 'relic.png') });
+  await p.locator('.pick').first().dispatchEvent('pointerup'); await p.waitForTimeout(150);
+  eq(await p.evaluate(() => window.__lk.mode), 'door');
+  ok(await p.locator('.pick').count() >= 1);
+  await p.screenshot({ path: path.join(out, 'door.png') });
+  await p.evaluate(() => { const b = [...document.querySelectorAll('.pick')].find(b => ['combat', 'elite'].includes(b.dataset.id)) || document.querySelector('.pick'); b.dispatchEvent(new PointerEvent('pointerup')); });
+  await p.waitForTimeout(200);
+  ok(['play', 'rest', 'shop'].includes(await p.evaluate(() => window.__lk.mode)));
+});
 await check('PC: D 홀드 → 이동', PC, async p => {
-  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
   const x0 = await p.evaluate(() => window.__lk.world.player.x);
   await p.keyboard.down('d'); await p.waitForTimeout(900); await p.keyboard.up('d');
   ok(await p.evaluate(() => window.__lk.world.player.x) - x0 > 60);
 });
 await check('PC: K → 패링', PC, async p => {
-  await p.keyboard.press('Enter'); await p.waitForTimeout(300); await watch(p);
+  await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(300); await watch(p);
   await p.keyboard.press('k'); await p.waitForTimeout(150);
   ok((await log(p)).some(l => l.s === 'parry'));
 });
@@ -78,6 +95,7 @@ await check('review: 4:3 창에서 화면이 잘리지 않음', { viewport: { wi
 const kev = (p, type, key, code) => p.evaluate(([t, k, c]) => dispatchEvent(new KeyboardEvent(t, { key: k, code: c, bubbles: true })), [type, key, code]);
 await check('review: 한글 입력 상태에서도 키 조작 (ㅏ=K)', PC, async p => {
   await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250);
+  await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250);   // 서약 화면 → 첫 서약
   eq(await p.evaluate(() => window.__lk.mode), 'play'); await watch(p);
   await kev(p, 'keydown', 'ㅏ', 'KeyK'); await kev(p, 'keyup', 'ㅏ', 'KeyK'); await p.waitForTimeout(150);
   ok((await log(p)).some(l => l.s === 'parry'));

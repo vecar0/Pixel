@@ -451,6 +451,7 @@ export class Renderer {
     for (let i = 0; i < CFG.flask.charges; i++) { g.fillStyle = i < p.flasks ? '#7fe08a' : '#2a3a2c'; g.fillRect(96 + i * 8, 25, 5, 6); }
     g.fillStyle = C.amberHi; g.font = '10px Galmuri9, monospace'; g.textBaseline = 'top';
     g.fillText('완벽 패링 ' + p.perfectParries, 10, 36);
+    if (this.runInfo) { const r = this.runInfo; g.textAlign = 'right'; g.fillText(`방 ${r.roomIdx + 1}/${r.length}  불씨 ${r.embers}  각인 ${r.relics.length}`, this.vw - 110, 12); g.textAlign = 'left'; }
     const boss = w.enemies.find(e => e.boss);
     if (boss) {
       const bw = Math.min(360, this.vw - 80), bx = Math.round((this.vw - bw) / 2), by = CFG.VIEW_H - 26;

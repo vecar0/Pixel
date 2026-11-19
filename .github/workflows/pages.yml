@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - name: Headless simulation tests
-        run: node tests/sim.test.mjs
+        run: node tests/sim.test.mjs && node tests/run.test.mjs
   deploy:
     needs: test
     runs-on: ubuntu-latest
@@ -30,7 +30,7 @@ jobs:
       - name: Collect site files
         run: |
           mkdir _site
-          cp -r index.html manifest.webmanifest icon.png css js fonts _site/
+          cp -r index.html manifest.webmanifest icon.png .nojekyll css js fonts assets _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: _site }

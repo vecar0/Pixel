@@ -1,6 +1,7 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
 import { CFG } from './config.js';
-import { createPlayer, updatePlayer } from './player.js';
+import { createPlayer, updatePlayer, overlap } from './player.js';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveUlt, updatePoise, damageEnemy } from './combat.js';
 
 export const EMPTY_INPUT = Object.freeze({
   left: false, right: false, down: false, jumpHeld: false,
@@ -46,13 +47,45 @@ export function tick(w, inp) {
   w.t++;
   if (w.hitstop > 0) {          // 히트스톱: 세계는 멈추고 입력만 버퍼에 쌓음
     w.hitstop--;
-    bufferOnly(w.player, inp);
+    const p = w.player;
+    if (p.recoverWait > 0) p.recoverWait--;
+    for (const a of ['attack', 'parry', 'roll', 'jump', 'ult', 'flask'])
+      if (inp[a]) p.buffer = { action: a, t: CFG.player.bufferF };
     return;
   }
+  if (w.shake > 0) w.shake--;
+  w.hitboxes.length = 0;
+
   updatePlayer(w, inp);
+  if (w.events.some(e => e.type === 'ultStart')) resolveUlt(w);
+
+  for (const e of w.enemies) {
+    if (e.dead) continue;
+    if (e.flash > 0) e.flash--;
+    updatePoise(e);
+    if (e.stunT > 0) continue;
+    e.update(w, e);
+  }
+  updateProjectiles(w);
+
+  resolvePlayerAttacks(w);
+  for (const hb of w.hitboxes) resolveEnemyHit(w, hb);
+  w.enemies = w.enemies.filter(e => !e.dead);
 }
 
-function bufferOnly(p, inp) {
-  for (const a of ['attack', 'parry', 'roll', 'jump', 'ult', 'flask'])
-    if (inp[a]) p.buffer = { action: a, t: CFG.player.bufferF };
+// 탄: 이동, 지형/수명 소멸. 적 탄은 리라 판정, 반사된 탄은 적 판정
+function updateProjectiles(w) {
+  for (const b of w.projectiles) {
+    b.x += b.vx; b.y += b.vy; b.life--;
+    if (b.life <= 0 || w.solids.some(s => !s.oneWay && overlap(b, s))) { b.dead = true; continue; }
+    if (b.owner === 'enemy') {
+      const r = resolveEnemyHit(w, { src: b, owner: b.src, x: b.x, y: b.y, w: b.w, h: b.h, dmg: b.dmg, parryable: b.parryable, dir: Math.sign(b.vx) });
+      if (r === 'perfect') { b.vx *= -1.5; b.owner = 'player'; b.done = false; b.life = 90; }
+      else if (r !== 'ignored') b.dead = true;
+    } else {
+      const e = w.enemies.find(e => !e.dead && overlap(b, e));
+      if (e) { damageEnemy(w, e, b.dmg * 15, CFG.poise.normal); b.dead = true; }
+    }
+  }
+  w.projectiles = w.projectiles.filter(b => !b.dead);
 }

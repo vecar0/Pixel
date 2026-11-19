@@ -11,7 +11,7 @@ export function createPlayer(x, y) {
     hp: P.hp, light: 0, flasks: CFG.flask.charges,
     state: 'idle', stateT: 0, combo: 0, comboT: 0,
     iframes: 0, buffer: null,
-    parryOk: false, perfectParries: 0, rollDir: 1,
+    parryOk: false, recoverWait: 0, perfectParries: 0, rollDir: 1, swing: 0,
   };
 }
 
@@ -36,7 +36,7 @@ function canAct(p, action) {
   switch (p.state) {
     case 'idle': case 'run': case 'jump': return true;
     case 'attack': return t >= A.startupF + A.activeF;            // 후딜만 캔슬 가능
-    case 'parry': return p.parryOk && t >= p.recoverAt;          // 성공 후 4틱 뒤
+    case 'parry': return p.parryOk && p.recoverWait <= 0;        // 성공 후 4틱 뒤 (히트스톱 포함)
     default: return false;                                        // roll·hurt·flask·ult·dead
   }
 }
@@ -53,9 +53,9 @@ function start(w, p, action, inp) {
       const chain = (p.state === 'attack') || p.comboT > 0;
       p.combo = chain ? (p.combo + 1) % 3 : 0;
       if (!p.onGround) { p.airAttacked = true; p.combo = 0; }
-      setState(p, 'attack'); return true;
+      p.swing++; setState(p, 'attack'); return true;
     }
-    case 'parry': setState(p, 'parry'); p.parryOk = false; p.recoverAt = 0; return true;
+    case 'parry': setState(p, 'parry'); p.parryOk = false; p.recoverWait = 0; return true;
     case 'roll':
       p.rollDir = inp.left ? -1 : inp.right ? 1 : p.face; p.face = p.rollDir;
       setState(p, 'roll'); return true;
@@ -74,6 +74,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'dead') return;
   p.stateT++;
   if (p.iframes > 0) p.iframes--;
+  if (p.recoverWait > 0) p.recoverWait--;
   if (p.comboT > 0) p.comboT--;
 
   // 새 입력 → 버퍼 (마지막 입력 우선)

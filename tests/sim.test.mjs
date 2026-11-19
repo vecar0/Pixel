@@ -3,7 +3,7 @@ import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
 import { createWorld, tick } from '../js/core/world.js';
 import { invulnerable, attackBox } from '../js/core/player.js';
-import { I, steps, FLAT } from './helpers.mjs';
+import { I, steps, FLAT, makeDummy } from './helpers.mjs';
 
 const W = (o = {}) => createWorld({ room: 'test', solids: FLAT, ...o });
 const settle = w => steps(w, 30); // 바닥에 내려앉기
@@ -71,6 +71,97 @@ test('buffer: 8틱 넘게 못 쓰면 버려짐', () => {
   tick(w, I({ flask: true })); tick(w, I({ parry: true }));
   steps(w, 45);
   ok(w.player.state !== 'parry', w.player.state);
+});
+
+/* ── Task 3: 패링·피격·히트스톱·자세·빛 ── */
+// 패링을 누른 틱(stateT 0)으로부터 n번째 틱(1부터)에 공격이 닿게 한다
+function parryAt(n, opt = {}) {
+  const w = W(); settle(w);
+  const t0 = w.t + 1;
+  const d = makeDummy(w, { hits: [t0 + n - 1], ...opt });
+  tick(w, I({ parry: true }));
+  const hp0 = w.player.hp, l0 = w.player.light; let res = null, stop = 0;
+  for (let i = 0; i < n + 1; i++) {
+    for (const ev of w.events) if (ev.type === 'parry') { res = ev.perfect ? 'perfect' : 'normal'; stop = w.hitstop; }
+    if (res) break;
+    tick(w, I());
+  }
+  for (const ev of w.events) if (ev.type === 'parry' && !res) { res = ev.perfect ? 'perfect' : 'normal'; stop = w.hitstop; }
+  if (!res) res = w.player.hp < hp0 ? 'hit' : 'none';
+  return { w, d, res, stop, dl: w.player.light - l0, dhp: w.player.hp - hp0 };
+}
+test('perfect: 히트 직전 패링 → perfect, hp 그대로, 빛 +25, 히트스톱 8', () => {
+  const r = parryAt(2); eq(r.res, 'perfect'); eq(r.dhp, 0); eq(r.dl, 25); eq(r.stop, 8);
+});
+test('경계: 6틱째 perfect / 7틱째 normal(빛+10, 히트스톱3) / 13틱째 hit', () => {
+  eq(parryAt(6).res, 'perfect');
+  const n = parryAt(7); eq(n.res, 'normal'); eq(n.dl, 10); eq(n.stop, 3);
+  eq(parryAt(12).res, 'normal');
+  const h = parryAt(13); eq(h.res, 'hit'); eq(h.dhp, -1);
+});
+test('whiff: 헛 패링 후 18틱 동안 패링 재입력 무시', () => {
+  const w = W(); settle(w);
+  tick(w, I({ parry: true })); steps(w, 11);           // 판정창 12틱 끝
+  for (let i = 0; i < 18; i++) { tick(w, I({ parry: true })); ok(w.player.stateT === 12 + i, 'stateT ' + w.player.stateT); }
+  tick(w, I({ parry: true })); eq(w.player.stateT, 0);   // 30틱째 새 패링
+});
+test('success recover: 성공 후 4틱 뒤 새 패링 가능', () => {
+  const r = parryAt(8);            // normal, 히트스톱 3
+  eq(r.res, 'normal'); const w = r.w;
+  steps(w, 3); tick(w, I({ parry: true }));      // 히트스톱 3틱 + 1틱 (= 4틱)
+  eq(w.player.state, 'parry'); eq(w.player.stateT, 0);
+});
+test('multi: 한 판정창 안 공격 2개 모두 막힘', () => {
+  const w = W(); settle(w); const t0 = w.t + 1;
+  makeDummy(w, { hits: [t0 + 1, t0 + 4] });
+  tick(w, I({ parry: true })); steps(w, 20);
+  eq(w.player.hp, 5);
+});
+test('unparryable: 패링 불가 공격을 패링 → 피격', () => eq(parryAt(2, { parryable: false }).res, 'hit'));
+test('behind: 등 뒤 공격은 패링 안 됨 → 피격', () => eq(parryAt(2, { behind: true }).res, 'hit'));
+test('hitstop buffer: 히트스톱 중 누른 패링 → 끝난 첫 틱에 실행', () => {
+  const r = parryAt(2); const w = r.w; eq(r.stop, 8);
+  tick(w, I({ parry: true })); steps(w, 7);       // 히트스톱 8틱 소모
+  eq(w.hitstop, 0); tick(w, I());
+  eq(w.player.state, 'parry'); eq(w.player.stateT, 0);
+});
+test('iframes: 피격 후 60틱 동안 추가 피해 없음', () => {
+  const w = W(); settle(w); const t0 = w.t + 1;
+  makeDummy(w, { hits: [t0, t0 + 30, t0 + 70] });
+  steps(w, 50); eq(w.player.hp, 4);
+  steps(w, 40); eq(w.player.hp, 3);
+});
+test('poise: 완벽 패링 4번 → 그로기 180, 처형 = 최대체력 15%', () => {
+  const w = W(); settle(w);
+  const d = makeDummy(w, { poise: true, hp: 200, hits: [] });
+  for (let k = 0; k < 4; k++) {
+    w.hitstop = 0; w.player.state = 'idle'; w.player.buffer = null;
+    d.update = (w2, e) => { if (w2.t === tt) w2.hitboxes.push({ src: {}, owner: e, x: w2.player.x - 2, y: w2.player.y, w: 20, h: 40, dmg: 1, parryable: true, dir: -1 }); };
+    var tt = w.t + 2; tick(w, I({ parry: true })); steps(w, 12);
+  }
+  eq(d.stunT > 0, true, 'stun'); eq(w.player.hp, 5);
+  steps(w, 20);
+  const hp0 = d.hp; d.x = w.player.x + w.player.w + 4;
+  tick(w, I({ attack: true })); steps(w, 8);
+  eq(hp0 - d.hp, 30);
+});
+test('ult: 빛 100 → 범위 적 60 피해, 빛 0, 시전 중 피해 없음', () => {
+  const w = W(); settle(w); w.player.light = 100;
+  const d = makeDummy(w, { hp: 100, hits: [w.t + 5] });
+  tick(w, I({ ult: true })); steps(w, 30);
+  eq(d.hp, 40); eq(w.player.light, 0); eq(w.player.hp, 5);
+});
+test('flask: 40틱 뒤 hp +2, 기름병 -1 / 0개면 무시', () => {
+  const w = W(); settle(w); w.player.hp = 2;
+  tick(w, I({ flask: true })); steps(w, 40);
+  eq(w.player.hp, 4); eq(w.player.flasks, 2);
+  w.player.flasks = 0; tick(w, I({ flask: true })); eq(w.player.state === 'flask', false);
+});
+test('kill: 처치 시 빛 +3', () => {
+  const w = W(); settle(w);
+  const d = makeDummy(w, { hp: 5 }); d.x = w.player.x + w.player.w + 4;
+  tick(w, I({ attack: true })); steps(w, 8);
+  ok(d.dead, 'dead'); eq(w.player.light, 3);
 });
 
 run();

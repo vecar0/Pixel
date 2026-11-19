@@ -3,32 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0b0714">
+<meta name="theme-color" content="#0b0910">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<title>NEON PAW</title>
+<title>등불지기</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div id="stage">
-  <canvas id="game"></canvas>
-</div>
+<div id="stage"><canvas id="game"></canvas></div>
 
 <div id="touch" class="hidden">
   <div id="stickzone"><div id="stick"><div id="knob"></div></div></div>
-  <div id="btns">
-    <button data-btn="attack" id="b-attack" class="tb big"><canvas id="b-attack-ic" width="30" height="16"></canvas></button>
-    <button data-btn="jump" id="b-jump" class="tb mid">점프</button>
-    <button data-btn="skill" id="b-skill" class="tb mid"><span id="b-skill-t">스킬</span></button>
-    <button data-btn="swap" id="b-swap" class="tb sm">교체</button>
-    <button data-btn="use" id="b-use" class="tb sm hidden">줍기</button>
-  </div>
-  <button id="b-pause" class="tb pause">II</button>
+  <button data-btn="attack" id="b-attack" class="tb">공격</button>
+  <button data-btn="parry" id="b-parry" class="tb">패링</button>
+  <button data-btn="roll" id="b-roll" class="tb">회피</button>
+  <button data-btn="jump" id="b-jump" class="tb">점프</button>
+  <button data-btn="ult" id="b-ult" class="tb">필살</button>
+  <button data-btn="flask" id="b-flask" class="tb">기름</button>
+  <button id="b-pause" class="tb">II</button>
 </div>
 
 <div id="ui"></div>
-<div id="toast"></div>
 <div id="rotate"><div>📱↻<br>가로로 돌려주세요</div></div>
 
 <script type="module" src="js/main.js"></script>

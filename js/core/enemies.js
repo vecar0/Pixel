@@ -57,6 +57,7 @@ export function updateEnemy(w, e) {
       e.atk = e.kind === 'bellBoss' ? bellPick(w, e, dx) : Object.keys(d.attacks)[0];
       e.face = Math.sign(dx) || e.face;
       setSt(e, 'telegraph');
+      w.events.push({ type: 'telegraph', boss: e.boss, parryable: d.attacks[e.atk].parryable });
     }
   } else if (e.st === 'telegraph') {
     if (!d.fly) { e.vx = 0; physics(w, e); }

@@ -5,6 +5,7 @@ import { createWorld, tick } from '../js/core/world.js';
 import { invulnerable, attackBox } from '../js/core/player.js';
 import { ENEMY_DEFS, spawnEnemy } from '../js/core/enemies.js';
 import { I, steps, FLAT, makeDummy } from './helpers.mjs';
+import { stepLoop } from '../js/loop.js';
 
 const W = (o = {}) => createWorld({ room: 'test', solids: FLAT, ...o });
 const settle = w => steps(w, 30); // 바닥에 내려앉기
@@ -270,6 +271,17 @@ test('bot: 완벽 패링 봇으로 아레나 클리어, hp 5 유지', () => {
     perfect += w.events.filter(e => e.type === 'parry' && e.perfect).length;
   }
   ok(w.cleared, 'not cleared, enemies ' + w.enemies.length); eq(w.player.hp, 5); ok(perfect > 0, 'no perfect parries');
+});
+
+/* ── Task 5: 고정 스텝 루프 ── */
+test('loop: dt 1000ms 한 번 → 5틱만, 남은 시간 버림', () => {
+  let n = 0; const acc = stepLoop(0, 1000, () => n++);
+  eq(n, 5); ok(acc < 1000 / 60, acc);
+});
+test('loop: dt 33.4ms → 2틱', () => { let n = 0; stepLoop(0, 33.4, () => n++); eq(n, 2); });
+test('loop: 16ms씩 나눠도 누적돼서 틱 발생', () => {
+  let n = 0, acc = 0; for (let i = 0; i < 60; i++) acc = stepLoop(acc, 16, () => n++);
+  ok(n >= 57 && n <= 58, n);
 });
 
 run();

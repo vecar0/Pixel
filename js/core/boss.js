@@ -41,4 +41,5 @@ export function bellActiveStart(w, e) {
     });
   }
   w.shake = 10;
+  w.events.push({ type: 'slam' });
 }

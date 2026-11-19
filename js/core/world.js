@@ -1,6 +1,7 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
 import { CFG } from './config.js';
 import { createPlayer, updatePlayer, overlap } from './player.js';
+import { spawnEnemy, updateEnemy } from './enemies.js';
 import { resolveEnemyHit, resolvePlayerAttacks, resolveUlt, updatePoise, damageEnemy } from './combat.js';
 
 export const EMPTY_INPUT = Object.freeze({
@@ -32,14 +33,34 @@ const ROOMS = {
 export function createWorld({ room = 'arena', solids, spawn, width } = {}) {
   const def = ROOMS[room] || { width: width || 2000, solids: [], spawn: { x: 100, y: 250 } };
   const sp = spawn || def.spawn;
-  return {
+  const w = {
     room, t: 0, hitstop: 0, shake: 0,
     width: width || def.width,
     solids: solids || def.solids,
     player: createPlayer(sp.x, sp.y),
     enemies: [], projectiles: [], hitboxes: [], fx: [], events: [],
-    camX: 0, over: false, won: false,
+    camX: 0, over: false, won: false, cleared: false, seed: 12345,
+    waves: [], waveDelay: 0,
   };
+  if (room === 'arena') w.waves = [[['ghoul', 520], ['ghoul', 600], ['moth', 700]], [['ghoul', 900], ['moth', 1000]]];
+  if (room === 'boss') spawnEnemy(w, 'bellBoss', 480, 200);
+  updateCamera(w);
+  return w;
+}
+
+function updateCamera(w) {
+  const p = w.player, vw = CFG.VIEW_W;
+  w.camX = Math.max(0, Math.min(w.width - vw, p.x + p.w / 2 - vw * 0.4));
+}
+
+// 웨이브: 적이 다 죽으면 60틱 뒤 다음 웨이브. 마지막까지 끝나면 cleared
+function updateWaves(w) {
+  if (w.room === 'boss') { if (!w.enemies.length && !w.won) { w.won = true; w.events.push({ type: 'win' }); } return; }
+  if (w.enemies.length || w.cleared || w.room !== 'arena') return;
+  if (!w.waves.length) { w.cleared = true; w.events.push({ type: 'cleared' }); return; }
+  if (++w.waveDelay < 60) return;
+  w.waveDelay = 0;
+  for (const [kind, x] of w.waves.shift()) spawnEnemy(w, kind, x, kind === 'moth' ? 180 : 250);
 }
 
 export function tick(w, inp) {
@@ -64,13 +85,15 @@ export function tick(w, inp) {
     if (e.flash > 0) e.flash--;
     updatePoise(e);
     if (e.stunT > 0) continue;
-    e.update(w, e);
+    updateEnemy(w, e);
   }
   updateProjectiles(w);
 
   resolvePlayerAttacks(w);
   for (const hb of w.hitboxes) resolveEnemyHit(w, hb);
   w.enemies = w.enemies.filter(e => !e.dead);
+  updateWaves(w);
+  updateCamera(w);
 }
 
 // 탄: 이동, 지형/수명 소멸. 적 탄은 리라 판정, 반사된 탄은 적 판정

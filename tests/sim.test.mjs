@@ -3,6 +3,7 @@ import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
 import { createWorld, tick } from '../js/core/world.js';
 import { invulnerable, attackBox } from '../js/core/player.js';
+import { ENEMY_DEFS, spawnEnemy } from '../js/core/enemies.js';
 import { I, steps, FLAT, makeDummy } from './helpers.mjs';
 
 const W = (o = {}) => createWorld({ room: 'test', solids: FLAT, ...o });
@@ -162,6 +163,113 @@ test('kill: 처치 시 빛 +3', () => {
   const d = makeDummy(w, { hp: 5 }); d.x = w.player.x + w.player.w + 4;
   tick(w, I({ attack: true })); steps(w, 8);
   ok(d.dead, 'dead'); eq(w.player.light, 3);
+});
+
+/* ── Task 4: 적·보스·공격 토큰 ── */
+const attacking = w => w.enemies.filter(e => !e.boss && (e.st === 'telegraph' || e.st === 'active')).length;
+test('data: 일반 적 예고 ≥18, 보스 ≥14 (2페이즈 -4 포함)', () => {
+  for (const [k, d] of Object.entries(ENEMY_DEFS))
+    for (const a of Object.values(d.attacks)) {
+      const min = d.boss ? CFG.enemy.bossMinTelegraphF : CFG.enemy.minTelegraphF;
+      const t = a.telegraphF - (d.boss ? 4 : 0);
+      ok(t >= min, `${k}.${a.name} ${t}`);
+      if ((a.hits || 1) > 1) ok(a.gapF >= CFG.enemy.multiHitGapF, `${k}.${a.name} gap`);
+    }
+});
+test('token: 이끼 망자 3마리 붙어도 동시 공격 ≤2', () => {
+  const w = W(); settle(w); w.player.hp = 999;
+  for (const dx of [30, 40, 50]) spawnEnemy(w, 'ghoul', w.player.x + dx, w.player.y);
+  let max = 0, any = 0;
+  for (let i = 0; i < 400; i++) { tick(w, I()); max = Math.max(max, attacking(w)); any += attacking(w); }
+  ok(max <= 2, max); ok(any > 0, 'never attacked');
+});
+test('offscreen: 화면 밖 적은 공격 시작 안 함', () => {
+  const w = W(); settle(w);
+  const e = spawnEnemy(w, 'ghoul', w.player.x + 700, w.player.y); e.range = 9999; e.speed = 0;
+  let tele = false; for (let i = 0; i < 120; i++) { tick(w, I()); if (e.st === 'telegraph') tele = true; }
+  ok(!tele, 'offscreen telegraph');
+  const e2 = spawnEnemy(w, 'ghoul', w.player.x + 300, w.player.y); e2.range = 9999; e2.speed = 0;
+  for (let i = 0; i < 120; i++) { tick(w, I()); if (e2.st === 'telegraph') tele = true; }
+  ok(tele, 'onscreen never telegraphed');
+});
+test('ghoul: 예고 20틱 뒤 히트박스', () => {
+  const w = W(); settle(w); w.player.hp = 99;
+  const e = spawnEnemy(w, 'ghoul', w.player.x + 30, w.player.y);
+  let a = -1, b = -1;
+  for (let i = 0; i < 200 && b < 0; i++) {
+    tick(w, I());
+    if (a < 0 && e.st === 'telegraph') a = w.t;
+    if (a >= 0 && w.hitboxes.some(h => h.owner === e)) b = w.t;
+  }
+  eq(b - a, 20);
+});
+test('moth: 예고 18틱 → 리라 쪽으로 돌진', () => {
+  const w = W(); settle(w); w.player.hp = 99;
+  const e = spawnEnemy(w, 'moth', w.player.x + 120, w.player.y - 60);
+  let a = -1, b = -1, vx = 0;
+  for (let i = 0; i < 400 && b < 0; i++) {
+    tick(w, I());
+    if (a < 0 && e.st === 'telegraph') a = w.t;
+    if (a >= 0 && e.st === 'active') { b = w.t; tick(w, I()); vx = e.vx; }
+  }
+  eq(b - a, 18); ok(Math.sign(vx) === Math.sign(w.player.x - e.x) || Math.abs(w.player.x - e.x) < 10, 'dir ' + vx);
+});
+function bossWorld(force) {
+  const w = createWorld({ room: 'boss' }); steps(w, 30); w.player.hp = 99;
+  const b = w.enemies.find(e => e.boss); b.forceNext = force; b.x = w.player.x + 60;
+  return { w, b };
+}
+test('boss gap: 2연 휘두르기 두 타 사이 ≥16틱', () => {
+  const { w, b } = bossWorld('double'); const starts = []; let last = null;
+  for (let i = 0; i < 300 && starts.length < 2; i++) {
+    tick(w, I()); b.forceNext = 'double';
+    const h = w.hitboxes.find(h => h.owner === b);
+    if (h && h.src !== last) { starts.push(w.t); last = h.src; }
+  }
+  eq(starts.length, 2); ok(starts[1] - starts[0] >= 16, starts);
+});
+function slamTest(mode) {
+  const { w, b } = bossWorld('slam'); b.x = w.player.x + 200; w.player.hp = 5;
+  for (let i = 0; i < 300; i++) {
+    const wave = w.projectiles.find(p => p.owner === 'enemy' && Math.sign(p.vx) === Math.sign(w.player.x - p.x));
+    const d = wave ? Math.abs((wave.x + wave.w / 2) - (w.player.x + w.player.w / 2)) : 999;
+    const inp = {};
+    if (mode === 'parry' && d < 16 && w.player.state !== 'parry') inp.parry = true;
+    if (mode === 'jump' && d < 45 && w.player.onGround) { inp.jump = true; inp.jumpHeld = true; }
+    if (mode === 'jump' && !w.player.onGround) inp.jumpHeld = true;
+    tick(w, I(inp)); b.forceNext = null; b.cd = 999;
+  }
+  return w.player.hp;
+}
+test('shockwave: 패링하면 hp -2', () => eq(slamTest('parry'), 3));
+test('shockwave: 점프로 넘으면 피해 없음', () => eq(slamTest('jump'), 5));
+
+// 완벽 패링 봇: 2틱 안에 맞을 공격이 오면 패링, 안전할 때만 공격
+function oracleHurtWithin(w, n) {
+  const c = structuredClone(w); c.player.buffer = null;   // 아무것도 안 할 때의 미래
+  for (let i = 0; i < n + w.hitstop; i++) { tick(c, I()); if (c.events.some(e => e.type === 'hurt')) return i + 1; }  // 히트스톱만큼 더 본다
+  return 0;
+}
+test('bot: 완벽 패링 봇으로 아레나 클리어, hp 5 유지', () => {
+  const w = createWorld({ room: 'arena' });
+  let perfect = 0;
+  for (let i = 0; i < 60 * 180 && !w.cleared; i++) {
+    const p = w.player, inp = {};
+    const h = oracleHurtWithin(w, 2);
+    if (h) inp.parry = true;
+    else {
+      const e = w.enemies.reduce((a, b) => !a || Math.abs(b.x - p.x) < Math.abs(a.x - p.x) ? b : a, null);
+      if (e) {
+        const dx = (e.x + e.w / 2) - (p.x + p.w / 2);
+        if (Math.abs(dx) > 30) { inp.right = dx > 0; inp.left = dx < 0; }
+        else if (Math.sign(dx) !== p.face) { inp.right = dx > 0; inp.left = dx < 0; }
+        else if (e.y + e.h > p.y && !w.hitstop && (p.state === 'idle' || p.state === 'run') && !oracleHurtWithin(w, 12)) inp.attack = true;
+      } else inp.right = true;
+    }
+    tick(w, I(inp));
+    perfect += w.events.filter(e => e.type === 'parry' && e.perfect).length;
+  }
+  ok(w.cleared, 'not cleared, enemies ' + w.enemies.length); eq(w.player.hp, 5); ok(perfect > 0, 'no perfect parries');
 });
 
 run();

@@ -27,6 +27,11 @@ export class Renderer {
     this.debug = /debug=1/.test(location.search);
     // 리라 픽셀 그림 (Higgsfield: 리라 디자인 + 사용자 샘플 화풍 → forge pixel_look로 픽셀 격자 맞춤). 기준점: 발 중앙 (43, 85)
     this.liraImg = new Image(); this.liraImg.src = 'assets/lira.png';
+    // 동작 포즈 (Higgsfield 포즈 생성 → 기준 리라 격자로 읽음). 모두 132x111, 발 기준점 (69, 111)
+    this.pose = {};
+    for (const n of ['idle', 'atk1', 'atk2', 'parry', 'hurt', 'roll', 'jump', 'run1', 'run2']) {
+      const im = new Image(); im.src = `assets/lira-${n}.png`; this.pose[n] = im;
+    }
     this.resize();
   }
 
@@ -211,6 +216,8 @@ export class Renderer {
   drawLira(g, w, p) {
     if (p.state !== 'ghost' && p.iframes > 0 && (w.t >> 2) % 2 && p.state !== 'hurt') return;
     const f = p.face, cx = Math.round(p.x + p.w / 2), feet = Math.round(p.y + p.h);
+    const poseImg = this.pickPose(w, p);
+    if (poseImg) { this.drawPose(g, w, p, poseImg, cx, feet, f); return; }
     if (p.state === 'roll' || p.state === 'ghost') {     // 웅크린 구르기
       const r = 13, cy = feet - r, a = (p.stateT || 0) * 0.5 * f;
       g.fillStyle = C.cape; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
@@ -273,16 +280,54 @@ export class Renderer {
     this.drawParryArc(g, p, cx, feet, f);
   }
 
+  // 상태 → 포즈 그림
+  pickPose(w, p) {
+    const P = this.pose, ok = im => im && im.complete && im.naturalWidth ? im : null;
+    const A = CFG.attack, t = p.stateT;
+    let n = 'idle';
+    switch (p.state) {
+      case 'run': n = (w.t >> 3) & 1 ? 'run2' : 'run1'; break;
+      case 'jump': n = 'jump'; break;
+      case 'attack': {
+        const early = t < A.startupF;            // 1타·3타: 치켜든 뒤 앞으로 / 2타: 앞에서 위로 올려베기
+        n = p.combo === 1 ? (early ? 'atk2' : 'atk1') : (early ? 'atk1' : 'atk2'); break;
+      }
+      case 'parry': n = t < CFG.parry.normalF + 4 ? 'parry' : 'idle'; break;
+      case 'roll': case 'ghost': n = 'roll'; break;
+      case 'hurt': case 'dead': n = 'hurt'; break;
+    }
+    return ok(P[n]) || (n !== 'idle' && ok(P.idle));
+  }
+
+  drawPose(g, w, p, img, cx, feet, f) {
+    const sq = this.squash, st = !p.onGround && p.vy < -1 ? 0.06 : 0;
+    const sy = 1 - sq * 0.2 + st, sx = 1 + sq * 0.16 - st * 0.5;
+    const bob = p.state === 'idle' ? Math.round(Math.sin(w.t * 0.08) * 0.8) : 0;
+    g.save(); g.translate(cx, feet - bob);
+    const src = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50', img) : img;
+    if (p.state === 'roll' || p.state === 'ghost') {            // 공처럼 굴러감: 공 중심(그림 66,69)을 축으로, 바닥에 닿게
+      const k = Math.min(1, (p.stateT || 0) / CFG.roll.totalF);
+      g.translate(0, -33); g.rotate(k * Math.PI * 2 * f); g.scale(f, 1);
+      g.drawImage(src, -66, -69);
+    } else {
+      g.scale(sx * f, sy);
+      g.drawImage(src, -69, -111);
+    }
+    g.restore();
+    this.drawParryArc(g, p, cx, feet, f);
+  }
+
   // 리라 그림의 단색 실루엣 (피격 번쩍임용), 한 번 만들어 재사용
-  tinted(col) {
-    this.tints = this.tints || {};
-    if (!this.tints[col]) {
-      const c = document.createElement('canvas'), im = this.liraImg;
+  tinted(col, im = this.liraImg) {
+    this.tints = this.tints || new Map();
+    const key = col + im.src;
+    if (!this.tints.has(key)) {
+      const c = document.createElement('canvas');
       c.width = im.naturalWidth; c.height = im.naturalHeight;
       const x = c.getContext('2d'); x.drawImage(im, 0, 0); x.globalCompositeOperation = 'source-atop'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height);
-      this.tints[col] = c;
+      this.tints.set(key, c);
     }
-    return this.tints[col];
+    return this.tints.get(key);
   }
 
   // 패링 판정창 호 (앞쪽)

@@ -1,0 +1,9 @@
+Create exactly ONE square image.
+
+One image is attached: a pixel-art game sprite on a flat green (#00FF00) background, shown enlarged. Every square of 8 px in it is one pixel of the sprite.
+
+Reproduce the attached image: the same single figure at exactly the same size and in the same place on the canvas, the same pixel art on the same coarse, regular square pixel grid, every pixel exactly as large as in the attached image, one flat colour per pixel, hard edges, the same dark outline one pixel wide, the same colours.
+
+THE ONLY CHANGE: attack follow-through: she has just slashed forward, the long curved sword is now stretched far forward toward the RIGHT at chest height, her body leaning forward into the cut, cape and hair flung back.
+
+Everything that the change does not name is NOT redrawn: it stays exactly as it is, pixel for pixel, in the same place. The background stays the same flat pure green (#00FF00) everywhere, with no shadow and nothing else in the picture.

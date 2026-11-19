@@ -1,0 +1,143 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "hurt",
+ "size": [
+  49,
+  47
+ ],
+ "cells": 1213,
+ "colours": 48,
+ "palette": [
+  "#000000",
+  "#000100",
+  "#000300",
+  "#010000",
+  "#020101",
+  "#050304",
+  "#0a0808",
+  "#131114",
+  "#19161a",
+  "#193622",
+  "#221f25",
+  "#29252c",
+  "#322f34",
+  "#3c373e",
+  "#402624",
+  "#444046",
+  "#4d484d",
+  "#565257",
+  "#5e595f",
+  "#604035",
+  "#6a6368",
+  "#706b6e",
+  "#767275",
+  "#7c5a50",
+  "#827e82",
+  "#8c6c5e",
+  "#8e8a8c",
+  "#9e989c",
+  "#a08c80",
+  "#a47260",
+  "#a9a4a7",
+  "#ad7a68",
+  "#b4b1b3",
+  "#b59a88",
+  "#c4c0c0",
+  "#ccb1a6",
+  "#d0825c",
+  "#d09e89",
+  "#d0cccc",
+  "#dcd8d8",
+  "#e2dede",
+  "#e3b8a3",
+  "#ea915c",
+  "#edeae9",
+  "#f1a66c",
+  "#f2cbb3",
+  "#fcc084",
+  "#fde5d2"
+ ],
+ "feet": {
+  "middle": 28.0,
+  "row": 45
+ },
+ "anchor": [
+  28.5,
+  46
+ ],
+ "key": "green",
+ "howZoom": 19,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   16.0,
+   16.0
+  ],
+  "purity": {
+   "walk": 0.698
+  },
+  "key": [
+   3,
+   249,
+   2
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 1,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    0,
+    1,
+    0
+   ],
+   "specks": 19,
+   "bareCells": 74,
+   "lineCellsAdded": 81,
+   "closed": true,
+   "offset": [
+    0,
+    1
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    15.82,
+    15.63
+   ],
+   "blocksTallerBy": 0.9877,
+   "sizeInBlocks": [
+    49,
+    47
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "hurt.png",
+  "sha256": "d0aab93a11b9b85e9be02ae87b0ad1c1b29426a72ce3783e99bb71120a0f842a"
+ },
+ "files": {
+  "sprite": "hurt.png",
+  "how": "hurt-how.png",
+  "review": "hurt-review.png",
+  "grounds": "hurt-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

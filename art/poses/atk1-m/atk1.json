@@ -1,0 +1,143 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "atk1",
+ "size": [
+  38,
+  51
+ ],
+ "cells": 994,
+ "colours": 48,
+ "palette": [
+  "#000000",
+  "#000200",
+  "#010000",
+  "#020101",
+  "#020501",
+  "#050303",
+  "#070506",
+  "#0e0b0c",
+  "#181418",
+  "#242026",
+  "#2a262b",
+  "#342e36",
+  "#3e3942",
+  "#412a25",
+  "#453f47",
+  "#503732",
+  "#504950",
+  "#565157",
+  "#60595e",
+  "#676065",
+  "#69584e",
+  "#6e6e6e",
+  "#70676a",
+  "#7b7376",
+  "#847e80",
+  "#928a8e",
+  "#a0989a",
+  "#a2705a",
+  "#a79ea2",
+  "#a8836b",
+  "#ac8c82",
+  "#b4acac",
+  "#b89a92",
+  "#c1b9ba",
+  "#cac4c5",
+  "#daa18b",
+  "#dab8a1",
+  "#dad3d3",
+  "#ddd7d7",
+  "#e08c29",
+  "#e5af9c",
+  "#f0ebea",
+  "#f5ddcb",
+  "#f69644",
+  "#f7a547",
+  "#f7d2c0",
+  "#fcd39e",
+  "#fde6d1"
+ ],
+ "feet": {
+  "middle": 26.0,
+  "row": 49
+ },
+ "anchor": [
+  26.5,
+  50
+ ],
+ "key": "green",
+ "howZoom": 18,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   16.0,
+   16.0
+  ],
+  "purity": {
+   "walk": 0.7339
+  },
+  "key": [
+   3,
+   249,
+   2
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    0,
+    2,
+    0
+   ],
+   "specks": 22,
+   "bareCells": 78,
+   "lineCellsAdded": 89,
+   "closed": true,
+   "offset": [
+    0,
+    1
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    15.83,
+    16.02
+   ],
+   "blocksTallerBy": 1.0117,
+   "sizeInBlocks": [
+    38,
+    51
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "atk1.png",
+  "sha256": "de7ff744a455a66150c84d054863a72c7b46e88aa3dfd7c4e3d14dc7a60cf948"
+ },
+ "files": {
+  "sprite": "atk1.png",
+  "how": "atk1-how.png",
+  "review": "atk1-review.png",
+  "grounds": "atk1-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

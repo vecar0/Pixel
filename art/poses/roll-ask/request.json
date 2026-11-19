@@ -1,0 +1,30 @@
+{
+ "schema": "generate2dsprite.pixel_look_request.v1",
+ "tool": "pixel_look",
+ "kind": "pose",
+ "key": "green",
+ "cell": 10,
+ "canvas": [
+  1024,
+  1024
+ ],
+ "masterAt": [
+  11,
+  8
+ ],
+ "master": {
+  "file": "master.png",
+  "sha256": "f387029be3d422b567a9be7406efb8494aaf7efaf9dd75aeae5f284e2732b17a",
+  "size": [
+   80,
+   85
+  ]
+ },
+ "references": [
+  "reference.png"
+ ],
+ "size": "1024x1024",
+ "next": "route_media.py image --prompt-file prompt.txt --reference reference.png --size 1024x1024 --out-dir <take>; then pixel_look.py pose --image <take>/generated.png --request <this folder>",
+ "change": "dodge roll: she is curled into a tight ball tumbling forward, knees tucked to her chest, head down, cape wrapped around her, sword and lantern held close to the body",
+ "outline": "rule"
+}

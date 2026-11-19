@@ -1,7 +1,7 @@
 // 런 구조 테스트: node tests/run.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
-import { trainOffer, takeTrain, applyStats, spellOffer, takeSpell, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
+import { trainOffer, takeTrain, applyStats, runSpell, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
 import { tick, EMPTY_INPUT } from '../js/core/world.js';
 import { spawnEnemy, ENEMY_DEFS } from '../js/core/enemies.js';
 import { createWorld } from '../js/core/world.js';
@@ -218,11 +218,15 @@ test('스탯은 한 점마다 체감: 힘 1점 = 피해 +12%, 생명 1점 = 최�
   eq(mk({ vit: 6 }).player.maxHp, 6); eq(mk({ vit: 9 }).player.maxHp, 9); eq(mk({ vit: 2 }).player.maxHp, 2);
   ok(Math.abs(mk({ str: 6 }).player.mods.atkMul - 1.12) < 1e-9); eq(mk({ wil: 6 }).player.mods.perfectExtra, 1); eq(mk({ wil: 3 }).player.mods.perfectExtra, -2);
 });
-test('주문서: 시작 마법은 기름 마법 1칸, 없는 마법만 제안, 바꾸면 교체', () => {
-  const r = newRun(5, { oil: 'blue' }); eq(r.spells.join(), 'ward');
-  eq(newRun(5).spells.join(), 'bolt');
-  const o = spellOffer(r, 3); eq(o.length, 3); ok(o.every(k => !r.spells.includes(k)));
-  takeSpell(r, 'meteor'); eq(r.spells.join(), 'meteor');
+test('스탯 빌드가 마법을 정한다: 7 이상 없으면 기름 마법, 가장 높은 스탯의 7/10 마법, 동점이면 마지막으로 올린 스탯', () => {
+  const r = newRun(5, { oil: 'blue' }); eq(runSpell(r), 'ward');
+  eq(runSpell(newRun(5)), 'bolt');
+  takeTrain(r, 'str', 'vit'); eq(runSpell(r), 'ward');                                     // 힘 6: 아직 기름 마법
+  takeTrain(r, 'str', 'vit'); eq(runSpell(r), 'pillar');                                   // 힘 7 → 화염 기둥
+  takeTrain(r, 'str', 'vit'); eq(r.stats.str, 8); eq(runSpell(r), 'pillar');               // 힘 8 → 화염 기둥
+  r.stats.agi = 8; r.lastUp = 'agi'; eq(runSpell(r), 'lance');                              // 동점 → 마지막으로 올린 민첩
+  r.stats.str = 10; eq(runSpell(r), 'meteor');                                               // 힘 10 → 운석
+  enterRoom(r, 'combat'); eq(buildRoomWorld(r).player.spells.join(), 'meteor');
 });
 test('스탯 구간 능력: 생명 7 체력+1, 생명 3 체력-1, 의지 10 모든 패링 완벽, 힘 7 3타 검기', () => {
   const mk = st => { const r = newRun(1); chooseOath(r, 'parry'); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };

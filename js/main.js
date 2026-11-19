@@ -9,9 +9,9 @@ import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, buy, relicPool, oilsO
 import { ENEMY_DEFS } from './core/enemies.js';
 import { icon, RELIC_TONE } from './icons.js';
 import { CFG } from './core/config.js';
-import { SPELLS } from './core/spells.js';
+import { SPELLS, STAT_SPELL, spellFor } from './core/spells.js';
 import { STATS, STAT_BY_ID, tierOf } from './core/stats.js';
-import { trainOffer, takeTrain, spellOffer, takeSpell } from './core/run.js';
+import { trainOffer, takeTrain, runSpell } from './core/run.js';
 import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, OATHS, ROOM_TYPES, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js';
 
 const $ = s => document.querySelector(s);
@@ -47,7 +47,7 @@ let bossesKilled = [], practice = false;
 
 let run = null, mode = 'title', world = createWorld({ room: 'arena' }), acc = 0, last = performance.now(), slowT = 0;
 // 테스트·디버그용 훅
-const lk = window.__lk = { get world() { return world; }, get mode() { return mode; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y), gotoBoss: reg => { setRegion(run, reg); enterRoom(run, 'boss'); play(); } };
+const lk = window.__lk = { get world() { return world; }, get mode() { return mode; }, get run() { return run; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y), gotoBoss: reg => { setRegion(run, reg); enterRoom(run, 'boss'); play(); } };
 
 function screen(html) { input.clear(); R.hud = !html; ui.innerHTML = html ? `<div class="screen">${html}</div>` : ''; }
 function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); fn(); }); }
@@ -75,7 +75,7 @@ const runStat = () => {
   const path = Array.from({ length: run.length }, (_, i) => `<i class="${i < run.roomIdx ? 'done' : i === run.roomIdx ? 'now' : ''}${i === run.length - 1 ? ' boss' : ''}"></i>`).join('');
   return `<div class="runbar"><span>${regionOf(run).name}</span><span class="path">${path}</span>
     <span class="em">${icon('ember', 'amber')}${run.embers}</span>
-    <span class="spells">${run.spells.map(s => s ? icon(SPELLS[s].icon, SPELLS[s].tone) : '').join('')}</span>
+    <span class="spells" title="지금 마법">${icon(SPELLS[runSpell(run)].icon, SPELLS[runSpell(run)].tone)}${SPELLS[runSpell(run)].name}</span>
     <span class="relics">${run.relics.map(k => icon(k, RELIC_TONE[RELICS[k].tag])).join('')}</span></div>`;
 };
 // 스탯 표: 5종, 10칸 막대(반 칸 단위), 지금 구간의 능력/약점
@@ -83,7 +83,9 @@ const TIER_TXT = { t7: '7', t10: '10', low: '약점' };
 function statBlock(st, hi = {}) {
   return `<div class="stats5">${STATS.map(s => { const v = st[s.id], T = tierOf(v);
     const bar = Array.from({ length: 10 }, (_, i) => `<i class="${v >= i + 1 ? 'on' : ''}${i === 6 || i === 9 ? ' mark' : ''}"></i>`).join('');
-    return `<div class="srow ${hi[s.id] || ''}">${icon(s.icon, s.tone)}<b>${s.name}</b><span class="bar">${bar}</span><em>${v}</em><small>${T === 'mid' ? s.per : (T === 'low' ? '약점: ' + s.low : s[T])}</small></div>`; }).join('')}</div>`;
+    const [m7, m10] = STAT_SPELL[s.id];
+    return `<div class="srow ${hi[s.id] || ''}">${icon(s.icon, s.tone)}<b>${s.name}</b><span class="bar">${bar}</span><em>${v}</em><small>${T === 'mid' ? s.per : (T === 'low' ? '약점: ' + s.low : s[T])}</small><small class="sm">마법 7 ${SPELLS[m7].name} · 10 ${SPELLS[m10].name}</small></div>`; }).join('')}
+    ${run ? `<div class="srow cur">${icon(SPELLS[runSpell(run)].icon, SPELLS[runSpell(run)].tone)}<b>마법</b><span>${SPELLS[runSpell(run)].name} — 가장 높은 스탯(7 이상)이 마법을 정한다</span></div>` : ''}</div>`;
 }
 // 단련 카드: +1 / -1, 구간이 바뀌면 무엇이 생기고 사라지는지 적어 준다
 function trainCard(o) {
@@ -91,34 +93,22 @@ function trainCard(o) {
   const notes = [];
   if (tierOf(u1) !== tierOf(u0)) notes.push(tierOf(u1) === 'mid' ? `${U.name} 약점 해소` : `${U.name} ${TIER_TXT[tierOf(u1)]}: ${U[tierOf(u1)]}`);
   if (tierOf(d1) !== tierOf(d0)) notes.push(tierOf(d1) === 'low' ? `${D.name} 약점: ${D.low}` : `${D.name} ${TIER_TXT[tierOf(d0)]} 능력 잃음`);
+  const s0 = runSpell(run), s1 = spellFor({ ...run.stats, [o.up]: u1, [o.down]: d1 }, run.baseSpell, o.up);
+  const magic = s1 !== s0 ? `<em class="magic">${icon(SPELLS[s1].icon, SPELLS[s1].tone)}마법: ${SPELLS[s0].name} → ${SPELLS[s1].name}</em>` : '';
   return `<button class="pick t-${U.tone === 'red' ? 'red' : U.tone}" data-id="train:${o.up}:${o.down}"><div class="niche">${icon(U.icon, U.tone)}</div><b>${U.name} 단련</b>
-    <span>${U.name} ${u0} → <strong>${u1}</strong> <small>(${U.per.replace('점마다 ', '')})</small><br>${D.name} ${d0} → ${d1}</span>${notes.length ? `<em class="note">${notes.join('<br>')}</em>` : ''}</button>`;
-}
-// 주문서 카드 (마법)
-const spellCard = (id, extra = '') => { const S = SPELLS[id], C = CFG.skill[id];
-  return `<button class="pick t-${S.tone === 'bone' ? '' : S.tone} scroll" data-id="spell:${id}"><span class="tag">주문서</span><div class="niche">${icon(S.icon, S.tone)}</div><b>${S.name}</b><span>${S.desc}<br>빛 ${C.cost}</span>${extra}</button>`; };
-// 마법 얻기: 마법은 1칸 → 지금 마법과 바꿀지 고른다
-function getSpell(id, after) {
-  const cur = run.spells[0];
-  if (!cur) { takeSpell(run, id); return after(); }
-  mode = 'spellslot';
-  const card = (k, did, title) => `<button class="pick door t-${SPELLS[k].tone === 'bone' ? '' : SPELLS[k].tone}" data-id="${did}"><div class="niche">${icon(SPELLS[k].icon, SPELLS[k].tone)}</div><b>${title}</b><span>${SPELLS[k].name} · 빛 ${CFG.skill[k].cost}<br>${SPELLS[k].desc}</span></button>`;
-  screen(`<div class="card"><h2>마법을 바꿀까</h2><div class="line">마법은 하나만 지닐 수 있다</div><div class="picks">
-    ${card(id, 'take', '새 마법으로')}${card(cur, 'keep', '지금 마법 유지')}</div></div>`);
-  bindPicks(v => { if (v === 'take') takeSpell(run, id); after(); });
+    <span>${U.name} ${u0} → <strong>${u1}</strong> <small>(${U.per.replace('점마다 ', '')})</small><br>${D.name} ${d0} → ${d1}</span>${magic}${notes.length ? `<em class="note">${notes.join('<br>')}</em>` : ''}</button>`;
 }
 // 보상 카드 공통 처리
 function takeReward(id, after) {
   if (id.startsWith('train:')) { const [, up, down] = id.split(':'); takeTrain(run, up, down); return after(); }
-  if (id.startsWith('spell:')) return getSpell(id.slice(6), after);
   takeRelic(run, id); after();
 }
-// 전투방 보상: 단련 2 + 각인(가끔 주문서) 1 / 엘리트: 각인 2 + 주문서 1 / 보스: 각인 3
+// 전투방 보상: 단련 2 + 각인 1 / 엘리트·보스: 각인 3
 function rewardScreen(after) {
   mode = 'relic'; touch.classList.add('hidden');
-  const tr = trainOffer(run, 2), sp = Math.random() < 0.35 ? spellOffer(run, 1) : [], rl = sp.length ? [] : relicOffer(run, 1);   // 셋째 칸: 각인, 가끔 주문서
+  const tr = trainOffer(run, 2), rl = relicOffer(run, 1);
   if (!tr.length) return relicScreen(after);
-  screen(`<div class="card"><h2>무엇을 얻을까</h2>${runStat()}<div class="picks">${tr.map(trainCard).join('')}${rl.map(id => relicCard(id)).join('')}${sp.map(id => spellCard(id)).join('')}</div>
+  screen(`<div class="card"><h2>무엇을 얻을까</h2>${runStat()}<div class="picks">${tr.map(trainCard).join('')}${rl.map(id => relicCard(id)).join('')}</div>
     <details class="statsd"><summary>지금 스탯</summary>${statBlock(run.stats)}</details></div>`);
   bindPicks(id => takeReward(id, after));
 }
@@ -233,9 +223,9 @@ function oathScreen() {
 }
 function relicScreen(after) {
   mode = 'relic'; touch.classList.add('hidden');
-  const elite = run.room === 'elite', sp = elite ? spellOffer(run, 1) : [], offer = relicOffer(run, 3 - sp.length);
-  if (!offer.length && !sp.length) return after();
-  screen(`<div class="card"><h2>${sp.length ? '무엇을 얻을까' : '각인을 하나 고르세요'}</h2>${runStat()}<div class="picks">${offer.map(id => relicCard(id)).join('')}${sp.map(id => spellCard(id)).join('')}</div></div>`);
+  const offer = relicOffer(run, 3);
+  if (!offer.length) return after();
+  screen(`<div class="card"><h2>각인을 하나 고르세요</h2>${runStat()}<div class="picks">${offer.map(id => relicCard(id)).join('')}</div></div>`);
   bindPicks(id => takeReward(id, after));
 }
 function doorScreen() {
@@ -253,18 +243,16 @@ function restScreen() {
   bindPicks(id => { if (id === 'heal') run.hp = Math.min(maxHp, (run.hp ?? maxHp) + 2); else run.flasks = maxF; roomCleared(run); run.embers -= 10; doorScreen(); });
 }
 function shopScreen() {
-  mode = 'shop'; const offer = relicOffer(run, 2), scrolls = spellOffer(run, 1);
+  mode = 'shop'; const offer = relicOffer(run, 2);
   const draw = () => {
     screen(`<div class="card"><h2>떠돌이 상인</h2><div class="quote">"불씨만 있으면 뭐든 내주지."</div>${runStat()}<div class="picks">
       ${offer.map(id => relicCard(id, cost(30)).replace('<button', run.embers < 30 ? '<button disabled' : '<button')).join('')}
-      ${scrolls.map(id => spellCard(id, cost(25)).replace('<button', run.embers < 25 ? '<button disabled' : '<button')).join('')}
       <button class="pick t-heal" data-id="flask" ${run.embers < 15 ? 'disabled' : ''}><div class="niche">${icon('flask', 'heal')}</div><b>기름병</b><span>기름병 +1</span>${cost(15)}</button>
       </div><div class="btns"><button class="btn alt" data-id="leave">떠난다</button></div></div>`);
     bindPicks(id => {
       if (id === 'leave') { roomCleared(run); run.embers -= 10; return doorScreen(); }
       if (id === 'flask' && run.embers >= 15) { run.embers -= 15; run.flasks = (run.flasks ?? 3) + 1; }
       else if (RELICS[id] && run.embers >= 30) { run.embers -= 30; takeRelic(run, id); offer.splice(offer.indexOf(id), 1); }
-      else if (id.startsWith('spell:') && run.embers >= 25) { run.embers -= 25; scrolls.length = 0; return getSpell(id.slice(6), draw); }
       draw();
     });
   };

@@ -11,7 +11,7 @@ const VIOLET = ['#1a0a2a', '#3a1660', '#6a2aa0', '#9a4ae0', '#c890ff', '#f0e0ff'
 const GREY = ['#1a1820', '#3a3640', '#5e5866', '#8a8494', '#b8b2c2', '#e4e0ea', '#ffffff'];
 const LILAC = ['#1e1430', '#3c2a5c', '#6a4e96', '#9a7ccc', '#c8b0f0', '#ece2ff', '#ffffff'];
 const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', '#ffffff'];
-const CFG_INV = { ring: 1, ward: 1, spear: 1, meteor: 1 };   // 큰 마법만 시전 예고 빛
+const CFG_INV = { ring: 1, ward: 1, spear: 1, meteor: 1, sanctum: 1 };   // 큰 마법만 시전 예고 빛
 const HIT = ['#1a0e06', '#3a2410', '#6a4420', '#9a6a34', '#c4955a', '#e0bc88', '#f0dcb8'];   // 기본 타격: 흰빛 없는 톤
 const ICE = ['#081a2a', '#10345a', '#1e5a8c', '#3a8cc8', '#7ac0f0', '#c0e8ff', '#ffffff'];
 const DUST = ['#1c1610', '#33281c', '#4f3f2c', '#6e5a40', '#927a58', '#b89f78', '#dcc8a2'];
@@ -53,7 +53,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -126,6 +126,8 @@ export class FxDirector {
         else if (ev.spell === 'stars') P('arcane/star-fall', ev.tx, gy, { life: 100, light: 0.4 }, 3);
         else if (ev.spell === 'ring') P('fire/fire-ring', ev.x, feet, { life: 80, light: 0.4 }, 3);
         else if (ev.spell === 'ward') { P('ice/frost-nova', ev.x, feet, { life: 60, light: 0.3 }, 3); P('holy/divine-shield', 0, 0, { follow: p, dy: p.h / 2, life: 300, key: 'blue', light: 0.25, palette: ICE }, 3); }
+        else if (ev.spell === 'heal') P('holy/heal', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: p.face < 0, life: 110, light: 0.3 }, 3);
+        else if (ev.spell === 'sanctum') P('holy/holy-pillar', ev.x, feet, { life: 120, light: 0.4 }, 3);
         else if (ev.spell === 'spear') P('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: ev.face < 0, life: 40, light: 0.4, palette: VIOLET }, 3);
         break;
       }

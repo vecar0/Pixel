@@ -169,6 +169,12 @@ test('얼음 창은 여러 적을 꿰뚫고, 흑염 창은 앞쪽 일직선만',
   cast(w, 'lance'); steps(w, 50); eq(a.hp, 82); eq(b.hp, 82);
   cast(w, 'spear'); steps(w, 30); eq(a.hp, 42); eq(b.hp, 42); eq(c.hp, 100);
 });
+test('치유의 빛은 체력 2, 성광 기둥은 주변 피해 + 체력 1', () => {
+  const w = W(); settle(w); w.player.hp = 2;
+  const d = makeDummy(w, { hp: 100 });
+  cast(w, 'heal'); steps(w, 30); eq(w.player.hp, 4);
+  cast(w, 'sanctum'); steps(w, 30); eq(w.player.hp, 5); eq(d.hp, 72);
+});
 test('착탄형(운석·낙뢰·화염 기둥·별똥비): 이펙트가 떨어지는 순간에 피해, 그 전엔 없음', () => {
   for (const sp of ['meteor', 'thunder', 'pillar', 'stars']) {
     const w = W(); settle(w); w.player.face = 1;

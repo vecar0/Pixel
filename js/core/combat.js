@@ -146,6 +146,11 @@ export function resolveSkill(w, ev) {
   } else if (ev.spell === 'ward') {
     p.blueT = S.blueF;
     for (const e of live) if (Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - (p.y + p.h / 2)) <= S.radius + e.w / 2) spellHit(w, e, Math.round(S.dmg * M), 0.2 * PM, 'ward');
+  } else if (ev.spell === 'heal') {
+    p.hp = Math.min(p.maxHp, p.hp + S.heal);
+  } else if (ev.spell === 'sanctum') {
+    p.hp = Math.min(p.maxHp, p.hp + S.heal);
+    for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.radius + e.w / 2 && Math.abs(e.y + e.h / 2 - (p.y + p.h / 2)) < 120) spellHit(w, e, Math.round(S.dmg * M), S.poise * PM, 'sanctum');
   } else if (ev.spell === 'spear') {
     const x0 = p.face > 0 ? p.x + p.w : p.x - S.len, x1 = x0 + S.len;
     for (const e of live) if (e.x + e.w > x0 && e.x < x1 && e.y < p.y + p.h && e.y + e.h > p.y) spellHit(w, e, Math.round(S.dmg * M), S.poise * PM, 'spear');

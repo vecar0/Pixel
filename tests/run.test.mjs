@@ -1,7 +1,7 @@
 // 런 구조 테스트: node tests/run.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
-import { trainOffer, takeTrain, applyStats, runSpell, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
+import { trainOffer, takeTrain, applyStats, runSpell, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, nextStage, stageOf, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
 import { tick, EMPTY_INPUT } from '../js/core/world.js';
 import { spawnEnemy, ENEMY_DEFS } from '../js/core/enemies.js';
 import { createWorld } from '../js/core/world.js';
@@ -21,8 +21,8 @@ test('각인 제안: 3개, 서로 다름, 이미 가진 것 제외, 같은 시�
 });
 test('문 선택: 서로 다른 방 2개, 마지막 직전엔 보스만', () => {
   const r = newRun(3); chooseOath(r, 'parry');
-  const d = doorOffer(r); eq(d.length, 2); ok(d[0] !== d[1], d);
-  r.roomIdx = r.length - 1; eq(JSON.stringify(doorOffer(r)), '["boss"]');
+  eq(r.route.join(), 'combat,combat,shop,elite,rest,boss');                // 스테이지는 정해진 순서
+  for (const t of ['combat', 'combat', 'shop', 'elite', 'rest', 'boss']) { eq(nextStage(r), t); roomCleared(r); }
 });
 test('방 진행: 전투 클리어 시 불씨 +10, 방 번호 증가', () => {
   const r = newRun(3); chooseOath(r, 'parry'); enterRoom(r, 'combat');
@@ -81,7 +81,7 @@ test('지역 4곳: 보스 격파 → 다음 지역, 마지막이면 끝', () => 
   const r = newRun(9); chooseOath(r, 'parry'); eq(REGIONS.length, 4);
   for (let i = 1; i < 4; i++) { ok(advanceRegion(r)); eq(r.region, i + 1); eq(r.roomIdx, 0); }
   ok(!advanceRegion(r));
-  eq(r.length, REGIONS[3].rooms + 1);
+  eq(r.length, REGIONS[3].route.length); eq(r.route.at(-1), 'boss');
 });
 test('지역별 적 구성과 보스', () => {
   const r = newRun(9); chooseOath(r, 'parry'); advanceRegion(r); enterRoom(r, 'combat');
@@ -235,6 +235,15 @@ test('스탯 구간 능력: 생명 7 체력+1, 생명 3 체력-1, 의지 10 모�
   const w = mk({ str: 7 }); w.enemies.length = 0; w.waves = []; steps(w, 20);
   const p = w.player; p.combo = 1; p.comboT = 10; tick(w, I({ attack: true }));
   steps(w, CFG.attack.startupF + 1); ok(w.projectiles.some(b => b.owner === 'player' && b.echo), 'wave');
+});
+
+test('쉼터(상점·휴식): 적 없음, 오브젝트 앞 공격 = 상호작용(휘두르지 않음), 오른쪽 출구에 닿으면 나감', () => {
+  const r = newRun(2); chooseOath(r, 'parry'); r.roomIdx = 2; nextStage(r); eq(r.room, 'shop');
+  const w = buildRoomWorld(r); eq(w.enemies.length, 0); eq(w.props[0].kind, 'merchant');
+  steps(w, 20); w.player.x = w.props[0].x - w.player.w / 2; steps(w, 2);
+  tick(w, I({ attack: true })); ok(w.events.some(e => e.type === 'interact' && e.kind === 'merchant')); ok(w.player.state !== 'attack');
+  w.player.x = w.props[1].x; tick(w, I()); ok(w.events.some(e => e.type === 'exit'));
+  r.roomIdx = 4; nextStage(r); eq(buildRoomWorld(r).props[0].kind, 'campfire');
 });
 
 run();

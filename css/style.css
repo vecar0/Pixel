@@ -204,3 +204,6 @@ details.statsd summary::before { content: '▸ '; } details.statsd[open] summary
 .pick em.magic .ico { width: 16px; height: 16px; }
 .runbar .spells { align-items: center; gap: 4px; padding: 1px 6px 1px 2px; color: var(--flame); }
 @media (max-width: 700px) { .srow { grid-template-columns: 18px 34px 112px 26px 1fr; } .srow .sm { display: none; } }
+
+.runbar .path b { display: inline-flex; opacity: .55; } .runbar .path b.done { opacity: .25; } .runbar .path b.now { opacity: 1; box-shadow: 0 2px 0 var(--lantern); }
+.runbar .path b .ico { width: 16px; height: 16px; }

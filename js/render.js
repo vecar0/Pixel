@@ -2,6 +2,7 @@
 import { CFG } from './core/config.js';
 import { attackBox } from './core/player.js';
 import { ENEMY_DEFS, telegraphOf, EMERGE_F } from './core/enemies.js';
+import { nearProp } from './core/world.js';
 import { FxLayer, ScreenFx, actorFromImage } from './fx.js';
 import { FxDirector } from './fxmap.js';
 import { iconCanvas } from './icons.js';
@@ -64,7 +65,7 @@ export class Renderer {
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.bgfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); }
+  reset() { this.fx.clear(); this.bgfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; }
 
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
@@ -182,6 +183,7 @@ export class Renderer {
 
     g.save(); g.translate(ox, oy);
     if (bd) this.drawPlatforms(g, w);                                     // 발판: 어둠 위에 선명하게 (밟을 수 있는 면)
+    if (w.props) this.drawProps(g, w);                                    // 쉼터 오브젝트 (상인 등)
     for (const e of w.enemies) this.drawEnemy(g, w, e);
     this.drawWarnings(g, w);
     for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
@@ -217,6 +219,14 @@ export class Renderer {
     if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.22})`; g.fillRect(0, 0, vw, H); }   // 화면 섬광은 은은하게
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
     if (this.hud !== false) this.drawHud(g, w);
+    for (const [m, y] of [[this.banner, 96], [this.sayMsg, H - 70]]) {     // 스테이지 이름 배너 · 안내 한 줄
+      if (!m || m.t <= 0) continue; m.t--;
+      const a = Math.min(1, m.t / 30, (m.dur || 150) - m.t < 20 ? ((m.dur || 150) - m.t) / 20 : 1);
+      g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle';
+      if (m.sub) { g.font = '10px Galmuri9, monospace'; g.fillStyle = '#b89a6a'; g.fillText(m.sub, vw / 2, y - 24); }
+      g.font = (m === this.banner ? '20px' : '11px') + ' Galmuri11, monospace'; g.fillStyle = '#ffe2a8'; g.shadowColor = 'rgba(255,170,70,.6)'; g.shadowBlur = 8;
+      g.fillText(m.s, vw / 2, y); g.restore();
+    }
     if (this.fadeIn > 0) { g.fillStyle = `rgba(5,3,8,${this.fadeIn})`; g.fillRect(0, 0, vw, H); this.fadeIn = Math.max(0, this.fadeIn - 0.045); }
     this.trans.draw(g, vw, H);                                              // 장면 전환 · 임팩트 프레임 (맨 위)
   }
@@ -330,6 +340,31 @@ export class Renderer {
     g.restore();
     return true;
   }
+
+  // 쉼터 오브젝트: 상인 그림 + 따뜻한 빛, 가까이 가면 '공격 버튼으로 ○○' 안내, 출구 안내
+  drawProps(g, w) {
+    if (!this.merchantImg) { this.merchantImg = new Image(); this.merchantImg.src = 'assets/merchant.png'; }
+    const near = nearProp(w);
+    for (const o of w.props) {
+      if (o.kind === 'merchant' && this.merchantImg.naturalWidth) {
+        const im = this.merchantImg, gl = g.createRadialGradient(o.x - 20, 250, 4, o.x - 20, 250, 70);
+        gl.addColorStop(0, 'rgba(255,170,70,0.28)'); gl.addColorStop(1, 'rgba(255,170,70,0)');
+        g.fillStyle = gl; g.fillRect(o.x - 100, 170, 200, 140);
+        g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight);
+      }
+      const label = o.kind === 'merchant' ? '상점 열기' : o.kind === 'campfire' ? (o.used ? '불씨가 잦아들었다' : '쉬기') : '다음 길 →';
+      const show = o.kind === 'exit' ? w.player.x > o.x - 260 : o === near;
+      if (!show) continue;
+      const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : 214, txt = o.kind === 'exit' || o.used ? label : `공격 버튼  ${label}`;
+      g.font = '10px Galmuri9, monospace'; g.textBaseline = 'middle'; g.textAlign = 'center';
+      const tw = g.measureText(txt).width + 14, bob = Math.round(Math.sin(w.t * 0.1) * 2);
+      g.fillStyle = 'rgba(13,10,17,.8)'; g.fillRect(Math.round(o.x - tw / 2), y - 8 + bob, Math.round(tw), 16);
+      g.fillStyle = '#ffb347'; g.fillRect(Math.round(o.x - tw / 2), y + 7 + bob, Math.round(tw), 1);
+      g.fillStyle = '#ffe2a8'; g.fillText(txt, o.x, y + bob);
+      g.textAlign = 'left'; g.textBaseline = 'top';
+    }
+  }
+  say(s) { this.sayMsg = { s, t: 150 }; }
 
   // 발판: 바닥 타일 윗부분을 잘라 쓰되, 아래 그림자 + 윗면 밝은 테두리 + 양 끝 받침으로 '밟을 수 있는 것'임을 보여 줌
   drawPlatforms(g, w) {
@@ -671,16 +706,18 @@ export class Renderer {
     g.fillStyle = this.ppT > 0 ? '#fff0c8' : '#b89a6a'; g.fillText('완벽 패링 ' + p.perfectParries + (p.chainN ? '  연쇄 ×' + p.chainN : ''), 8, 33);
     // 방 진행 (마름모) + 불씨
     if (this.runInfo) {
-      const r = this.runInfo, n = r.length, cx = Math.round(this.vw / 2), x0 = cx - n * 6;
-      plate(x0 - 8, 4, n * 12 + 64, 16);
+      const r = this.runInfo, n = r.length, cx = Math.round(this.vw / 2), x0 = cx - n * 7;   // 정해진 길: 스테이지마다 아이콘
+      const ICO = { combat: ['combat', 'bone'], elite: ['elite', 'ember'], shop: ['shop', 'amber'], rest: ['rest', 'heal'], boss: ['boss', 'ember'] };
+      plate(x0 - 6, 3, n * 14 + 54, 18);
       for (let i = 0; i < n; i++) {
-        const x = x0 + i * 12, y = 12, s2 = i === n - 1 ? 4 : 3;
-        g.fillStyle = i < r.roomIdx ? '#8a5a26' : i === r.roomIdx ? '#ffb347' : i === n - 1 ? '#4a1a14' : '#2e2537';
-        g.beginPath(); g.moveTo(x, y - s2); g.lineTo(x + s2, y); g.lineTo(x, y + s2); g.lineTo(x - s2, y); g.fill();
-        if (i === n - 1 || i > r.roomIdx) { g.strokeStyle = i === n - 1 ? '#ff6a3d' : '#4a3e57'; g.lineWidth = 1; g.stroke(); }
+        const [ic, tone] = ICO[r.route[i]] || ICO.combat, x = x0 + i * 14;
+        g.globalAlpha = i < r.roomIdx ? 0.35 : i === r.roomIdx ? 1 : 0.6;
+        g.drawImage(I(ic, i === r.roomIdx ? 'amber' : tone), x, 6);
+        if (i === r.roomIdx) { g.fillStyle = '#ffb347'; g.fillRect(x, 19, 12, 1); }
       }
-      g.drawImage(I('ember', 'amber'), x0 + n * 12 + 2, 6);
-      g.fillStyle = '#ffe2a8'; g.fillText(String(r.embers), x0 + n * 12 + 16, 7);
+      g.globalAlpha = 1;
+      g.drawImage(I('ember', 'amber'), x0 + n * 14 + 2, 6);
+      g.fillStyle = '#ffe2a8'; g.fillText(String(r.embers), x0 + n * 14 + 16, 7);
     }
     this.vw *= hs; g.restore();
     const boss = w.enemies.find(e => e.boss);

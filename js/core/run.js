@@ -28,12 +28,15 @@ export const OATHS = [
   { id: 'execute', name: '처형의 서약', desc: '끝내는 자. 처형자를 들고 시작', start: 'executioner' },
 ];
 
+// 스테이지 순서는 정해져 있다 (고르지 않음). 상점·휴식도 걸어 들어가는 스테이지
+const ROUTE = ['combat', 'combat', 'shop', 'elite', 'rest', 'boss'];
+const SHORT_ROUTE = ['combat', 'rest', 'boss'];     // 지역 1 단축 (종지기 3회 처치 후)
 // 지역 4곳. 지역마다 적 구성·보스·배경·체력 배수가 다르다
 export const REGIONS = [
-  { id: 1, name: '이끼 묘지', bg: 'bg1', enemies: ['ghoul', 'moth'], boss: 'bellBoss', rooms: 5, hp: 1.0 },
-  { id: 2, name: '침수 대성당', bg: 'bg2', enemies: ['spearman', 'priest', 'ghoul'], boss: 'saint', rooms: 5, hp: 1.3 },
-  { id: 3, name: '유리 광산', bg: 'bg3', enemies: ['shellguard', 'moth', 'spearman'], boss: 'spider', rooms: 5, hp: 1.6 },
-  { id: 4, name: '꺼진 태양의 심연', bg: 'bg4', enemies: ['assassin', 'shellguard', 'priest'], boss: 'shadow', rooms: 3, hp: 2.0 },
+  { id: 1, name: '이끼 묘지', bg: 'bg1', enemies: ['ghoul', 'moth'], boss: 'bellBoss', route: ROUTE, hp: 1.0 },
+  { id: 2, name: '침수 대성당', bg: 'bg2', enemies: ['spearman', 'priest', 'ghoul'], boss: 'saint', route: ROUTE, hp: 1.3 },
+  { id: 3, name: '유리 광산', bg: 'bg3', enemies: ['shellguard', 'moth', 'spearman'], boss: 'spider', route: ROUTE, hp: 1.6 },
+  { id: 4, name: '꺼진 태양의 심연', bg: 'bg4', enemies: ['assassin', 'shellguard', 'priest'], boss: 'shadow', route: ['combat', 'shop', 'elite', 'rest', 'boss'], hp: 2.0 },
 ];
 
 // 이번 판 도전 (출발 시 1개)
@@ -65,8 +68,13 @@ export function newRun(seed = (Math.random() * 1e9) | 0, opts = {}) {
 export function setRegion(r, id) {
   r.region = id; r.roomIdx = 0; r.regionFlasksUsed = 0;
   const g = REGIONS[id - 1];
-  r.length = (id === 1 && r.shortcut ? 2 : g.rooms) + 1;
+  r.route = id === 1 && r.shortcut ? SHORT_ROUTE : g.route;
+  r.length = r.route.length;
 }
+// 지금 스테이지 종류
+export const stageOf = r => r.route[Math.min(r.roomIdx, r.route.length - 1)];
+// 다음 스테이지로 (정해진 순서)
+export function nextStage(r) { r.room = stageOf(r); return r.room; }
 
 // 보스 격파 후: 다음 지역으로 (체력 전부 회복). 마지막이면 false
 export function advanceRegion(r) {
@@ -123,18 +131,10 @@ export function relicOffer(r, n = 3) {
 export function takeRelic(r, id) { if (RELICS[id] && !r.relics.includes(id)) r.relics.push(id); }
 
 // 다음 방 문 2개 (보스 직전엔 보스 문 하나)
-export function doorOffer(r) {
-  if (r.roomIdx >= r.length - 1) return ['boss'];
-  const bag = ['combat', 'combat', 'elite', 'rest', 'shop'];
-  const a = bag[(rand(r) * bag.length) | 0];
-  let b; do b = bag[(rand(r) * bag.length) | 0]; while (b === a);
-  return [a, b];
-}
-
 export function enterRoom(r, type) { r.room = type; }
 
 export function roomCleared(r) {
-  r.embers += r.room === 'elite' ? 20 : 10;
+  r.embers += r.room === 'elite' ? 20 : r.room === 'combat' ? 10 : 0;
   r.roomIdx++;
 }
 
@@ -192,7 +192,12 @@ export function buildRoomWorld(r) {
   const hpMul = g.hp * (1 + 0.08 * r.dark);                     // 어둠 단계마다 적 체력 +8%
   let w;
   if (type === 'boss') w = createWorld({ room: 'boss', boss: g.boss, variant: r.variants[r.region - 1], hpMul });
-  else {
+  else if (type === 'shop' || type === 'rest') {                 // 쉼터: 적 없음. 가운데 상인/모닥불, 오른쪽 끝 출구
+    const W = 960;
+    w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }] });
+    w.haven = type;
+    w.props = [{ kind: type === 'shop' ? 'merchant' : 'campfire', x: 480, used: false }, { kind: 'exit', x: W - 70 }];
+  } else {
     const A = genArena(r);
     w = createWorld({ room: 'arena', solids: A.solids, width: A.width, hpMul });
     w.bgOff = A.bgOff;

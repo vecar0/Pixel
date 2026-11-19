@@ -38,20 +38,28 @@ await check('PC: 타이틀 → Enter(마을) → Enter(출발) → 서약 → �
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'play');
 });
-await check('런: 방 클리어 → 각인 3택1 → 문 2개 → 다음 방', PC, async p => {
+await check('런: 방 클리어 → 보상 3택1 → 정해진 다음 방 → 상점 방에서 상인과 상호작용·출구', PC, async p => {
   await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
   await p.evaluate(() => { const w = window.__lk.world; w.enemies.length = 0; w.waves = []; });
   await p.waitForTimeout(300);
   eq(await p.evaluate(() => window.__lk.mode), 'relic');
   eq(await p.locator('.pick').count(), 3);
   await p.screenshot({ path: path.join(out, 'relic.png') });
-  await p.locator('.pick').first().dispatchEvent('pointerup'); await p.waitForTimeout(150);
-  eq(await p.evaluate(() => window.__lk.mode), 'door');
-  ok(await p.locator('.pick').count() >= 1);
-  await p.screenshot({ path: path.join(out, 'door.png') });
-  await p.evaluate(() => { const b = [...document.querySelectorAll('.pick')].find(b => ['combat', 'elite'].includes(b.dataset.id)) || document.querySelector('.pick'); b.dispatchEvent(new PointerEvent('pointerup')); });
-  await p.waitForTimeout(200);
-  ok(['play', 'rest', 'shop'].includes(await p.evaluate(() => window.__lk.mode)));
+  await p.locator('.pick').first().dispatchEvent('pointerup'); await p.waitForTimeout(300);
+  eq(await p.evaluate(() => window.__lk.mode), 'play');
+  eq(await p.evaluate(() => window.__lk.run.room), 'combat');            // 2번째 방도 전투 (정해진 순서)
+  await p.evaluate(() => { const w = window.__lk.world; w.enemies.length = 0; w.waves = []; }); await p.waitForTimeout(300);
+  await p.locator('.pick').first().dispatchEvent('pointerup'); await p.waitForTimeout(400);
+  eq(await p.evaluate(() => window.__lk.run.room), 'shop');
+  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props[0].x - 11; }); await p.waitForTimeout(200);
+  await p.screenshot({ path: path.join(out, 'shop-room.png') });
+  await p.keyboard.press('j'); await p.waitForTimeout(200);
+  eq(await p.evaluate(() => window.__lk.mode), 'shop');
+  await p.screenshot({ path: path.join(out, 'shop.png') });
+  await p.evaluate(() => document.querySelector('[data-id=leave]').dispatchEvent(new PointerEvent('pointerup'))); await p.waitForTimeout(200);
+  eq(await p.evaluate(() => window.__lk.mode), 'play');
+  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props[1].x; }); await p.waitForTimeout(400);
+  eq(await p.evaluate(() => window.__lk.run.room), 'elite');
 });
 await check('PC: D 홀드 → 이동', PC, async p => {
   await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);

@@ -53,7 +53,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -62,6 +62,13 @@ export class FxDirector {
     R.weather.clear(); this.seen = new WeakSet(); this.elites = new WeakSet(); this.bodyFx = new WeakMap(); this.recent = []; this.prevLight = 0; this.streak = 0;
     R.bgfx.clear(); for (const [id, fx, y] of (boss ? a.boss : a.world)) R.bgfx.spawn(id, w.width * fx, y, { light: 0.4 });
     for (const id of a.screen) R.weather.spawn(id, 160, 170, {});   // 날씨 원점 = 화면 하단 중앙 (meta.origin)
+    if (w.haven) {                                                       // 쉼터 오브젝트: 모닥불(휴식) · 출구 포탈 (밝게 = 상호작용 가능)
+      for (const o of w.props) {
+        if (o.kind === 'campfire') { R.fx.spawn('fire/campfire', o.x, 300, { light: 0.5 }); for (const d of [-110, 110]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
+        if (o.kind === 'merchant') { R.bgfx.spawn('fire/brazier', o.x + 90, 300, { light: 0.35 }); R.bgfx.spawn('fire/candle', o.x - 100, 300, { light: 0.3 }); }
+        if (o.kind === 'exit') R.fx.spawn('arcane/portal', o.x, 300, { light: 0.4, palette: AMBER });
+      }
+    }
     R.trans.clear(); R.fadeIn = 1;   // 방 입장: 검은 화면에서 0.4초 페이드인 (픽셀 전환은 눈이 아파 제외)
   }
 

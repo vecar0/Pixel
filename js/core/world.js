@@ -49,6 +49,20 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
   return w;
 }
 
+// 쉼터: 오브젝트 가까이서 공격 버튼 = 상호작용 (휘두르지 않음), 오른쪽 출구에 닿으면 나감
+export const INTERACT_R = 56;
+export function nearProp(w) {
+  const p = w.player, cx = p.x + p.w / 2;
+  return (w.props || []).find(o => o.kind !== 'exit' && Math.abs(o.x - cx) < INTERACT_R) || null;
+}
+function havenInput(w, inp) {
+  const o = nearProp(w), p = w.player;
+  if (o && inp.attack) { w.events.push({ type: 'interact', kind: o.kind }); inp = { ...inp, attack: false }; }
+  const exit = (w.props || []).find(o => o.kind === 'exit');
+  if (exit && p.x + p.w / 2 > exit.x - 12 && !w.exited) { w.exited = true; w.events.push({ type: 'exit' }); }
+  return inp;
+}
+
 // x~x+bw 위치의 바닥 높이 (언덕 위면 언덕 윗면)
 export function groundAt(w, x, bw = 1) {
   let y = 300;
@@ -92,6 +106,7 @@ export function tick(w, inp) {
   if (w.shake > 0) w.shake--;
   w.hitboxes.length = 0;
 
+  if (w.room === 'haven') inp = havenInput(w, inp);
   updatePlayer(w, inp);
   for (const ev of [...w.events]) if (ev.type === 'skill') resolveSkill(w, ev);
   for (const d of w.pending) if (--d.t <= 0) landSkill(w, d);             // 지연 마법: 이펙트가 떨어지는 순간 피해

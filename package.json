@@ -1,1 +1,1 @@
-{"type":"module","name":"neon-paw","private":true,"scripts":{"test":"node tests/sim.test.mjs"}}
+{"type":"module","name":"lantern-keeper","private":true,"scripts":{"test":"node tests/sim.test.mjs","e2e":"node tests/e2e.mjs"}}

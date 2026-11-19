@@ -1,0 +1,143 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "ghoul",
+ "size": [
+  69,
+  70
+ ],
+ "cells": 2922,
+ "colours": 48,
+ "palette": [
+  "#070606",
+  "#080706",
+  "#0b0908",
+  "#161211",
+  "#201a17",
+  "#271f1e",
+  "#322726",
+  "#3e2e2c",
+  "#443f28",
+  "#483736",
+  "#4e4d2c",
+  "#503e3f",
+  "#561918",
+  "#574136",
+  "#594544",
+  "#5a5c2e",
+  "#654f4c",
+  "#68201d",
+  "#6a5f40",
+  "#6d6d3a",
+  "#6f4a3a",
+  "#745b59",
+  "#74763d",
+  "#7a605e",
+  "#7d5847",
+  "#7d6b49",
+  "#826a63",
+  "#828643",
+  "#87814b",
+  "#886452",
+  "#8c7153",
+  "#8c8e48",
+  "#91796f",
+  "#989c50",
+  "#99857c",
+  "#a2a656",
+  "#a3826a",
+  "#a53231",
+  "#a78e85",
+  "#a9a776",
+  "#b0988a",
+  "#b0b264",
+  "#bba595",
+  "#c8b5a2",
+  "#d0c0aa",
+  "#d7c7b2",
+  "#e0d0ba",
+  "#f45a5b"
+ ],
+ "feet": {
+  "middle": 40.5,
+  "row": 69
+ },
+ "anchor": [
+  41.0,
+  70
+ ],
+ "key": "magenta",
+ "howZoom": 13,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   12.0,
+   12.667
+  ],
+  "purity": {
+   "walk": 0.9637
+  },
+  "key": [
+   251,
+   3,
+   250
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    7,
+    6,
+    6
+   ],
+   "specks": 11,
+   "bareCells": 7,
+   "lineCellsAdded": 8,
+   "closed": true,
+   "offset": [
+    1,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    12.5,
+    12.71
+   ],
+   "blocksTallerBy": 1.0168,
+   "sizeInBlocks": [
+    69,
+    70
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "ghoul.png",
+  "sha256": "d31868028fcd5b08604d3f391f93e02f6f272f4809829ba55f408e888233072b"
+ },
+ "files": {
+  "sprite": "ghoul.png",
+  "how": "ghoul-how.png",
+  "review": "ghoul-review.png",
+  "grounds": "ghoul-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

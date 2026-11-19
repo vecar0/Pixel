@@ -1,7 +1,7 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
 import { CFG } from './config.js';
 import { createPlayer, updatePlayer, overlap } from './player.js';
-import { spawnEnemy, updateEnemy } from './enemies.js';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS } from './enemies.js';
 import { resolveEnemyHit, resolvePlayerAttacks, resolveUlt, updatePoise, damageEnemy } from './combat.js';
 
 export const EMPTY_INPUT = Object.freeze({
@@ -43,7 +43,7 @@ export function createWorld({ room = 'arena', solids, spawn, width } = {}) {
     waves: [], waveDelay: 0,
   };
   if (room === 'arena') w.waves = [[['ghoul', 520], ['ghoul', 600], ['moth', 700]], [['ghoul', 900], ['moth', 1000]]];
-  if (room === 'boss') spawnEnemy(w, 'bellBoss', 480, 170);
+  if (room === 'boss') spawnEnemy(w, 'bellBoss', 480, 300 - ENEMY_DEFS.bellBoss.h - 2);   // 바닥 위에서 시작
   updateCamera(w);
   return w;
 }

@@ -1,0 +1,143 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "boss",
+ "size": [
+  87,
+  83
+ ],
+ "cells": 4763,
+ "colours": 48,
+ "palette": [
+  "#080708",
+  "#0a0909",
+  "#0c0c0c",
+  "#1b1a18",
+  "#292826",
+  "#312e2c",
+  "#383532",
+  "#3c6167",
+  "#403c37",
+  "#47433e",
+  "#4b767e",
+  "#4e4a44",
+  "#4e4e32",
+  "#55544e",
+  "#5e5e3c",
+  "#5f5048",
+  "#625c53",
+  "#696942",
+  "#6b655b",
+  "#725c4e",
+  "#726f66",
+  "#737344",
+  "#7c786e",
+  "#7e8048",
+  "#7f6a5f",
+  "#83825c",
+  "#888a49",
+  "#8b7f72",
+  "#90914c",
+  "#95867b",
+  "#96974e",
+  "#9a7764",
+  "#9a8d82",
+  "#a2946f",
+  "#a59386",
+  "#a6a552",
+  "#ae8368",
+  "#ae9c8f",
+  "#ba8f73",
+  "#baa79a",
+  "#c4f7f4",
+  "#cab3a4",
+  "#cfa587",
+  "#d0b9aa",
+  "#e1b698",
+  "#ecc4ac",
+  "#edf8f9",
+  "#f2d6c2"
+ ],
+ "feet": {
+  "middle": 52.0,
+  "row": 82
+ },
+ "anchor": [
+  52.5,
+  83
+ ],
+ "key": "magenta",
+ "howZoom": 11,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   11.667,
+   11.333
+  ],
+  "purity": {
+   "walk": 0.9215
+  },
+  "key": [
+   250,
+   3,
+   250
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    8,
+    7,
+    8
+   ],
+   "specks": 2,
+   "bareCells": 4,
+   "lineCellsAdded": 4,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    11.41,
+    11.53
+   ],
+   "blocksTallerBy": 1.0097,
+   "sizeInBlocks": [
+    87,
+    83
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "boss.png",
+  "sha256": "d2f0a844f03626fdba3d08ad4bc36b7e2535f22d33cc4e83cfc0bad0b9ebfd87"
+ },
+ "files": {
+  "sprite": "boss.png",
+  "how": "boss-how.png",
+  "review": "boss-review.png",
+  "grounds": "boss-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

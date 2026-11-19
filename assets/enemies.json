@@ -1,0 +1,64 @@
+{
+ "ghoul": {
+  "idle": {
+   "src": "assets/ghoul-idle.png",
+   "ax": 36,
+   "ay": 70,
+   "w": 69,
+   "h": 70
+  },
+  "wind": {
+   "src": "assets/ghoul-wind.png",
+   "ax": 28,
+   "ay": 75,
+   "w": 56,
+   "h": 75
+  },
+  "slash": {
+   "src": "assets/ghoul-slash.png",
+   "ax": 43,
+   "ay": 57,
+   "w": 82,
+   "h": 57
+  }
+ },
+ "moth": {
+  "up": {
+   "src": "assets/moth-up.png",
+   "ax": 22,
+   "ay": 19,
+   "w": 45,
+   "h": 39
+  },
+  "down": {
+   "src": "assets/moth-down.png",
+   "ax": 21,
+   "ay": 16,
+   "w": 42,
+   "h": 33
+  }
+ },
+ "bellBoss": {
+  "idle": {
+   "src": "assets/bellBoss-idle.png",
+   "ax": 98,
+   "ay": 166,
+   "w": 174,
+   "h": 166
+  },
+  "wind": {
+   "src": "assets/bellBoss-wind.png",
+   "ax": 58,
+   "ay": 174,
+   "w": 118,
+   "h": 174
+  },
+  "strike": {
+   "src": "assets/bellBoss-strike.png",
+   "ax": 96,
+   "ay": 150,
+   "w": 174,
+   "h": 150
+  }
+ }
+}

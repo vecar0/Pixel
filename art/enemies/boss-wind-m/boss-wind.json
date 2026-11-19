@@ -1,0 +1,143 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "boss-wind",
+ "size": [
+  71,
+  103
+ ],
+ "cells": 4770,
+ "colours": 48,
+ "palette": [
+  "#090908",
+  "#0a0908",
+  "#0d0c0b",
+  "#171613",
+  "#182a2d",
+  "#203c3e",
+  "#22201e",
+  "#2b2824",
+  "#33302b",
+  "#345050",
+  "#3b7b90",
+  "#3e3933",
+  "#457174",
+  "#48423a",
+  "#4ca0b4",
+  "#514b42",
+  "#56552e",
+  "#585448",
+  "#5cb2c8",
+  "#5f5c4f",
+  "#67683a",
+  "#686558",
+  "#68878e",
+  "#786d60",
+  "#795847",
+  "#7a7a3e",
+  "#7bcdde",
+  "#84796a",
+  "#8d6853",
+  "#8ddae9",
+  "#8e8e43",
+  "#938372",
+  "#949086",
+  "#9c9c46",
+  "#a08c7a",
+  "#a3785c",
+  "#a8a848",
+  "#ab9586",
+  "#b98664",
+  "#baa18f",
+  "#c3906e",
+  "#c4c0c0",
+  "#ccb29f",
+  "#d9a683",
+  "#ddbfab",
+  "#ebba98",
+  "#f3d2b8",
+  "#fafcfb"
+ ],
+ "feet": {
+  "middle": 36.0,
+  "row": 102
+ },
+ "anchor": [
+  36.5,
+  103
+ ],
+ "key": "magenta",
+ "howZoom": 9,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   9.667,
+   10.0
+  ],
+  "purity": {
+   "walk": 0.8852
+  },
+  "key": [
+   250,
+   4,
+   250
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 1,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 1
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    10,
+    9,
+    8
+   ],
+   "specks": 5,
+   "bareCells": 3,
+   "lineCellsAdded": 3,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    9.79,
+    9.59
+   ],
+   "blocksTallerBy": 0.9799,
+   "sizeInBlocks": [
+    71,
+    103
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "boss-wind.png",
+  "sha256": "fa5ed76697e0c089d2c0ea513932ff2a69d3bacaf4156437fa03f5ad7bd2c71c"
+ },
+ "files": {
+  "sprite": "boss-wind.png",
+  "how": "boss-wind-how.png",
+  "review": "boss-wind-review.png",
+  "grounds": "boss-wind-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

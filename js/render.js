@@ -29,7 +29,11 @@ export class Renderer {
     this.liraImg = new Image(); this.liraImg.src = 'assets/lira.png';
     // 동작 포즈 (Higgsfield 포즈 생성 → 기준 리라 격자로 읽음). 모두 132x111, 발 기준점 (69, 111)
     this.pose = {};
-    for (const n of ['idle', 'atk1', 'atk2', 'parry', 'hurt', 'roll', 'jump', 'run1', 'run2']) {
+    fetch('assets/enemies.json').then(r => r.json()).then(J => {
+      for (const kind in J) for (const n in J[kind]) { const im = new Image(); im.src = J[kind][n].src; J[kind][n].img = im; }
+      this.enemySprites = J;
+    }).catch(() => {});
+    for (const n of ['idle', 'atk1', 'atkmid', 'atk2', 'parrymid', 'parry', 'hurt', 'roll', 'jump', 'fall', 'run1', 'run2', 'run3', 'run4']) {
       const im = new Image(); im.src = `assets/lira-${n}.png`; this.pose[n] = im;
     }
     this.resize();
@@ -280,19 +284,43 @@ export class Renderer {
     this.drawParryArc(g, p, cx, feet, f);
   }
 
+  // 적 그림 (Higgsfield → 픽셀 격자). 원본은 왼쪽을 봄
+  enemyFrame(w, e, d) {
+    const S = this.enemySprites; if (!S || !S[e.kind]) return null;
+    const F = S[e.kind]; let n;
+    if (e.kind === 'moth') n = e.st === 'active' ? 'down' : e.st === 'telegraph' ? 'up' : (w.t >> 2) & 1 ? 'up' : 'down';
+    else if (e.st === 'telegraph') n = 'wind';
+    else if (e.st === 'active' || (e.st === 'recover' && e.stT < 12)) n = e.kind === 'ghoul' ? 'slash' : 'strike';
+    else n = 'idle';
+    const f = F[n]; return f && f.img.complete && f.img.naturalWidth ? f : null;
+  }
+
+  drawEnemySprite(g, w, e, d, f, k) {
+    const a = e.atk && d && d.attacks[e.atk];
+    let img = f.img;
+    if (e.flash > 3) img = this.tinted('#ffffff', img);
+    else if (e.st === 'telegraph' && a && ((w.t >> (telegraphOf(e, a) - e.stT < 10 ? 1 : 2)) & 1)) img = this.tinted(a.parryable ? '#ffffff' : '#ff4f5e', img);
+    else if (e.staggerT > 0 && (w.t >> 2) & 1) img = this.tinted('#9aa0ad', img);
+    const cx = Math.round(e.x + e.w / 2), base = e.kind === 'moth' ? Math.round(e.y + e.h / 2) : Math.round(e.y + e.h);
+    g.save(); g.translate(cx, base); g.scale((e.face > 0 ? -1 : 1) * (1 + k * 0.15), 1 - k * 0.1);
+    g.drawImage(img, -f.ax, -f.ay);
+    g.restore();
+  }
+
   // 상태 → 포즈 그림
   pickPose(w, p) {
     const P = this.pose, ok = im => im && im.complete && im.naturalWidth ? im : null;
     const A = CFG.attack, t = p.stateT;
     let n = 'idle';
     switch (p.state) {
-      case 'run': n = (w.t >> 3) & 1 ? 'run2' : 'run1'; break;
-      case 'jump': n = 'jump'; break;
+      case 'run': n = ['run1', 'run3', 'run2', 'run4'][((w.t / 6) | 0) & 3]; break;   // 4프레임 달리기
+      case 'jump': n = p.vy < 1 ? 'jump' : 'fall'; break;
       case 'attack': {
-        const early = t < A.startupF;            // 1타·3타: 치켜든 뒤 앞으로 / 2타: 앞에서 위로 올려베기
-        n = p.combo === 1 ? (early ? 'atk2' : 'atk1') : (early ? 'atk1' : 'atk2'); break;
+        // 1타·3타: 치켜듦 → 휘두르는 중 → 앞으로 / 2타: 반대 순서(올려베기)
+        const seq = p.combo === 1 ? ['atk2', 'atkmid', 'atk1'] : ['atk1', 'atkmid', 'atk2'];
+        n = seq[t < A.startupF - 1 ? 0 : t < A.startupF + 1 ? 1 : 2]; break;
       }
-      case 'parry': n = t < CFG.parry.normalF + 4 ? 'parry' : 'idle'; break;
+      case 'parry': n = t < 2 ? 'parrymid' : t < CFG.parry.normalF + 4 ? 'parry' : 'parrymid'; break;
       case 'roll': case 'ghost': n = 'roll'; break;
       case 'hurt': case 'dead': n = 'hurt'; break;
     }
@@ -356,11 +384,15 @@ export class Renderer {
     const k = e.flash > 0 ? e.flash / 6 : 0;                 // 맞으면 찌그러짐
     const ew = e.w * (1 + k * 0.25), eh = e.h * (1 - k * 0.15);
     const x = Math.round(e.x + (e.w - ew) / 2), y = Math.round(e.y + e.h - eh);
+    const spr = this.enemyFrame(w, e, d);
+    if (spr) this.drawEnemySprite(g, w, e, d, spr, k);
+    else {
     g.fillStyle = e.flash > 3 ? C.white : C[e.kind === 'bellBoss' ? 'boss' : e.kind] || '#777';
     if (e.staggerT > 0 && (w.t >> 2) % 2) g.fillStyle = '#9aa0ad';
     g.fillRect(x, y, Math.round(ew), Math.round(eh));
     g.fillStyle = C.red; g.fillRect(e.face > 0 ? x + Math.round(ew) - 5 : x + 2, y + 6, 3, 2);
     if (e.kind === 'bellBoss') { g.fillStyle = '#8c7a52'; g.fillRect(e.face > 0 ? x + Math.round(ew) : x - 22, y + 20, 22, 26); }
+    }
     if (!d) return;
     const a = e.atk && d.attacks[e.atk];
     if (e.st === 'telegraph' && a) {
@@ -368,7 +400,7 @@ export class Renderer {
       const blink = left < 10 ? (w.t >> 1) % 2 : (w.t >> 2) % 2;
       const col = a.parryable ? C.white : C.red;
       g.strokeStyle = col; g.lineWidth = 2;
-      if (blink) g.strokeRect(x - 1, y - 1, ew + 2, eh + 2);
+      if (blink && !spr) g.strokeRect(x - 1, y - 1, ew + 2, eh + 2);
       if (!a.parryable) { g.fillStyle = 'rgba(255,79,94,0.25)'; g.fillRect(x - 3, y - 3, ew + 6, eh + 6); }
       g.lineWidth = 1;
       g.fillStyle = col; g.fillRect(Math.round(e.x + e.w / 2) - 1, e.y - 12, 3, 7); g.fillRect(Math.round(e.x + e.w / 2) - 1, e.y - 4, 3, 2);

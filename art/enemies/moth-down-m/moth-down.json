@@ -1,0 +1,149 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "moth-down",
+ "size": [
+  91,
+  74
+ ],
+ "cells": 2946,
+ "colours": 48,
+ "palette": [
+  "#000000",
+  "#010000",
+  "#020101",
+  "#020401",
+  "#040202",
+  "#060403",
+  "#100a09",
+  "#1d1414",
+  "#281b1c",
+  "#302324",
+  "#3b2a2a",
+  "#453332",
+  "#4c3838",
+  "#543f3e",
+  "#5c4644",
+  "#64423f",
+  "#684b48",
+  "#6a2e15",
+  "#6f5552",
+  "#78605e",
+  "#7e564e",
+  "#826664",
+  "#8c6058",
+  "#956960",
+  "#98746e",
+  "#a26f62",
+  "#a6827b",
+  "#ab7769",
+  "#b67e70",
+  "#b8938a",
+  "#bc8677",
+  "#be9c94",
+  "#c38d7c",
+  "#c7570c",
+  "#c89586",
+  "#cd9e8e",
+  "#d66907",
+  "#d6a999",
+  "#dfb1a0",
+  "#e27818",
+  "#e3a485",
+  "#e6bba8",
+  "#ec8229",
+  "#eec4b2",
+  "#f1ccbb",
+  "#f99b24",
+  "#fdd13a",
+  "#feeebf"
+ ],
+ "feet": {
+  "middle": 63.0,
+  "row": 71
+ },
+ "anchor": [
+  63.5,
+  72
+ ],
+ "key": "green",
+ "howZoom": 10,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   10.333,
+   10.667
+  ],
+  "purity": {
+   "walk": 0.9471
+  },
+  "key": [
+   4,
+   247,
+   6
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    0,
+    0,
+    0
+   ],
+   "specks": 1,
+   "bareCells": 5,
+   "lineCellsAdded": 5,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    9.45,
+    10.12
+   ],
+   "blocksTallerBy": 1.0707,
+   "sizeInBlocks": [
+    91,
+    69
+   ],
+   "rowsDoubled": [
+    0,
+    14,
+    38,
+    54,
+    65
+   ],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "moth-down.png",
+  "sha256": "1ba9a727f045054fffa7f928e0a9085a2c0c3a1adc274e0e4bbe606e8155ff1b"
+ },
+ "files": {
+  "sprite": "moth-down.png",
+  "how": "moth-down-how.png",
+  "review": "moth-down-review.png",
+  "grounds": "moth-down-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

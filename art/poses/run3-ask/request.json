@@ -1,0 +1,30 @@
+{
+ "schema": "generate2dsprite.pixel_look_request.v1",
+ "tool": "pixel_look",
+ "kind": "pose",
+ "key": "green",
+ "cell": 8,
+ "canvas": [
+  1024,
+  1024
+ ],
+ "masterAt": [
+  24,
+  21
+ ],
+ "master": {
+  "file": "master.png",
+  "sha256": "f387029be3d422b567a9be7406efb8494aaf7efaf9dd75aeae5f284e2732b17a",
+  "size": [
+   80,
+   85
+  ]
+ },
+ "references": [
+  "reference.png"
+ ],
+ "size": "1024x1024",
+ "next": "route_media.py image --prompt-file prompt.txt --reference reference.png --size 1024x1024 --out-dir <take>; then pixel_look.py pose --image <take>/generated.png --request <this folder>",
+ "change": "running: mid-stride running toward the RIGHT, the front leg stepping forward and the back leg pushing off behind, body leaning forward, cape and hair streaming back",
+ "outline": "rule"
+}

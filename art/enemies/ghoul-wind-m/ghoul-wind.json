@@ -1,0 +1,146 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "ghoul-wind",
+ "size": [
+  62,
+  87
+ ],
+ "cells": 3261,
+ "colours": 48,
+ "palette": [
+  "#040302",
+  "#050403",
+  "#070604",
+  "#0a0806",
+  "#1a1e0c",
+  "#1c1512",
+  "#261c18",
+  "#2e2220",
+  "#3a2b26",
+  "#3e3727",
+  "#42302e",
+  "#464627",
+  "#4a3735",
+  "#503c3a",
+  "#520c0c",
+  "#56403e",
+  "#58522c",
+  "#604844",
+  "#696832",
+  "#6a4f4a",
+  "#6b1a18",
+  "#765953",
+  "#7a7c39",
+  "#7b6c43",
+  "#7f615b",
+  "#82843d",
+  "#84523a",
+  "#866760",
+  "#8b8843",
+  "#8d8f42",
+  "#8e7166",
+  "#93604a",
+  "#967b52",
+  "#976f52",
+  "#9c7f6f",
+  "#a0a44a",
+  "#a48062",
+  "#a68a7a",
+  "#ad8a6e",
+  "#adae51",
+  "#b19586",
+  "#ba9f8a",
+  "#c6ac92",
+  "#ccb49e",
+  "#d9c4aa",
+  "#e0cdb2",
+  "#e7d6ba",
+  "#f44242"
+ ],
+ "feet": {
+  "middle": 27.0,
+  "row": 86
+ },
+ "anchor": [
+  27.5,
+  87
+ ],
+ "key": "magenta",
+ "howZoom": 11,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   11.333,
+   11.333
+  ],
+  "purity": {
+   "walk": 0.9375
+  },
+  "key": [
+   249,
+   4,
+   250
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 1
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    4,
+    3,
+    2
+   ],
+   "specks": 9,
+   "bareCells": 5,
+   "lineCellsAdded": 5,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    11.3,
+    10.86
+   ],
+   "blocksTallerBy": 0.9612,
+   "sizeInBlocks": [
+    60,
+    87
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": [
+    0,
+    59
+   ]
+  }
+ },
+ "source": {
+  "image": "ghoul-wind.png",
+  "sha256": "6e6003f2f89db7e2ceb65eb2596948d504f2fa4b0624ae6c1812755efc007b4a"
+ },
+ "files": {
+  "sprite": "ghoul-wind.png",
+  "how": "ghoul-wind-how.png",
+  "review": "ghoul-wind-review.png",
+  "grounds": "ghoul-wind-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

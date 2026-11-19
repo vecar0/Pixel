@@ -21,7 +21,7 @@ export class Renderer {
   constructor(canvas) {
     this.cv = canvas; this.ctx = canvas.getContext('2d');
     this.dark = document.createElement('canvas'); this.dctx = this.dark.getContext('2d');
-    this.fx = new FxLayer(); this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
+    this.fx = new FxLayer(); this.bgfx = new FxLayer(); this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
     this.parts = []; this.texts = [];
     this.ghosts = [];             // 회피 잔상
     this.tail = null;             // 포니테일 스프링
@@ -54,13 +54,13 @@ export class Renderer {
     this.vw = Math.min(CFG.VIEW_W_MAX, Math.max(CFG.VIEW_W, Math.floor(iw / s)));
     this.cv.width = this.vw; this.cv.height = H;
     this.dark.width = this.vw; this.dark.height = H;
-    this.fx.resize(this.vw, H);
+    this.fx.resize(this.vw, H); this.bgfx.resize(this.vw, H);
     this.cv.style.width = Math.round(this.vw * s) + 'px';
     this.cv.style.height = Math.round(H * s) + 'px';
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); }
+  reset() { this.fx.clear(); this.bgfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); }
 
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
@@ -108,6 +108,7 @@ export class Renderer {
   stepFx(w) {
     const frozen = w.hitstop > 0;
     if (!frozen) this.fx.update(1 / CFG.TICK);
+    this.bgfx.update(1 / CFG.TICK);
     this.weather.update(1 / CFG.TICK); this.trans.update(1 / CFG.TICK);
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
     this.parts = this.parts.filter(p => p.life > 0);
@@ -154,6 +155,7 @@ export class Renderer {
     const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, C.bg1); grd.addColorStop(1, C.bg0);
     g.fillStyle = grd; g.fillRect(-20, -20, vw + 40, H + 40);
     const bd = this.drawBackdrop(g, w, camX, sx, sy);
+    this.bgfx.draw(g, camX, sx, sy);                                      // 배경 장식 (촛불·횃불·물방울): 어둠 아래 = 배경
     this.weather.draw(g, vw, H, 0.8);                                     // 날씨 (안개·반딧불·빛줄기·오로라)
     if (!bd) {
       g.fillStyle = C.pillar;
@@ -179,6 +181,7 @@ export class Renderer {
     g.globalCompositeOperation = 'source-over';
 
     g.save(); g.translate(ox, oy);
+    if (bd) this.drawPlatforms(g, w);                                     // 발판: 어둠 위에 선명하게 (밟을 수 있는 면)
     for (const e of w.enemies) this.drawEnemy(g, w, e);
     this.drawWarnings(g, w);
     for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
@@ -308,14 +311,28 @@ export class Renderer {
     const G = B.ground, gw = G.naturalWidth, top = 14;   // 그림 14행 = 걷는 면
     g.save(); g.translate(Math.round(-camX) + sx, sy);
     for (const s of w.solids) {
-      if (s.oneWay) {
-        for (let x = s.x; x < s.x + s.w; x += gw) g.drawImage(G, 0, 0, Math.min(gw, s.x + s.w - x), 30, x, s.y - top, Math.min(gw, s.x + s.w - x), 30);
-      } else if (s.h >= 40 && s.w > 100) {
+      if (s.oneWay) continue;                       // 발판은 drawPlatforms에서 어둠 위에
+      else if (s.h >= 40 && s.w > 100) {
         for (let x = s.x - ((s.x % gw) + gw) % gw; x < s.x + s.w; x += gw) g.drawImage(G, x, s.y - top);
       }
     }
     g.restore();
     return true;
+  }
+
+  // 발판: 바닥 타일 윗부분을 잘라 쓰되, 아래 그림자 + 윗면 밝은 테두리 + 양 끝 받침으로 '밟을 수 있는 것'임을 보여 줌
+  drawPlatforms(g, w) {
+    const G = this.bgs[this.region || 1]?.ground; if (!G || !G.naturalWidth) return;
+    const gw = G.naturalWidth, top = 14, th = 22;
+    for (const s of w.solids) {
+      if (!s.oneWay) continue;
+      g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(s.x + 3, s.y + th - top + 1, s.w - 6, 4);           // 그림자
+      for (let x = s.x; x < s.x + s.w; x += gw) { const ww = Math.min(gw, s.x + s.w - x); g.drawImage(G, 0, 0, ww, th, x, s.y - top, ww, th); }
+      g.fillStyle = 'rgba(8,6,14,0.25)'; g.fillRect(s.x, s.y + 3, s.w, th - top - 3);               // 옆면은 살짝 어둡게
+      g.fillStyle = '#e8dcc0'; g.globalAlpha = 0.75; g.fillRect(s.x + 1, s.y, s.w - 2, 1);          // 윗면 테두리
+      g.globalAlpha = 0.35; g.fillRect(s.x + 1, s.y + 1, s.w - 2, 1); g.globalAlpha = 1;
+      g.fillStyle = '#120e16'; g.fillRect(s.x, s.y - 1, 1, th - top + 2); g.fillRect(s.x + s.w - 1, s.y - 1, 1, th - top + 2);   // 양 끝 윤곽
+    }
   }
 
   // 공격 예고 표시: 광선 예고선 · 고리 원 · 낙하 파편 위치 (패링 불가는 붉게)

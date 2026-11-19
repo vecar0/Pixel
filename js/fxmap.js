@@ -13,15 +13,17 @@ const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', 
 const DUST = ['#1c1610', '#33281c', '#4f3f2c', '#6e5a40', '#927a58', '#b89f78', '#dcc8a2'];
 
 // 지역별 배경 생물·불빛 (월드 고정 위치의 반복 이펙트) + 화면 날씨
+// 배경 장식: 게임 요소(아이템·함정·적·마법진·떠다니는 생물)처럼 보이는 것은 쓰지 않는다. 바닥 장식은 방 가장자리, 벽 장식은 벽 높이에.
+// [id, x비율, y] — 배경 레이어(어둠 아래)에 그려져 캐릭터보다 뒤로 물러나 보인다
 const AMBIENT = {
-  1: { world: [['fire/candle', 0.15, 300], ['fire/candle', 0.55, 300], ['fire/candle', 0.85, 300], ['critters/wisp', 0.35, 180], ['critters/wisp', 0.75, 150], ['critters/bat', 0.6, 70]],
-       screen: ['weather/fog', 'weather/fireflies'], boss: [['fire/brazier', 0.1, 300], ['fire/brazier', 0.9, 300]] },
-  2: { world: [['water/drip', 0.2, 40], ['water/drip', 0.5, 30], ['water/drip', 0.8, 40], ['water/ripples', 0.3, 302], ['water/ripples', 0.7, 302], ['fire/candle', 0.45, 300], ['critters/ghost', 0.65, 150]],
-       screen: ['weather/god-rays'], boss: [['water/waterfall', 0.04, 220], ['water/waterfall', 0.96, 220], ['water/whirlpool', 0.5, 304]] },
-  3: { world: [['fire/torch', 0.15, 290], ['fire/torch', 0.5, 290], ['fire/torch', 0.85, 290], ['pickups/crystal-shard', 0.3, 290], ['pickups/crystal-shard', 0.7, 290], ['ice/ice-crystal', 0.6, 290], ['critters/bat', 0.4, 60]],
-       screen: ['weather/fog'], boss: [['arcane/rune-circle', 0.5, 300], ['ice/ice-crystal', 0.1, 290], ['ice/ice-crystal', 0.9, 290]] },
-  4: { world: [['shadow/shadow-flames', 0.2, 300], ['shadow/shadow-flames', 0.6, 300], ['fire/spirit-flame', 0.4, 300], ['fire/spirit-flame', 0.85, 300], ['critters/eyeball', 0.3, 120], ['critters/flying-skull', 0.75, 100], ['shadow/eclipse', 0.5, 80]],
-       screen: ['weather/aurora'], boss: [['shadow/black-hole', 0.5, 70], ['shadow/necro-skulls', 0.15, 300], ['shadow/necro-skulls', 0.85, 300]] },
+  1: { world: [['fire/candle', 0.03, 300], ['fire/candle', 0.97, 300]],
+       screen: ['weather/fog', 'weather/fireflies'], boss: [['fire/brazier', 0.03, 300], ['fire/brazier', 0.97, 300]] },
+  2: { world: [['water/drip', 0.2, 40], ['water/drip', 0.5, 30], ['water/drip', 0.8, 40], ['fire/candle', 0.03, 300], ['fire/candle', 0.97, 300]],
+       screen: ['weather/god-rays'], boss: [['water/waterfall', 0.04, 220], ['water/waterfall', 0.96, 220], ['water/drip', 0.5, 30]] },
+  3: { world: [['fire/torch', 0.04, 250], ['fire/torch', 0.96, 250]],
+       screen: ['weather/fog'], boss: [['fire/torch', 0.04, 250], ['fire/torch', 0.96, 250]] },
+  4: { world: [['fire/spirit-flame', 0.03, 300], ['fire/spirit-flame', 0.97, 300]],
+       screen: ['weather/aurora'], boss: [['shadow/shadow-flames', 0.03, 300], ['shadow/shadow-flames', 0.97, 300]] },
 };
 
 // 적 등장 · 공격 · 쓰러짐
@@ -54,7 +56,7 @@ export class FxDirector {
   enterRoom(w, region, boss) {
     const R = this.R, a = AMBIENT[region] || AMBIENT[1];
     R.weather.clear(); this.seen = new WeakSet(); this.elites = new WeakSet(); this.prevLight = 0; this.streak = 0;
-    for (const [id, fx, y] of (boss ? a.boss : a.world)) R.fx.spawn(id, w.width * fx, y, { light: 0.6 });
+    R.bgfx.clear(); for (const [id, fx, y] of (boss ? a.boss : a.world)) R.bgfx.spawn(id, w.width * fx, y, { light: 0.4 });
     for (const id of a.screen) R.weather.spawn(id, 160, 170, {});   // 날씨 원점 = 화면 하단 중앙 (meta.origin)
     R.trans.clear(); R.trans.spawn(boss ? 'transitions/slash-wipe' : 'transitions/pixel-dissolve', 0, 0, { skip: boss ? 0.5 : 0.55 });
   }
@@ -126,7 +128,7 @@ export class FxDirector {
       else if (b.bolt && BOLT[b.bolt]) F.spawn(BOLT[b.bolt][0], 0, 0, { follow: b, flip: b.vx < 0, ...BOLT[b.bolt][1] });
     }
     for (const e of w.enemies) {
-      if (e.elite && !this.elites.has(e)) { this.elites.add(e); F.spawn('arcane/rune-circle', 0, 0, { follow: e, dy: e.h / 2, palette: ['#2a0808', '#5a1010', '#902020', '#d03a2a', '#ff6a4a', '#ffb090', '#ffe8e0'], light: 0.5 }); }
+      if (e.elite && !this.elites.has(e)) { this.elites.add(e); F.spawn('status/rage', 0, 0, { follow: e, dy: e.h / 2, actor: R.actorOf(e), flip: e.face > 0, light: 0.3 }); }   // 엘리트: 발밑 마법진(함정처럼 보임) 대신 몸을 감싼 붉은 기운
       if (e.burnT > 0 && !this.burning.get(e)) { this.burning.set(e, true); F.spawn('status/burning', 0, 0, { follow: e, dy: e.h / 2, life: e.burnT, actor: R.actorOf(e), flip: e.face > 0 }); }
       if (!(e.burnT > 0)) this.burning.delete(e);
     }

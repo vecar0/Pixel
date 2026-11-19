@@ -13,7 +13,7 @@ export const CFG = {
     jumpMaxH: 96,
     coyoteF: 6, bufferF: 8,
     hp: 5, iframesHurt: 60, hurtStunF: 14,
-    w: 22, h: 60,       // 리라 치비 그림(65x74)에 맞춘 몸통 판정
+    w: 22, h: 62,       // 리라 '검은 순례자' 그림(80x85)에 맞춘 몸통 판정
   },
   attack: { dmg: [10, 10, 18], startupF: 4, activeF: 3, recoveryF: 10, range: 38, comboWindowF: 14, hitstop: [4, 4, 7], push: [4, 4, 6.5], lunge: 2.1 },
   parry: {

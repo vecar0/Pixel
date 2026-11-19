@@ -1,0 +1,148 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "lira",
+ "size": [
+  80,
+  85
+ ],
+ "cells": 3902,
+ "colours": 48,
+ "palette": [
+  "#000000",
+  "#000001",
+  "#010101",
+  "#030303",
+  "#070606",
+  "#111113",
+  "#1a181c",
+  "#1e1f25",
+  "#24242a",
+  "#2b2c33",
+  "#34343e",
+  "#361a0e",
+  "#3d3e4c",
+  "#40332e",
+  "#413e44",
+  "#44434e",
+  "#51505a",
+  "#585660",
+  "#5c473e",
+  "#646269",
+  "#716e72",
+  "#785643",
+  "#7a787c",
+  "#89878a",
+  "#8e6756",
+  "#969399",
+  "#9c806e",
+  "#9f9da3",
+  "#ae8a75",
+  "#aeacae",
+  "#bcbaba",
+  "#bdaa99",
+  "#c09184",
+  "#cdcaca",
+  "#cea28a",
+  "#dbd9d9",
+  "#dfb7a2",
+  "#e08d3c",
+  "#e5e3e2",
+  "#f1f0ef",
+  "#f4a560",
+  "#f59849",
+  "#f6caac",
+  "#f9d7c8",
+  "#fbebda",
+  "#fcb866",
+  "#fcc666",
+  "#fcd69e"
+ ],
+ "feet": {
+  "middle": 48.5,
+  "row": 84
+ },
+ "anchor": [
+  49.0,
+  85
+ ],
+ "key": "green",
+ "howZoom": 11,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   12.0,
+   11.333
+  ],
+  "purity": {
+   "walk": 0.957
+  },
+  "key": [
+   3,
+   249,
+   3
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    0,
+    0,
+    0
+   ],
+   "specks": 15,
+   "bareCells": 4,
+   "lineCellsAdded": 5,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    11.74,
+    11.16
+   ],
+   "blocksTallerBy": 0.9513,
+   "sizeInBlocks": [
+    76,
+    85
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": [
+    0,
+    19,
+    47,
+    75
+   ]
+  }
+ },
+ "source": {
+  "image": "art/master/lira-takes/black1.png",
+  "sha256": "5240628b8876d098fefc85ec87d94c3f378bdbdf4b3f4bc001fb4c3f33fc177b"
+ },
+ "files": {
+  "sprite": "lira.png",
+  "how": "lira-how.png",
+  "review": "lira-review.png",
+  "grounds": "lira-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

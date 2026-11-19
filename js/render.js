@@ -71,7 +71,7 @@ export class Renderer {
     }
     this.dir.events(w); this.dir.tick(w);
     for (const ev of w.events) {
-      if (ev.type === 'parry' && ev.perfect) { this.flash = 1; this.zoom = 1; this.texts.push({ x: ev.x, y: p.y - 6, t: 0, s: '완벽!' }); }
+      if (ev.type === 'parry' && ev.perfect) { this.flash = 1; this.zoom = 1; this.texts.push({ x: p.x + p.w / 2, y: p.y - 26, t: 0, s: '완벽!' }); }
       else if (ev.type === 'attackHit') this.burst(ev.x, ev.y, 4, ['#ffffff', C.amberHi], 2);
       else if (ev.type === 'execute') { this.flash = 0.7; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!' }); }
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
@@ -83,11 +83,6 @@ export class Renderer {
     }
     if (p.state === 'run' && w.t % 9 === 0) this.dust(p.x + p.w / 2 - p.face * 5, feet, -p.face, 2);   // 달리기 먼지
     if (p.state === 'roll' && p.stateT < CFG.roll.totalF && p.stateT % 3 === 0) this.ghosts.push({ x: p.x, y: p.y, face: p.face, life: 12 });   // 회피 잔상
-    for (const e of w.enemies) {                                        // 그로기 별 (적을 따라감)
-      e._fxid = e._fxid || ++this.fxid;
-      if (e.stunT > 0 && !this.stunFx.has(e)) { this.stunFx.set(e, true); this.fx.spawn('status/stunned', 0, 0, { follow: e, dy: e.h / 2, key: 'stun' + e._fxid, actor: this.actorOf(e), flip: e.face > 0 }); }
-      if (this.stunFx.has(e) && (e.stunT <= 0 || e.dead)) { this.fx.stopKey('stun' + e._fxid); this.stunFx.delete(e); }
-    }
   }
 
   dust(x, y, dir, n) {
@@ -214,7 +209,7 @@ export class Renderer {
     g.restore();
 
     // 화면 번쩍: 완벽 패링은 흰색, 피격은 붉은색
-    if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.45})`; g.fillRect(0, 0, vw, H); }
+    if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.22})`; g.fillRect(0, 0, vw, H); }   // 화면 섬광은 은은하게
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
     if (this.hud !== false) this.drawHud(g, w);
     this.trans.draw(g, vw, H);                                              // 장면 전환 · 임팩트 프레임 (맨 위)
@@ -390,7 +385,8 @@ export class Renderer {
     let img = f.img;
     const hitFlash = e.flash > 3;
     if (hitFlash) { /* 아래에서 원래 그림 위에 반투명 흰색을 덧칠 */ }
-    else if (e.st === 'telegraph' && a && ((w.t >> (telegraphOf(e, a) - e.stT < 10 ? 1 : 2)) & 1)) img = this.tinted(a.parryable ? '#ffffff' : '#ff4f5e', img);
+    let over = null;                                       // 예고 깜빡임: 통째로 바꾸지 않고 반투명 덧칠 (눈부심 방지)
+    if (e.st === 'telegraph' && a && ((w.t >> (telegraphOf(e, a) - e.stT < 10 ? 1 : 2)) & 1)) over = a.parryable ? '#ffffff' : '#ff4f5e';
     else if (e.staggerT > 0 && (w.t >> 2) & 1) img = this.tinted('#9aa0ad', img);
     const cx = Math.round(e.x + e.w / 2), base = e.kind === 'moth' ? Math.round(e.y + e.h / 2) : Math.round(e.y + e.h);
     const big = e.boss ? 0.5 : 1;                          // 큰 몸은 덜 흔들리고 묵직하게
@@ -414,6 +410,7 @@ export class Renderer {
     g.save(); g.translate(cx + Math.round(ox), base + Math.round(oy)); g.rotate(rot); g.scale((e.face > 0 ? -1 : 1) * (1 + k * 0.15), (1 - k * 0.1) * sy);
     g.drawImage(img, -f.ax, -f.ay);
     if (hitFlash) { g.globalAlpha = e.flash > 5 ? 0.55 : 0.3; g.drawImage(this.tinted('#ffffff', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }
+    else if (over) { g.globalAlpha = over === '#ffffff' ? 0.4 : 0.5; g.drawImage(this.tinted(over, f.img), -f.ax, -f.ay); g.globalAlpha = 1; }
     g.restore();
   }
 
@@ -562,7 +559,7 @@ export class Renderer {
       g.lineWidth = 1;
       g.fillStyle = col; g.fillRect(Math.round(e.x + e.w / 2) - 1, e.y - 12, 3, 7); g.fillRect(Math.round(e.x + e.w / 2) - 1, e.y - 4, 3, 2);
     }
-    if (e.st === 'active') for (const h of w.hitboxes) if (h.owner === e) {
+    if (e.st === 'active' && !spr) for (const h of w.hitboxes) if (h.owner === e) {   // 그림 없는 적만: 그림 있는 적은 pixelfx 공격 궤적이 범위를 보여 줌
       g.fillStyle = h.parryable ? 'rgba(255,255,255,0.35)' : 'rgba(255,79,94,0.45)'; g.fillRect(h.x, h.y, h.w, h.h);
     }
     if (!e.boss && e.hp < e.maxHp) { g.fillStyle = '#000'; g.fillRect(Math.round(e.x), Math.round(e.y) - 5, e.w, 2); g.fillStyle = C.red; g.fillRect(Math.round(e.x), Math.round(e.y) - 5, Math.round(e.w * e.hp / e.maxHp), 2); }

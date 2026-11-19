@@ -40,7 +40,7 @@ class Layer {
     this.list.push(fx); this.dirty = true;
     return fx;
   }
-  stopKey(key) { for (const f of this.list) if (f.key === key) f.stop(); }
+  stopKey(key) { for (const f of this.list) if (f.key === key) { f.stop(); f.key = null; } }   // 끄는 중인 것은 키를 놓아 바로 새로 띄울 수 있게
   update(dt) {
     for (const fx of this.list) {
       fx.update(dt);

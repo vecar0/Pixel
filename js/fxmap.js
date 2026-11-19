@@ -28,7 +28,7 @@ const AMBIENT = {
 
 // 적 등장 · 공격 · 쓰러짐
 const SPAWN = { ghoul: 'spawn/summon-rise', moth: 'spawn/poof', spearman: 'water/splash', priest: 'water/geyser', shellguard: 'nature/earth-spike', assassin: 'shadow/shadow-tendrils' };
-const STRIKE = { ghoul: ['melee/claw-swipe', GREY], spearman: ['melee/thrust', CYAN], shellguard: ['melee/hammer-smash', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
+const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['melee/claw-swipe', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['melee/hammer-smash', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
   bellBoss: ['melee/heavy-cleave', DUST], spider: ['melee/claw-swipe', LILAC], shadow: ['melee/sword-slash', VIOLET], saint: ['melee/spear-sweep', CYAN] };
 const DEATH = { ghoul: ['spawn/poof', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/splash'], priest: ['water/wave-crash'], shellguard: ['ice/ice-shatter', LILAC], assassin: ['explosions/implosion', VIOLET] };
 const BOLT = { priest: ['water/water-orb', { radius: 7 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', {}], shadow: ['shadow/void-orb', {}] };
@@ -45,7 +45,7 @@ export const ALL_IDS = [...new Set([
 ])];
 
 export class FxDirector {
-  constructor(R) { this.R = R; this.seen = new WeakSet(); this.elites = new WeakSet(); this.burning = new WeakMap(); this.prevLight = 0; this.streak = 0; }
+  constructor(R) { this.R = R; this.seen = new WeakSet(); this.elites = new WeakSet(); this.burning = new WeakMap(); this.bodyFx = new WeakMap(); this.prevLight = 0; this.streak = 0; }
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
@@ -55,68 +55,77 @@ export class FxDirector {
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
   enterRoom(w, region, boss) {
     const R = this.R, a = AMBIENT[region] || AMBIENT[1];
-    R.weather.clear(); this.seen = new WeakSet(); this.elites = new WeakSet(); this.prevLight = 0; this.streak = 0;
+    R.weather.clear(); this.seen = new WeakSet(); this.elites = new WeakSet(); this.bodyFx = new WeakMap(); this.recent = []; this.prevLight = 0; this.streak = 0;
     R.bgfx.clear(); for (const [id, fx, y] of (boss ? a.boss : a.world)) R.bgfx.spawn(id, w.width * fx, y, { light: 0.4 });
     for (const id of a.screen) R.weather.spawn(id, 160, 170, {});   // 날씨 원점 = 화면 하단 중앙 (meta.origin)
     R.trans.clear(); R.trans.spawn(boss ? 'transitions/slash-wipe' : 'transitions/pixel-dissolve', 0, 0, { skip: boss ? 0.5 : 0.55 });
   }
 
+  // 이펙트 연출 규칙 (눈 아프지 않게):
+  //  1) 한 틱에 '주인공' 사건이 있으면 (완벽 패링·처형·보스 처치·사망) 그 틱의 자잘한 타격 불꽃·숫자는 생략
+  //  2) 같은 이펙트가 가까운 자리(28px)에서 6틱 안에 또 나오면 생략 (다단히트·연타)
+  //  3) 화면에 전투 이펙트가 많으면(12개+) 중요도 낮은 것부터 생략
+  //  4) 몸에 감기는 반복 이펙트(분노·게이지 가득)는 쓰지 않고 HUD로 보여 준다
+  put(id, x, y, opts = {}, prio = 1) {
+    const F = this.R.fx, t = this.t;
+    if (prio < 3 && F.list.length >= 12) return;
+    if (prio < 3) {
+      const near = this.recent.find(r => r.id === id && t - r.t < 6 && Math.abs(r.x - x) < 28 && Math.abs(r.y - y) < 28);
+      if (near) return;
+    }
+    this.recent.push({ id, x, y, t }); if (this.recent.length > 24) this.recent.shift();
+    F.spawn(id, x, y, opts);
+  }
   events(w) {
-    const R = this.R, F = R.fx, p = w.player, feet = p.y + p.h;
+    const R = this.R, p = w.player, feet = p.y + p.h, P = this.put.bind(this);
+    this.t = w.t; this.recent = this.recent || [];
+    const big = w.events.some(e => (e.type === 'parry' && e.perfect) || e.type === 'execute' || (e.type === 'kill' && e.boss) || e.type === 'dead');
     for (const ev of w.events) switch (ev.type) {
       case 'parry':
-        if (ev.perfect) {
-          F.spawn('impacts/parry', ev.x + p.face * 28, feet, { flip: p.face < 0, light: 0.35 });   // 몸 앞 랜턴 쪽에서 터지게
-          this.streak++; if (this.streak >= 3) F.spawn('ui/combo-counter', p.x + p.w / 2, p.y - 20, { count: this.streak, label: 'PARRY', palette: ['#2a1204', '#5a2a08', '#8c4a10', '#d07a1e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], key: 'combo' + this.streak });
-        } else F.spawn('impacts/hit-spark', ev.x + p.face * 10, feet, { height: feet - ev.y, flip: p.face > 0, palette: GOLD, light: 0.3 });
+        if (ev.perfect) P('impacts/parry', ev.x + p.face * 28, feet, { flip: p.face < 0, light: 0.35 }, 3);   // 몸 앞 랜턴 쪽
+        else P('impacts/hit-spark', ev.x + p.face * 10, feet, { height: feet - ev.y, flip: p.face > 0, palette: GOLD, light: 0.25 }, 2);
         break;
       case 'attackHit':
-        // 타격 불꽃은 하나만, 빛 번짐은 약하게. 숫자는 별·불꽃 없는 조용한 버전 (적 머리 위로 비켜서)
-        F.spawn('impacts/hit-spark', ev.x, ev.y + 20, { height: 20, flip: ev.face < 0, light: 0.3, ...(ev.combo === 2 ? { palette: AMBER } : {}) });
-        F.spawn('ui/damage-quiet', ev.x + ev.face * 6 + (Math.random() * 8 - 4), ev.y - 22, { text: String(ev.dmg), palette: ev.crit
+        if (big) break;                                                   // 처형·완벽 패링 순간엔 그 연출만
+        P('impacts/hit-spark', ev.x, ev.y + 20, { height: 20, flip: ev.face < 0, light: 0.25, ...(ev.combo === 2 ? { palette: AMBER } : {}) }, 1);
+        P('ui/damage-quiet', ev.x + ev.face * 6, ev.y - 22, { text: String(ev.dmg), palette: ev.crit
           ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
-          : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] });
+          : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
         break;
-      case 'execute': F.spawn('impacts/crit-hit', ev.x, ev.y + 30, { light: 0.5 }); F.spawn('explosions/implosion', ev.x, ev.y + 20, { palette: AMBER, life: 60, light: 0.4 }); break;
-      case 'hurt': F.spawn('impacts/blunt-hit', ev.x, ev.y + 20, { palette: ['#3a0810', '#7a1020', '#c02030', '#ff4a50', '#ff9a90', '#ffe0dc', '#ffffff'] }); F.spawn('ui/heart-lost', p.x + p.w / 2, p.y - 8); this.streak = 0; break;
+      case 'execute': P('impacts/crit-hit', ev.x, ev.y + 30, { light: 0.4 }, 3); break;
+      case 'hurt': P('ui/heart-lost', p.x + p.w / 2, p.y - 8, {}, 3); break;   // 붉은 화면·파편은 렌더러가 그림
       case 'kill': {
+        if (ev.boss) { P('explosions/big-explosion', ev.x, ev.y + 40, { life: 150, light: 0.5 }, 3); P('holy/holy-pillar', ev.x, ev.y + 40, { light: 0.5 }, 3); break; }
         const d = DEATH[ev.kind];
-        if (ev.boss) { F.spawn('explosions/big-explosion', ev.x, ev.y + 40, { life: 150 }); F.spawn('holy/holy-pillar', ev.x, ev.y + 40, {}); R.trans.spawn('transitions/shatter-wipe', 0, 0, {}); }
-        else if (d) F.spawn(d[0], ev.x, ev.y + 16, d[1] ? { palette: d[1], life: 90 } : { life: 90 });
-        else F.spawn('spawn/poof', ev.x, ev.y + 16);
-        F.spawn('pickups/collect-burst', ev.x, ev.y, { palette: GOLD });
+        P(d ? d[0] : 'spawn/poof', ev.x, ev.y + 16, { ...(d && d[1] ? { palette: d[1] } : {}), life: 90, light: 0.3 }, 2);
         break;
       }
       case 'spawn':
-        if (ev.boss) { F.spawn('lightning/lightning-strike', ev.x, ev.y, { life: 90 }); }
-        else if (SPAWN[ev.kind]) F.spawn(SPAWN[ev.kind], ev.x, ev.y, { life: 70 });
+        if (ev.boss) P('lightning/lightning-strike', ev.x, ev.y, { life: 90, light: 0.5 }, 3);
+        else if (SPAWN[ev.kind]) P(SPAWN[ev.kind], ev.x, ev.y, { life: 70, light: 0.3 }, 2);
         break;
-      case 'enemyStrike': {
-        const s = STRIKE[ev.kind]; if (!s) break;
-        F.spawn(s[0], ev.x, ev.y, { flip: ev.face < 0, palette: s[1], life: 40, light: 0.7 });
+      case 'enemyStrike': {                                               // 적 공격 궤적: 판정 범위를 보여 주는 정보라 유지, 빛은 약하게
+        const s = STRIKE[ev.kind]; if (s) P(s[0], ev.x, ev.y, { flip: ev.face < 0, palette: s[1], life: 40, light: 0.25 }, 2);
         break;
       }
-      case 'slam': F.spawn('nature/quake', ev.x || (w.enemies.find(e => e.boss)?.x ?? p.x), 300, { palette: DUST, life: 90 }); break;
-      case 'block': F.spawn('impacts/shield-block', ev.x, ev.y + 20, { palette: LILAC }); break;
-      case 'blink': F.spawn('arcane/blink-out', ev.x, ev.y + 26, { palette: VIOLET }); break;
-      case 'enemyParry': F.spawn('impacts/parry', ev.x, ev.y + 40, { palette: VIOLET }); break;
-      case 'flask': F.spawn('nature/healing-bloom', ev.x, ev.y); break;
-      case 'ultStart':
-        if (p.oil === 'blue') { F.spawn('holy/sunburst', 0, 0, { follow: p, dy: -10, life: 300, key: 'blue' }); F.spawn('holy/feather-burst', p.x + p.w / 2, feet - 30); }
-        else if (p.oil === 'black') F.spawn('shadow/dark-explosion', p.x + p.w / 2 + p.face * 120, feet, { life: 80 });
-        else F.spawn('fire/fire-ring', p.x + p.w / 2, feet, { life: 80 });
+      case 'slam': P('nature/quake', ev.x || (w.enemies.find(e => e.boss)?.x ?? p.x), 300, { palette: DUST, life: 90, light: 0.3 }, 2); break;
+      case 'block': P('impacts/shield-block', ev.x, ev.y + 20, { palette: LILAC, light: 0.3 }, 2); break;
+      case 'blink': P('arcane/blink-out', ev.x, ev.y + 26, { palette: VIOLET, light: 0.3 }, 2); break;
+      case 'enemyParry': P('impacts/parry', ev.x, ev.y + 40, { palette: VIOLET, light: 0.3 }, 3); break;
+      case 'flask': P('nature/healing-bloom', ev.x, ev.y, { light: 0.3 }, 2); break;
+      case 'ultStart':                                                     // 필살: 기름 종류별 한 가지 연출만
+        if (p.oil === 'blue') P('holy/sunburst', 0, 0, { follow: p, dy: -10, life: 300, key: 'blue', light: 0.3 }, 3);
+        else if (p.oil === 'black') P('shadow/dark-explosion', p.x + p.w / 2 + p.face * 120, feet, { life: 80, light: 0.4 }, 3);
+        else P('fire/fire-ring', p.x + p.w / 2, feet, { life: 80, light: 0.4 }, 3);
         break;
-      case 'land': if (ev.v > 7) F.spawn('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40 }); break;
-      case 'dead': F.spawn('spawn/soul-rise', ev.x, ev.y, { actor: R.actorOf(w.player), flip: w.player.face < 0 }); R.trans.spawn('transitions/burn-away', 0, 0, {}); break;
-      case 'stun': F.spawn('ice/snowflake-burst', ev.x, ev.y + 20, { palette: GOLD, life: 40 }); break;
-      case 'crit': F.spawn('lightning/spark-arc', ev.x, ev.y, { palette: GOLD, life: 30 }); break;
-      case 'afterglow': F.spawn('lightning/spark-arc', ev.x, ev.y + 20, { palette: AMBER, life: 30 }); break;
-      case 'cleared': F.spawn('ui/quest-complete', p.x + p.w / 2, p.y - 30, {}); break;
-      case 'win': F.spawn('ui/achievement', p.x + p.w / 2, p.y - 40, {}); break;
+      case 'land': if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;
+      case 'dead': P('spawn/soul-rise', ev.x, ev.y, { actor: R.actorOf(w.player), flip: w.player.face < 0 }, 3); R.trans.spawn('transitions/burn-away', 0, 0, {}); break;
+      case 'afterglow': P('lightning/spark-arc', ev.x, ev.y + 20, { palette: AMBER, life: 30, light: 0.3 }, 2); break;
+      case 'cleared': P('ui/quest-complete', p.x + p.w / 2, p.y - 30, {}, 3); break;
+      case 'win': P('ui/achievement', p.x + p.w / 2, p.y - 40, {}, 3); break;
     }
   }
-
-  // 매 틱: 탄에 이펙트 붙이기, 엘리트 표시, 화상·분노 상태, 빛 게이지 가득
+  // 매 틱: 탄에 이펙트 붙이기, 엘리트 표시, 화상
   tick(w) {
     const R = this.R, F = R.fx, p = w.player;
     for (const b of w.projectiles) {
@@ -127,14 +136,16 @@ export class FxDirector {
       else if (b.shard) F.spawn('ice/ice-crystal', 0, 0, { follow: b, palette: LILAC });
       else if (b.bolt && BOLT[b.bolt]) F.spawn(BOLT[b.bolt][0], 0, 0, { follow: b, flip: b.vx < 0, ...BOLT[b.bolt][1] });
     }
+    // 적 몸에 감기는 상태 이펙트는 한 번에 하나만: 기절 > 화상 > 엘리트 (겹쳐 감기면 몸이 안 보임)
     for (const e of w.enemies) {
-      if (e.elite && !this.elites.has(e)) { this.elites.add(e); F.spawn('status/rage', 0, 0, { follow: e, dy: e.h / 2, actor: R.actorOf(e), flip: e.face > 0, light: 0.3 }); }   // 엘리트: 발밑 마법진(함정처럼 보임) 대신 몸을 감싼 붉은 기운
-      if (e.burnT > 0 && !this.burning.get(e)) { this.burning.set(e, true); F.spawn('status/burning', 0, 0, { follow: e, dy: e.h / 2, life: e.burnT, actor: R.actorOf(e), flip: e.face > 0 }); }
-      if (!(e.burnT > 0)) this.burning.delete(e);
+      e._fxid = e._fxid || ++R.fxid;
+      const want = e.dead ? null : e.stunT > 0 ? 'stun' : e.burnT > 0 ? 'burn' : e.elite ? 'elite' : null;
+      if (want === (this.bodyFx.get(e) ?? null)) continue;
+      F.stopKey('body' + e._fxid); this.bodyFx.set(e, want);
+      const o = { follow: e, dy: e.h / 2, key: 'body' + e._fxid, actor: R.actorOf(e), flip: e.face > 0, light: 0.25 };
+      if (want === 'stun') F.spawn('status/stunned', 0, 0, o);
+      else if (want === 'burn') F.spawn('status/burning', 0, 0, o);
+      else if (want === 'elite') F.spawn('status/rage', 0, 0, o);
     }
-    if (p.chainN >= 3) F.spawn('status/rage', 0, 0, { follow: p, dy: p.h / 2, key: 'rage', life: 90, actor: R.actorOf(p), flip: p.face < 0 });
-    else F.stopKey('rage');
-    if (p.light >= 100 && this.prevLight < 100) F.spawn('lightning/spark-arc', 0, 0, { follow: p, palette: AMBER, life: 50, key: 'full' });
-    this.prevLight = p.light;
   }
 }

@@ -6,12 +6,12 @@ import { BELL_BOSS, bellMove, bellWant, bellPick, bellActiveStart } from './boss
 
 export const ENEMY_DEFS = {
   ghoul: {
-    hp: 30, w: 18, h: 40, speed: 0.8, range: 40, cooldown: [40, 80],
-    attacks: { slash: { name: 'slash', telegraphF: 20, activeF: 4, recoverF: 24, dmg: 1, parryable: true, reach: 34 } },
+    hp: 30, w: 24, h: 54, speed: 1.05, range: 54, cooldown: [40, 80],
+    attacks: { slash: { name: 'slash', telegraphF: 20, activeF: 4, recoverF: 24, dmg: 1, parryable: true, reach: 46 } },
   },
   moth: {
-    hp: 12, w: 14, h: 12, speed: 1.2, fly: true, range: 140, cooldown: [60, 110],
-    attacks: { dash: { name: 'dash', telegraphF: 18, activeF: 24, recoverF: 30, dmg: 1, parryable: true, dashSpeed: 5 } },
+    hp: 12, w: 20, h: 16, speed: 1.6, fly: true, range: 190, cooldown: [60, 110],
+    attacks: { dash: { name: 'dash', telegraphF: 18, activeF: 24, recoverF: 30, dmg: 1, parryable: true, dashSpeed: 6.6 } },
   },
   bellBoss: BELL_BOSS,
 };
@@ -56,7 +56,7 @@ export function updateEnemy(w, e) {
     if (e.kind === 'bellBoss') bellMove(w, e, dx);
     else if (d.fly) mothHover(w, e, dx);
     else walkToward(w, e, dx);
-    const want = e.kind === 'bellBoss' ? bellWant(w, e, dx) : Math.abs(dx) < e.range && Math.abs(p.y - e.y) < 90;
+    const want = e.kind === 'bellBoss' ? bellWant(w, e, dx) : Math.abs(dx) < e.range && Math.abs(p.y - e.y) < 120;
     const tokenOk = e.boss || attackers(w) < CFG.enemy.maxAttackers;
     if (e.cd <= 0 && want && tokenOk && onScreen(w, e) && p.state !== 'dead') {
       e.atk = e.kind === 'bellBoss' ? bellPick(w, e, dx) : Object.keys(d.attacks)[0];
@@ -68,7 +68,7 @@ export function updateEnemy(w, e) {
     if (!d.fly) { e.vx = 0; physics(w, e); }
     if (e.stT >= telegraphOf(e, d.attacks[e.atk])) {
       setSt(e, 'active'); e.srcs = [];
-      if (e.atk === 'dash') { const l = Math.hypot(dx, (p.y + 20) - e.y) || 1; e.dashDx = dx / l; e.dashDy = ((p.y + 20) - e.y) / l; }
+      if (e.atk === 'dash') { const l = Math.hypot(dx, (p.y + 28) - e.y) || 1; e.dashDx = dx / l; e.dashDy = ((p.y + 28) - e.y) / l; }
       if (e.kind === 'bellBoss') bellActiveStart(w, e);
     }
   }
@@ -106,14 +106,14 @@ function physics(w, e) {
 
 function walkToward(w, e, dx) {
   e.face = Math.sign(dx) || e.face;
-  e.vx = Math.abs(dx) > e.range * 0.6 && Math.abs(dx) < 420 ? e.face * e.speed : 0;
+  e.vx = Math.abs(dx) > e.range * 0.6 && Math.abs(dx) < 560 ? e.face * e.speed : 0;
   physics(w, e);
 }
 
 function mothHover(w, e, dx) {
   const p = w.player;
   const side = dx > 0 ? -1 : 1;                          // 리라 기준 자기 쪽에 머묾
-  const tx = p.x + side * 90, ty = p.y - 50;
+  const tx = p.x + side * 120, ty = p.y - 60;
   const mx = tx - e.x, my = ty - e.y, l = Math.hypot(mx, my);
   if (l > 4) { e.vx = mx / l * e.speed; e.x += e.vx; e.y += my / l * e.speed; }
   e.y += Math.sin(w.t * 0.1) * 0.3;

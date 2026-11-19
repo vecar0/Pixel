@@ -1,11 +1,11 @@
 // 간이 보스: 무덤종 (종을 든 묘지기 거인)
 // 패턴: 종 휘두르기 / 2연 휘두르기 / 내려찍기 충격파(패링 불가). 체력 50% 이하에서 예고 -4f
 export const BELL_BOSS = {
-  hp: 600, w: 56, h: 80, speed: 0.7, range: 110, boss: true, poise: true, cooldown: [30, 60],
+  hp: 600, w: 76, h: 110, speed: 0.95, range: 150, boss: true, poise: true, cooldown: [30, 60],
   attacks: {
-    swing: { name: 'swing', telegraphF: 24, activeF: 6, recoverF: 30, dmg: 1, parryable: true, reach: 70, height: 60 },
-    double: { name: 'double', telegraphF: 20, activeF: 5, recoverF: 30, dmg: 1, parryable: true, reach: 70, height: 60, hits: 2, gapF: 16 },
-    slam: { name: 'slam', telegraphF: 30, activeF: 6, recoverF: 40, dmg: 2, parryable: false, wave: { w: 16, h: 14, speed: 3, life: 140 } },
+    swing: { name: 'swing', telegraphF: 24, activeF: 6, recoverF: 30, dmg: 1, parryable: true, reach: 95, height: 84 },
+    double: { name: 'double', telegraphF: 20, activeF: 5, recoverF: 30, dmg: 1, parryable: true, reach: 95, height: 84, hits: 2, gapF: 16 },
+    slam: { name: 'slam', telegraphF: 30, activeF: 6, recoverF: 40, dmg: 2, parryable: false, wave: { w: 22, h: 18, speed: 4, life: 140 } },
   },
 };
 
@@ -15,7 +15,7 @@ import { CFG } from './config.js';
 
 export function bellMove(w, e, dx) {
   e.face = Math.sign(dx) || e.face;
-  e.vx = Math.abs(dx) > 90 ? e.face * e.speed : 0;
+  e.vx = Math.abs(dx) > 120 ? e.face * e.speed : 0;
   e.vy = Math.min(CFG.MAX_FALL, e.vy + CFG.GRAV);
   moveAndCollide(w, e);
 }

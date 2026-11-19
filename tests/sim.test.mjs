@@ -14,10 +14,10 @@ test('config: 완벽 패링 6f', () => eq(CFG.parry.perfectF, 6));
 test('config: 회피 무적 12f', () => eq(CFG.roll.iEnd - CFG.roll.iStart + 1, 12));
 
 /* ── Task 2: 리라 기본기 ── */
-test('move: 오른쪽 60틱 → x +140 이상', () => {
+test('move: 오른쪽 60틱 → 거의 최고 속도로 이동', () => {
   const w = W(); settle(w); const x0 = w.player.x;
   steps(w, 60, { right: true });
-  ok(w.player.x - x0 >= 140, w.player.x - x0);
+  ok(w.player.x - x0 >= CFG.player.speed * 60 - 8, w.player.x - x0);
 });
 function jumpHeight(holdTicks) {
   const w = W(); settle(w); const y0 = w.player.y; let top = y0;
@@ -25,10 +25,10 @@ function jumpHeight(holdTicks) {
   for (let i = 0; i < 80; i++) { tick(w, I({ jumpHeld: i < holdTicks })); top = Math.min(top, w.player.y); }
   return y0 - top;
 }
-test('jump: 홀드 → 66~72px', () => { const h = jumpHeight(99); ok(h >= 66 && h <= 72, h); });
-test('jump: 짧은 탭 → 40px 미만', () => { const h = jumpHeight(0); ok(h < 40, h); });
+test('jump: 홀드 → 최대 높이 근처', () => { const h = jumpHeight(99); const M = CFG.player.jumpMaxH; ok(h >= M * 0.9 && h <= M, h); });
+test('jump: 짧은 탭 → 최대의 55% 미만', () => { const h = jumpHeight(0); ok(h < CFG.player.jumpMaxH * 0.55, h); });
 function coyote(k) {
-  const w = W({ solids: [{ x: 0, y: 300, w: 200, h: 20 }, { x: -1000, y: 420, w: 4000, h: 40 }], spawn: { x: 150, y: 250 } });
+  const w = W({ solids: [{ x: 0, y: 300, w: 200, h: 20 }, { x: -1000, y: 420, w: 4000, h: 40 }], spawn: { x: 150, y: 200 } });
   settle(w);
   let n = 0; while (w.player.onGround && n++ < 200) tick(w, I({ right: true }));
   for (let i = 1; i < k; i++) tick(w, I({ right: true }));
@@ -59,7 +59,7 @@ test('roll: 22틱에 90~100px, 무적은 2~13틱만', () => {
   const w = W(); settle(w); const x0 = w.player.x; const inv = [];
   tick(w, I({ roll: true })); inv.push(invulnerable(w.player));
   for (let i = 1; i < 22; i++) { tick(w, I()); inv.push(invulnerable(w.player)); }
-  const d = w.player.x - x0; ok(d >= 90 && d <= 100, d);
+  const d = w.player.x - x0; ok(Math.abs(d - CFG.roll.dist) <= 6, d);
   eq(inv.map((v, i) => v ? i : -1).filter(i => i >= 0).join(','), '2,3,4,5,6,7,8,9,10,11,12,13');
 });
 test('buffer: 공격 startup 중 parry → 후딜 진입 시 parry 실행', () => {
@@ -305,7 +305,7 @@ test('review: 공격 도중 그로기된 보스는 처형 후 예고 없이 공�
   eq(state, 'after'); ok(!hurtNoTele, 'hit without telegraph');
 });
 test('review: 일방향 발판에서 아래+점프 → 올라가지 않고 내려감', () => {
-  const w = W({ solids: [{ x: 0, y: 200, w: 300, h: 8, oneWay: true }, { x: -1000, y: 300, w: 4000, h: 40 }], spawn: { x: 100, y: 150 } });
+  const w = W({ solids: [{ x: 0, y: 200, w: 300, h: 8, oneWay: true }, { x: -1000, y: 300, w: 4000, h: 40 }], spawn: { x: 100, y: 100 } });
   settle(w); eq(w.player.y + w.player.h, 200);
   const y0 = w.player.y; let minY = y0;
   tick(w, I({ down: true, jump: true, jumpHeld: true }));

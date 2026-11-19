@@ -25,6 +25,8 @@ export class Renderer {
     this.lantern = { a: 0, v: 0 };
     this.squash = 0; this.flash = 0; this.zoom = 0; this.stunFx = new Map();
     this.debug = /debug=1/.test(location.search);
+    // 리라 픽셀 그림 (Higgsfield 마스터 → forge hi-bit 변환 → 눈 손질). 기준점: 발 중앙 (29, 73)
+    this.liraImg = new Image(); this.liraImg.src = 'assets/lira.png';
     this.resize();
   }
 
@@ -210,7 +212,7 @@ export class Renderer {
     if (p.state !== 'ghost' && p.iframes > 0 && (w.t >> 2) % 2 && p.state !== 'hurt') return;
     const f = p.face, cx = Math.round(p.x + p.w / 2), feet = Math.round(p.y + p.h);
     if (p.state === 'roll' || p.state === 'ghost') {     // 웅크린 구르기
-      const r = 9, cy = feet - r, a = (p.stateT || 0) * 0.5 * f;
+      const r = 13, cy = feet - r, a = (p.stateT || 0) * 0.5 * f;
       g.fillStyle = C.cape; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
       g.fillStyle = C.hair; g.fillRect(Math.round(cx + Math.cos(a) * 5) - 2, Math.round(cy + Math.sin(a) * 5) - 2, 5, 5);
       g.fillStyle = C.amberHi; g.fillRect(Math.round(cx - Math.cos(a) * 5) - 1, Math.round(cy - Math.sin(a) * 5) - 1, 3, 3);
@@ -218,6 +220,22 @@ export class Renderer {
     }
     const sq = this.squash, st = !p.onGround && p.vy < -1 ? 0.08 : 0;
     const sy = 1 - sq * 0.22 + st, sx = 1 + sq * 0.18 - st * 0.5;
+    if (this.liraImg.complete && this.liraImg.naturalWidth) {
+      // 상태별 기울기: 공격은 앞으로, 패링은 살짝 뒤로 버팀, 피격은 뒤로 젖힘
+      const A = CFG.attack;
+      let lean = 0;
+      if (p.state === 'attack') lean = p.stateT < A.startupF ? -0.06 : p.stateT < A.startupF + A.activeF ? 0.14 : 0.06;
+      else if (p.state === 'parry' && p.stateT < CFG.parry.normalF) lean = -0.08;
+      else if (p.state === 'hurt') lean = -0.18;
+      else if (p.state === 'run') lean = 0.06;
+      const bob = p.state === 'run' ? Math.abs(Math.sin(w.t * 0.45)) * 2 : p.state === 'idle' ? Math.sin(w.t * 0.08) * 0.6 : 0;
+      g.save(); g.translate(cx, feet - bob); g.rotate(lean * f); g.scale(sx * f, sy);
+      const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50') : this.liraImg;
+      g.drawImage(img, -29, -73);
+      g.restore();
+      this.drawParryArc(g, p, cx, feet, f);
+      return;
+    }
     g.save(); g.translate(cx, feet); g.scale(sx, sy); g.translate(-cx, -feet);
     const hurt = p.state === 'hurt';
     const run = p.state === 'run' ? Math.sin(w.t * 0.45) : 0;
@@ -252,12 +270,27 @@ export class Renderer {
     // 검
     this.drawSword(g, p, cx, top, f);
     g.restore();
-    // 패링 판정창 호
-    if (p.state === 'parry' && p.stateT < CFG.parry.normalF) {
-      const perfect = p.stateT < CFG.parry.perfectF;
-      g.strokeStyle = perfect ? C.amberHi : 'rgba(255,179,71,0.5)'; g.lineWidth = perfect ? 2 : 1;
-      g.beginPath(); g.arc(cx, feet - 20, 24, f > 0 ? -1.1 : Math.PI - 1.1, f > 0 ? 1.1 : Math.PI + 1.1); g.stroke(); g.lineWidth = 1;
+    this.drawParryArc(g, p, cx, feet, f);
+  }
+
+  // 리라 그림의 단색 실루엣 (피격 번쩍임용), 한 번 만들어 재사용
+  tinted(col) {
+    this.tints = this.tints || {};
+    if (!this.tints[col]) {
+      const c = document.createElement('canvas'), im = this.liraImg;
+      c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0); x.globalCompositeOperation = 'source-atop'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height);
+      this.tints[col] = c;
     }
+    return this.tints[col];
+  }
+
+  // 패링 판정창 호 (앞쪽)
+  drawParryArc(g, p, cx, feet, f) {
+    if (p.state !== 'parry' || p.stateT >= CFG.parry.normalF) return;
+    const perfect = p.stateT < CFG.parry.perfectF;
+    g.strokeStyle = perfect ? C.amberHi : 'rgba(255,179,71,0.5)'; g.lineWidth = perfect ? 2 : 1;
+    g.beginPath(); g.arc(cx, feet - 30, 34, f > 0 ? -1.1 : Math.PI - 1.1, f > 0 ? 1.1 : Math.PI + 1.1); g.stroke(); g.lineWidth = 1;
   }
 
   drawSword(g, p, cx, top, f) {

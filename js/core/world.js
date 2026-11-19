@@ -15,10 +15,10 @@ const ROOMS = {
     solids: [
       { x: -40, y: 0, w: 40, h: 360 }, { x: 1280, y: 0, w: 40, h: 360 },
       { x: -40, y: 300, w: 1360, h: 60 },
-      { x: 360, y: 230, w: 120, h: 8, oneWay: true },
-      { x: 820, y: 230, w: 120, h: 8, oneWay: true },
+      { x: 340, y: 210, w: 150, h: 8, oneWay: true },
+      { x: 820, y: 210, w: 150, h: 8, oneWay: true },
     ],
-    spawn: { x: 80, y: 250 },
+    spawn: { x: 80, y: 230 },
   },
   boss: {
     width: 720,
@@ -26,7 +26,7 @@ const ROOMS = {
       { x: -40, y: 0, w: 40, h: 360 }, { x: 720, y: 0, w: 40, h: 360 },
       { x: -40, y: 300, w: 800, h: 60 },
     ],
-    spawn: { x: 80, y: 250 },
+    spawn: { x: 80, y: 230 },
   },
 };
 
@@ -43,7 +43,7 @@ export function createWorld({ room = 'arena', solids, spawn, width } = {}) {
     waves: [], waveDelay: 0,
   };
   if (room === 'arena') w.waves = [[['ghoul', 520], ['ghoul', 600], ['moth', 700]], [['ghoul', 900], ['moth', 1000]]];
-  if (room === 'boss') spawnEnemy(w, 'bellBoss', 480, 200);
+  if (room === 'boss') spawnEnemy(w, 'bellBoss', 480, 170);
   updateCamera(w);
   return w;
 }
@@ -60,7 +60,7 @@ function updateWaves(w) {
   if (!w.waves.length) { w.cleared = true; w.events.push({ type: 'cleared' }); return; }
   if (++w.waveDelay < 60) return;
   w.waveDelay = 0;
-  for (const [kind, x] of w.waves.shift()) spawnEnemy(w, kind, x, kind === 'moth' ? 180 : 250);
+  for (const [kind, x] of w.waves.shift()) spawnEnemy(w, kind, x, kind === 'moth' ? 160 : 230);
 }
 
 export function tick(w, inp) {

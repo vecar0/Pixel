@@ -1,0 +1,11 @@
+Create exactly ONE square image.
+
+One image is attached. It shows a small pixel-art game sprite, enlarged: Lira, a teenage lantern pilgrim girl with very long silver-white hair in a high ponytail, big amber eyes, a short deep-navy hooded cape with a brass clasp, a cream travelling tunic with a brown belt carrying a small oil flask and a paper charm, dark brown trousers and knee-high brown boots, a plain steel one-handed sword in her far hand pointing down and an old iron-and-glass lantern glowing amber hanging on a short chain from her near hand, facing right.
+
+Draw this same sprite again, exactly as it is drawn there: the same pose, the same proportions, the same colours, the same shading, the same face, the same amount of detail. Do not redesign it, do not add detail, do not make the body taller. Keep all of its shading tones.
+
+Draw it ONCE, large and centred: the whole figure, from its highest point to its lowest, fills about three quarters of the picture's height.
+
+It is real pixel art: the figure is built from square pixel blocks, each block clearly visible, with sharp edges between the blocks.
+
+The only changes from the attached image: The background is one perfectly flat pure green (#00FF00) everywhere outside the figure, and there is no green on the figure. No shadow, no floor, no glow, no effect, no text, no frame. The figure ends in a crisp, closed dark outline against the background, with no soft halo around it. Nothing else is in the picture.

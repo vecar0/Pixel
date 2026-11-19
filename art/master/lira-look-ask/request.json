@@ -1,0 +1,13 @@
+{
+ "schema": "generate2dsprite.pixel_look_request.v1",
+ "tool": "pixel_look",
+ "kind": "master",
+ "subject": "Lira, a teenage lantern pilgrim girl with very long silver-white hair in a high ponytail, big amber eyes, a short deep-navy hooded cape with a brass clasp, a cream travelling tunic with a brown belt carrying a small oil flask and a paper charm, dark brown trousers and knee-high brown boots, a plain steel one-handed sword in her far hand pointing down and an old iron-and-glass lantern glowing amber hanging on a short chain from her near hand, facing right",
+ "key": "green",
+ "outline": "rule",
+ "references": [
+  "design/reference/style-knight.png"
+ ],
+ "size": "1024x1024",
+ "next": "route_media.py image --prompt-file prompt.txt --reference design/reference/style-knight.png --size 1024x1024 --out-dir <take>; then pixel_look.py master --image <take>/generated.png"
+}

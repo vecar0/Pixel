@@ -13,7 +13,7 @@ export const CFG = {
     jumpMaxH: 96,
     coyoteF: 6, bufferF: 8,
     hp: 5, iframesHurt: 60, hurtStunF: 14,
-    w: 18, h: 56,
+    w: 20, h: 66,       // 리라 그림(62x85, 큰 머리)에 맞춘 몸통 판정
   },
   attack: { dmg: [10, 10, 18], startupF: 4, activeF: 3, recoveryF: 10, range: 38, comboWindowF: 14, hitstop: [4, 4, 7], push: [4, 4, 6.5], lunge: 2.1 },
   parry: {

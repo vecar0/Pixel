@@ -1,4 +1,4 @@
-// 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 필살
+// 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
 import { CFG } from './config.js';
 import { attackBox, invulnerable, overlap } from './player.js';
 
@@ -12,7 +12,7 @@ export function resolveEnemyHit(w, hb) {
   const front = hb.dir === -p.face;
   const lag = p.lagTicks || 0;                                   // 설정의 타이밍 보정 (터치 지연만큼 판정창을 늘림)
   if (p.state === 'parry' && p.stateT < PR.normalF + lag && hb.parryable && front) {
-    const perfect = p.stateT < PR.perfectF + lag || p.blueT > 0;   // 청유: 모든 패링이 완벽
+    const perfect = p.stateT < PR.perfectF + lag + (p.mods.perfectExtra || 0) || p.blueT > 0 || p.mods.allPerfect;   // 결계·의지 10: 모든 패링이 완벽
     hb.src.done = true;
     p.parryOk = true; p.recoverWait = PR.successRecoverF;
     p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal) * p.mods.lightMul);
@@ -23,7 +23,7 @@ export function resolveEnemyHit(w, hb) {
     w.hitstop = Math.max(w.hitstop, perfect ? PR.hitstopPerfect : PR.hitstopNormal);
     if (perfect) { p.perfectParries++; w.shake = 8; }
     const o = hb.owner;
-    if (o && o.poiseMax) addPoise(w, o, perfect ? PO.perfect : PO.normal);
+    if (o && o.poiseMax) addPoise(w, o, (perfect ? PO.perfect : PO.normal) * (p.mods.poiseMul || 1));
     if (o && perfect && !o.boss && o.st) {   // 완벽 패링: 일반 적은 공격이 끊기고 튕겨나며 잠깐 무방비
       o.st = 'idle'; o.stT = 0; o.atk = null; o.srcs = []; o.staggerT = PR.staggerF;
       o.kvx = Math.sign((o.x + o.w / 2) - (p.x + p.w / 2) || p.face) * PR.staggerPush;
@@ -65,7 +65,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0) {
   addPoise(w, e, poiseFrac);
   if (e.hp <= 0) {
     e.hp = 0; e.dead = true;
-    w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill * w.player.mods.lightMul);
+    w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill * w.player.mods.lightMul + (w.player.mods.lmp10 ? 15 : 0));   // 등불 10: 처치마다 빛 +15
     w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
   }
 }
@@ -97,31 +97,42 @@ export function resolvePlayerAttacks(w) {
       e.stunT = 0; e.poise = 0; p.executes = (p.executes || 0) + 1;
       damageEnemy(w, e, Math.round(e.maxHp * PO.executeFrac * p.mods.execMul));
       w.hitstop = Math.max(w.hitstop, 10); w.shake = 10;
+      if (p.mods.str10) for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 320) addPoise(w, o, 0.4);   // 힘 10
       w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2 });
     } else {
-      const mul = (1 + 0.1 * p.chainN) * (p.crit ? 2 : 1);
+      const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? 2 : 1) * (p.mods.atkMul || 1);
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
-      damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit);
+      damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit * (p.mods.poiseMul || 1));
       if (p.combo === 2 && p.mods.flame) e.burnT = 180;                       // 화염 칼날
       w.hitstop = Math.max(w.hitstop, CFG.attack.hitstop[p.combo]);
       e.kvx = p.face * CFG.attack.push[p.combo] * (e.boss ? 0.15 : 1);
       if (p.combo === 2) w.shake = Math.max(w.shake, 6);
-      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: p.combo, face: p.face, dmg: Math.round(CFG.attack.dmg[p.combo] * mul), crit: mul >= 2 });
+      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: p.combo, face: p.face, dmg: Math.round(CFG.attack.dmg[p.combo] * mul), crit: !!wasCrit });
     }
   }
 }
 
-// 필살: 반경 내 적 피해 + 적 탄 소거
-export function resolveUlt(w) {
-  const p = w.player, cx = p.x + p.w / 2;
-  if (p.oil === 'blue') p.blueT = 300;                                  // 청유: 5초간 모든 패링이 완벽
-  else if (p.oil === 'black') {                                         // 흑유: 가장 가까운 적 하나에 강타 + 자세 50%
-    const e = w.enemies.filter(e => !e.dead).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
-    if (e && Math.abs(e.x + e.w / 2 - cx) < 260) { damageEnemy(w, e, 120); addPoise(w, e, 0.5); }
-  } else for (const e of w.enemies)
-    if (!e.dead && !(e.spawnT > 0) && Math.abs(e.x + e.w / 2 - cx) <= CFG.ult.radius) damageEnemy(w, e, CFG.ult.dmg);
-  w.projectiles = w.projectiles.filter(b => b.owner !== 'enemy');
-  w.shake = 12;
+// 등불 마법 (스킬). 등장 중인 적은 맞지 않는다
+export function resolveSkill(w, ev) {
+  const p = w.player, S = CFG.skill[ev.spell], M = p.mods.spellMul || 1, cx = p.x + p.w / 2;
+  const live = w.enemies.filter(e => !e.dead && !(e.spawnT > 0));
+  const hit = (e, dmg, poise = 0) => { damageEnemy(w, e, dmg, poise); w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 1, face: p.face, dmg, crit: false, spell: ev.spell }); };
+  if (ev.spell === 'bolt') {
+    const n = p.mods.lmp7 ? 2 : 1;                                   // 등불 7: 두 발
+    for (let i = 0; i < n; i++) w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 16, y: p.y + 18 + (n > 1 ? (i ? 8 : -8) : 0), w: 16, h: 12,
+      vx: p.face * S.speed, vy: n > 1 ? (i ? 0.25 : -0.25) : 0, pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player', life: 70, bolt: 'lamp', src: {} });
+  } else if (ev.spell === 'ring') {
+    for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.radius && Math.abs(e.y + e.h / 2 - (p.y + p.h / 2)) < 120) hit(e, Math.round(S.dmg * M), 0.2);
+    w.projectiles = w.projectiles.filter(b => b.owner !== 'enemy');
+    w.shake = Math.max(w.shake, 8);
+  } else if (ev.spell === 'ward') {
+    p.blueT = S.blueF;
+    for (const e of live) if (Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - (p.y + p.h / 2)) <= S.radius + e.w / 2) hit(e, Math.round(S.dmg * M), 0.2);
+  } else if (ev.spell === 'spear') {
+    const x0 = p.face > 0 ? p.x + p.w : p.x - S.len, x1 = x0 + S.len;
+    for (const e of live) if (e.x + e.w > x0 && e.x < x1 && e.y < p.y + p.h && e.y + e.h > p.y) hit(e, Math.round(S.dmg * M), S.poise);
+    w.shake = Math.max(w.shake, 6);
+  }
 }
 
 // 적 자세 게이지 회복·그로기 시간

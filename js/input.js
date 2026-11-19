@@ -4,9 +4,9 @@
 const KEYS = {
   left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], down: ['KeyS', 'ArrowDown'],
   jump: ['KeyW', 'Space', 'ArrowUp'], attack: ['KeyJ'], parry: ['KeyK'], roll: ['KeyL', 'ShiftLeft', 'ShiftRight'],
-  ult: ['KeyI'], flask: ['KeyQ'], pause: ['Escape', 'KeyP'], confirm: ['Enter', 'NumpadEnter'],
+  skill1: ['KeyU'], skill2: ['KeyI'], flask: ['KeyQ'], pause: ['Escape', 'KeyP'], confirm: ['Enter', 'NumpadEnter'],
 };
-const PRESS = ['jump', 'attack', 'parry', 'roll', 'ult', 'flask', 'pause', 'confirm'];
+const PRESS = ['jump', 'attack', 'parry', 'roll', 'skill1', 'skill2', 'flask', 'pause', 'confirm'];
 
 export class Input {
   constructor(touchRoot) {
@@ -71,9 +71,9 @@ export class Input {
       down: h.has('down') || st.y > 0.6,
       jumpHeld: h.has('jump') || !!tb.jump,
       jump: p.has('jump'), attack: p.has('attack'), parry: p.has('parry'),
-      roll: p.has('roll'), ult: p.has('ult'), flask: p.has('flask'),
+      roll: p.has('roll'), skill1: p.has('skill1'), skill2: p.has('skill2'), flask: p.has('flask'),
     };
-    p.delete('jump'); p.delete('attack'); p.delete('parry'); p.delete('roll'); p.delete('ult'); p.delete('flask');
+    for (const k of ['jump', 'attack', 'parry', 'roll', 'skill1', 'skill2', 'flask']) p.delete(k);
     return inp;
   }
   // 화면이 바뀔 때 남은 입력 비우기 (이전 화면의 키가 새 화면에서 실행되지 않게)

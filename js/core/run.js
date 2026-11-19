@@ -2,6 +2,7 @@
 import { CFG } from './config.js';
 import { createWorld } from './world.js';
 import { ELITE_MODS, ENEMY_DEFS } from './enemies.js';
+import { STATS, startStats, statMods, train, STAT_MAX, STAT_MIN } from './stats.js';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -52,7 +53,7 @@ export function newRun(seed = (Math.random() * 1e9) | 0, opts = {}) {
   const r = { seed, rng: seed >>> 0 || 1, region: 1, roomIdx: 0, length: 6, relics: [], oath: null,
     embers: 0, hp: null, flasks: null, room: 'combat', perfect: 0, executes: 0, kills: 0, t: 0,
     dark: opts.dark || 0, pool: opts.pool || Object.keys(RELICS), oil: opts.oil || 'refined', daily: !!opts.daily,
-    shortcut: !!opts.shortcut, noHitBoss: false, noFlaskRegion: false, regionFlasksUsed: 0, shards: 0, done: [] };
+    stats: startStats(), shortcut: !!opts.shortcut, noHitBoss: false, noFlaskRegion: false, regionFlasksUsed: 0, shards: 0, done: [] };
   r.variants = REGIONS.map(() => null);
   for (const g of REGIONS) { const v = ENEMY_DEFS[g.boss].variants; r.variants[g.id - 1] = v[(rand(r) * v.length) | 0]; }
   r.challenge = CHALLENGES[(rand(r) * CHALLENGES.length) | 0].id;
@@ -84,6 +85,25 @@ export function chooseOath(r, id) {
 }
 
 // 각인 3택1: 가진 것 제외, 서약과 같은 계열은 3배 확률
+// 단련 제안: 서로 다른 (올릴 스탯, 내릴 스탯) 쌍 n개. 최대치는 올리지 않고, 최소치는 내리지 않는다
+export function trainOffer(r, n = 2) {
+  const ids = STATS.map(s => s.id), out = [];
+  for (let tries = 0; out.length < n && tries < 50; tries++) {
+    const up = ids[(rand(r) * ids.length) | 0], down = ids[(rand(r) * ids.length) | 0];
+    if (up === down || r.stats[up] >= STAT_MAX || r.stats[down] <= STAT_MIN || out.some(o => o.up === up)) continue;
+    out.push({ up, down });
+  }
+  return out;
+}
+export function takeTrain(r, up, down) { train(r.stats, up, down); }
+// 스탯 보정 적용 (각인 보정 뒤에 합침)
+export function applyStats(p, stats) {
+  const m = statMods(stats);
+  p.stats = { ...stats };
+  p.mods = { ...p.mods, ...m, lightMul: p.mods.lightMul * m.lightStat, rollMul: p.mods.rollMul * m.rollStat, iExtra: p.mods.iExtra + m.rollI };
+  p.maxHp = Math.max(1, p.maxHp + m.hpBonus);
+}
+
 export function relicOffer(r, n = 3) {
   const pool = Object.keys(RELICS).filter(k => !r.relics.includes(k) && r.pool.includes(k));
   const out = [];
@@ -185,6 +205,7 @@ export function buildRoomWorld(r) {
   }
   const p = w.player;
   applyRelics(p, r.relics);
+  applyStats(p, r.stats || startStats());
   p.oil = r.oil;
   if (r.dark >= 5) p.maxFlasks = Math.max(1, p.maxFlasks - 1);   // 어둠 5+: 기름병 -1
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);

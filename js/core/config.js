@@ -23,7 +23,13 @@ export const CFG = {
   roll: { totalF: 22, dist: 128, iStart: 2, iEnd: 13, endLagF: 6 },
   poise: { perfect: 0.25, normal: 0.08, hit: 0.02, stunF: 180, regenDelayF: 120, regenPerF: 0.002, executeFrac: 0.15 },
   light: { max: 100, perfect: 25, normal: 10, kill: 3 },
-  ult: { dmg: 60, castF: 30, radius: 340 },
+  // 등불 마법 (빛 게이지를 소모). bolt = 스킬1, 나머지 = 스킬2 (랜턴 기름에 따라)
+  skill: {
+    bolt:  { cost: 25, castF: 14, fireF: 6, dmg: 14, speed: 7, poise: 0.12 },
+    ring:  { cost: 60, castF: 24, fireF: 8, dmg: 36, radius: 150 },
+    ward:  { cost: 60, castF: 24, fireF: 8, dmg: 14, radius: 120, blueF: 300 },
+    spear: { cost: 60, castF: 24, fireF: 8, dmg: 40, len: 320, poise: 0.4 },
+  },
   flask: { charges: 3, useF: 40, heal: 2 },
   enemy: { minTelegraphF: 18, bossMinTelegraphF: 14, multiHitGapF: 16, maxAttackers: 2 },
   loop: { maxStepsPerFrame: 5 },

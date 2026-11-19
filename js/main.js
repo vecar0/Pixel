@@ -8,6 +8,10 @@ import { spawnEnemy } from './core/enemies.js';
 import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js';
 import { ENEMY_DEFS } from './core/enemies.js';
 import { icon, RELIC_TONE } from './icons.js';
+import { CFG } from './core/config.js';
+import { BIG_SPELL } from './core/player.js';
+import { STATS, STAT_BY_ID, tierOf } from './core/stats.js';
+import { trainOffer, takeTrain } from './core/run.js';
 import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, OATHS, ROOM_TYPES, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js';
 
 const $ = s => document.querySelector(s);
@@ -18,14 +22,17 @@ const sfx = new Sfx();
 const TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
 const showTouch = () => touch.classList.toggle('hidden', !TOUCH);
 input.onAny = () => sfx.unlock();
-// 터치 버튼: 픽셀 아이콘 + 작은 이름. 필살은 빛 게이지만큼 차오르고, 기름병은 남은 개수
-const TB = { attack: ['sword', 'bone', '공격'], parry: ['parry', 'amber', '패링'], roll: ['roll', 'moon', '회피'], jump: ['jump', 'moon', '점프'], ult: ['ult', 'amber', ''], flask: ['flask', 'heal', ''], pause: ['pause', 'bone', ''] };
+// 터치 버튼: 픽셀 아이콘 + 작은 이름. 마법은 비용만큼 빛이 차오르면 켜지고, 기름병은 남은 개수
+const TB = { attack: ['sword', 'bone', '공격'], parry: ['parry', 'amber', '패링'], roll: ['roll', 'moon', '회피'], jump: ['jump', 'moon', '점프'], skill1: ['ember', 'amber', '탄'], skill2: ['ult', 'amber', '마법'], flask: ['flask', 'heal', ''], pause: ['pause', 'bone', ''] };
 for (const [k, [ic, t, name]] of Object.entries(TB)) { const b = $('#b-' + k); b.setAttribute('aria-label', b.textContent); b.innerHTML = icon(ic, t) + (name ? `<small>${name}</small>` : '') + (k === 'flask' ? '<b>3</b>' : ''); }
 let hudKey = '';
 function syncTouch() {
   const p = world.player, full = p.light >= 100, key = (p.light | 0) + '/' + p.flasks;
   if (key === hudKey) return; hudKey = key;
-  const u = $('#b-ult'); u.style.setProperty('--fill', Math.min(100, p.light) + '%'); u.classList.toggle('ready', full);
+  for (const [id, sp] of [['skill1', 'bolt'], ['skill2', BIG_SPELL[p.oil] || 'ring']]) {     // 마법 버튼: 비용만큼 차오르면 사용 가능
+    const cost = Math.round(CFG.skill[sp].cost * (p.mods.costMul || 1)), b = $('#b-' + id);
+    b.style.setProperty('--fill', Math.min(100, p.light / cost * 100) + '%'); b.classList.toggle('ready', p.light >= cost);
+  }
   const f = $('#b-flask'); f.querySelector('b').textContent = p.flasks; f.classList.toggle('empty', p.flasks <= 0);
 }
 
@@ -67,6 +74,32 @@ const runStat = () => {
     <span class="em">${icon('ember', 'amber')}${run.embers}</span>
     <span class="relics">${run.relics.map(k => icon(k, RELIC_TONE[RELICS[k].tag])).join('')}</span></div>`;
 };
+// 스탯 표: 5종, 10칸 막대(반 칸 단위), 지금 구간의 능력/약점
+const TIER_TXT = { t7: '7', t10: '10', low: '약점' };
+function statBlock(st, hi = {}) {
+  return `<div class="stats5">${STATS.map(s => { const v = st[s.id], T = tierOf(v);
+    const bar = Array.from({ length: 10 }, (_, i) => `<i class="${v >= i + 1 ? 'on' : v >= i + 0.5 ? 'half' : ''}${i === 6 || i === 9 ? ' mark' : ''}"></i>`).join('');
+    return `<div class="srow ${hi[s.id] || ''}">${icon(s.icon, s.tone)}<b>${s.name}</b><span class="bar">${bar}</span><em>${v}</em><small>${T === 'mid' ? s.per : (T === 'low' ? '약점: ' + s.low : s[T])}</small></div>`; }).join('')}</div>`;
+}
+// 단련 카드: +1 / -0.5, 구간이 바뀌면 무엇이 생기고 사라지는지 적어 준다
+function trainCard(o) {
+  const U = STAT_BY_ID[o.up], D = STAT_BY_ID[o.down], u0 = run.stats[o.up], u1 = Math.min(10, u0 + 1), d0 = run.stats[o.down], d1 = Math.max(1, d0 - 0.5);
+  const notes = [];
+  if (tierOf(u1) !== tierOf(u0)) notes.push(tierOf(u1) === 'mid' ? `${U.name} 약점 해소` : `${U.name} ${TIER_TXT[tierOf(u1)]}: ${U[tierOf(u1)]}`);
+  if (tierOf(d1) !== tierOf(d0)) notes.push(tierOf(d1) === 'low' ? `${D.name} 약점: ${D.low}` : `${D.name} ${TIER_TXT[tierOf(d0)]} 능력 잃음`);
+  return `<button class="pick t-${U.tone === 'red' ? 'red' : U.tone}" data-id="train:${o.up}:${o.down}"><div class="niche">${icon(U.icon, U.tone)}</div><b>${U.name} 단련</b>
+    <span>${U.name} ${u0} → <strong>${u1}</strong><br>${D.name} ${d0} → ${d1}</span>${notes.length ? `<em class="note">${notes.join('<br>')}</em>` : ''}</button>`;
+}
+// 전투방 보상: 단련 2 + 각인 1 (엘리트·보스는 각인 3)
+function rewardScreen(after) {
+  mode = 'relic'; touch.classList.add('hidden');
+  const tr = trainOffer(run, 2), rl = relicOffer(run, 1);
+  if (!tr.length) return relicScreen(after);
+  screen(`<div class="card"><h2>무엇을 얻을까</h2>${runStat()}<div class="picks">${tr.map(trainCard).join('')}${rl.map(id => relicCard(id)).join('')}</div>
+    <details class="statsd"><summary>지금 스탯</summary>${statBlock(run.stats)}</details></div>`);
+  bindPicks(id => { if (id.startsWith('train:')) { const [, up, down] = id.split(':'); takeTrain(run, up, down); } else takeRelic(run, id); after(); });
+}
+
 // ‹ 값 › 스테퍼 (셀렉트 박스 대신, 엄지로 누르기 쉽게)
 const chip = (id, label, sub, canPrev, canNext) => `<div class="chip"><button id="${id}-p" ${canPrev ? '' : 'disabled'} aria-label="이전">‹</button><div>${label}<small>${sub}</small></div><button id="${id}-n" ${canNext ? '' : 'disabled'} aria-label="다음">›</button></div>`;
 
@@ -76,7 +109,7 @@ function title() {
     <img class="sigil" alt="" src="${icon('parry', 'amber').match(/src="([^"]+)"/)[1]}">
     <h1>등불지기</h1><div class="sub">꺼져 가는 지하 왕국, 마지막 등불을 든 순례자</div>
     <button class="btn" id="go">등대 마을로</button>
-    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 필살 I · 기름병 Q</div></div>`);
+    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 등불 탄 U · 큰 마법 I · 기름병 Q</div></div>`);
   bind('go', town);
 }
 // 등대 마을: 왼쪽은 리라와 기록, 오른쪽은 출발 · 조정 · 메뉴
@@ -216,8 +249,8 @@ function shopScreen() {
 function overlay(kind) {
   mode = kind; touch.classList.add('hidden');
   if (kind === 'cleared') {
-    saveFromWorld(run, world); roomCleared(run);
-    relicScreen(doorScreen);
+    saveFromWorld(run, world); const wasCombat = run.room === 'combat'; roomCleared(run);
+    if (wasCombat) rewardScreen(doorScreen); else relicScreen(doorScreen);
   } else if (kind === 'won') {
     saveFromWorld(run, world);
     const boss = regionOf(run).boss;
@@ -233,7 +266,7 @@ function overlay(kind) {
     if (practice) { screen(`<div class="card"><h2>연습 실패</h2><button class="btn" id="again">다시</button><button class="btn alt" id="back">마을로</button></div>`); bind('again', play); return bind('back', town); }
     saveFromWorld(run, world); finish(false);
   } else if (kind === 'pause') {
-    screen(`<div class="card"><h2>잠시 멈춤</h2>${runStat()}<div class="btns"><button class="btn" id="resume">계속</button><button class="btn alt" id="home">순례 포기</button></div></div>`);
+    screen(`<div class="card"><h2>잠시 멈춤</h2>${runStat()}${statBlock(run.stats)}<div class="btns"><button class="btn" id="resume">계속</button><button class="btn alt" id="home">순례 포기</button></div></div>`);
     bind('resume', resume); bind('home', () => { saveFromWorld(run, world); finish(false); });
   }
 }
@@ -260,7 +293,7 @@ function regionIntro() {
 }
 function resume() { mode = 'play'; screen(''); showTouch(); last = performance.now(); acc = 0; }
 
-const SOUND = { hurt: 'hurt', kill: 'kill', execute: 'execute', slam: 'slam', ultStart: 'ult', telegraph: 'telegraph' };
+const SOUND = { hurt: 'hurt', kill: 'kill', execute: 'execute', slam: 'slam', telegraph: 'telegraph' };
 function onEvents(w) {
   for (const ev of w.events) {
     if (ev.type === 'parry') {
@@ -269,6 +302,7 @@ function onEvents(w) {
     }
     else if (ev.type === 'attackHit') { sfx.play(ev.combo === 2 ? 'hit3' : 'hit'); if (navigator.vibrate) navigator.vibrate(ev.combo === 2 ? 18 : 8); }
     else if (ev.type === 'land' && ev.v > 3) sfx.play('land');
+    else if (ev.type === 'castStart') sfx.play(ev.spell === 'bolt' ? 'swing' : 'ult');
     else if (SOUND[ev.type]) sfx.play(SOUND[ev.type]);
     if (ev.type === 'kill' && run) run.kills++;
   }

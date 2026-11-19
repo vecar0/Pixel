@@ -147,11 +147,26 @@ test('poise: 완벽 패링 4번 → 그로기 180, 처형 = 최대체력 15%', (
   tick(w, I({ attack: true })); steps(w, 8);
   eq(hp0 - d.hp, 30);
 });
-test('ult: 빛 100 → 범위 적 60 피해, 빛 0, 시전 중 피해 없음', () => {
-  const w = W(); settle(w); w.player.light = 100;
+test('스킬2 불꽃 고리: 빛 60 소모, 반경 안 적 36 피해, 시전 중 피해 없음', () => {
+  const w = W(); settle(w); w.player.light = 100; w.player.oil = 'refined';
   const d = makeDummy(w, { hp: 100, hits: [w.t + 5] });
-  tick(w, I({ ult: true })); steps(w, 30);
-  eq(d.hp, 40); eq(w.player.light, 0); eq(w.player.hp, 5);
+  tick(w, I({ skill2: true })); steps(w, 30);
+  eq(d.hp, 64); eq(w.player.light, 40); eq(w.player.hp, 5);
+});
+test('스킬1 등불 탄: 빛 25 소모, 앞으로 날아가 14 피해 / 빛 부족하면 시전 안 됨', () => {
+  const w = W(); settle(w); w.player.light = 30; w.player.face = 1;
+  const d = makeDummy(w, { hp: 100 }); d.x = w.player.x + 120;
+  tick(w, I({ skill1: true })); steps(w, 40);
+  eq(d.hp, 86); eq(w.player.light, 5);
+  tick(w, I({ skill1: true })); ok(w.player.state !== 'cast');
+});
+test('스킬2 흑염 창: 앞쪽 일직선 적 관통 40 피해, 뒤쪽은 안 맞음', () => {
+  const w = W(); settle(w); w.player.light = 60; w.player.oil = 'black'; w.player.face = 1;
+  const a = makeDummy(w, { hp: 100 }); a.x = w.player.x + 100;
+  const b = makeDummy(w, { hp: 100 }); b.x = w.player.x + 250;
+  const c = makeDummy(w, { hp: 100, behind: true });
+  tick(w, I({ skill2: true })); steps(w, 30);
+  eq(a.hp, 60); eq(b.hp, 60); eq(c.hp, 100);
 });
 test('flask: 40틱 뒤 hp +2, 기름병 -1 / 0개면 무시', () => {
   const w = W(); settle(w); w.player.hp = 2;

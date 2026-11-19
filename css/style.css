@@ -42,9 +42,11 @@ button { font-family: inherit; color: inherit; }
 #b-parry .ico { width: 36px; height: 36px; }
 #b-roll { --ring: var(--moon); width: 62px; height: 62px; right: max(132px, calc(env(safe-area-inset-right) + 108px)); bottom: 12px; }
 #b-jump { --ring: rgba(143,200,255,.6); width: 62px; height: 62px; right: max(34px, env(safe-area-inset-right)); bottom: 126px; }
-#b-ult { --ring: var(--lantern); width: 54px; height: 54px; right: max(104px, calc(env(safe-area-inset-right) + 80px)); bottom: 182px;
-  background: conic-gradient(rgba(255,179,71,.55) var(--fill, 0%), rgba(13,10,17,.78) 0); opacity: .8; }
-#b-ult.ready { opacity: 1; animation: ready 0.9s steps(2) infinite; }
+#b-skill1, #b-skill2 { --ring: var(--lantern); background: conic-gradient(rgba(255,179,71,.55) var(--fill, 0%), rgba(13,10,17,.78) 0); opacity: .75; }
+#b-skill1 { width: 52px; height: 52px; right: max(30px, env(safe-area-inset-right)); bottom: 200px; }
+#b-skill2 { width: 58px; height: 58px; right: max(104px, calc(env(safe-area-inset-right) + 80px)); bottom: 180px; }
+#b-skill1.ready, #b-skill2.ready { opacity: 1; }
+#b-skill2.ready { animation: ready 0.9s steps(2) infinite; }
 @keyframes ready { 50% { box-shadow: 0 0 18px rgba(255,226,168,.9), inset 0 0 10px rgba(255,179,71,.6); } }
 #b-flask { --ring: var(--heal); width: 46px; height: 46px; right: max(58px, calc(env(safe-area-inset-right) + 34px)); top: 8px; }
 #b-flask .ico { width: 24px; height: 24px; }
@@ -94,7 +96,7 @@ button { font-family: inherit; color: inherit; }
   animation: drop .32s cubic-bezier(.2,.9,.3,1.2) backwards; }
 .pick:nth-child(2) { animation-delay: .06s; } .pick:nth-child(3) { animation-delay: .12s; } .pick:nth-child(4) { animation-delay: .18s; }
 @keyframes drop { from { transform: translateY(-14px); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .pick { animation: none; } #b-ult.ready { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .pick { animation: none; } #b-skill2.ready { animation: none; } }
 .pick .niche { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 26px 26px 4px 4px;
   background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--tone) 35%, transparent), transparent 70%), #120e16; box-shadow: inset 0 0 0 1px var(--rivet); }
 .pick .niche .ico { width: 36px; height: 36px; }
@@ -173,3 +175,22 @@ button { font-family: inherit; color: inherit; }
 .card > .picks { align-self: stretch; }
 .card:has(.pick.door):not(:has(.pick.small)) > .picks { align-self: center; }
 @media (min-height: 600px) and (min-width: 900px) { #ui > .screen > * { zoom: 1.35; } }
+
+/* 스탯 표: 아이콘 · 이름 · 10칸 막대(7·10 눈금) · 값 · 지금 구간 효과 */
+.stats5 { display: grid; gap: 3px; width: min(100%, 520px); text-align: left; margin: 4px auto 0; }
+.srow { display: grid; grid-template-columns: 18px 34px 112px 26px 1fr; gap: 6px; align-items: center; font-size: 11px; color: #cfc6dc; }
+.srow .ico { width: 16px; height: 16px; }
+.srow b { color: var(--flame); font-size: 12px; }
+.srow em { font-style: normal; color: var(--bone); font-size: 12px; text-align: right; }
+.srow small { color: var(--ash); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srow .bar { display: flex; gap: 1px; }
+.srow .bar i { width: 10px; height: 8px; background: #2e2537; }
+.srow .bar i.on { background: var(--lantern); }
+.srow .bar i.half { background: linear-gradient(90deg, var(--lantern) 50%, #2e2537 50%); }
+.srow .bar i.mark { box-shadow: inset 0 -2px 0 var(--ember); }
+.pick span strong { color: var(--flame); }
+.pick em.note { color: var(--ember); font-size: 10px; line-height: 1.4; text-align: center; }
+.pick.t-red { --tone: #ff4f5e; }
+details.statsd { width: 100%; font-size: 11px; color: var(--ash); }
+details.statsd summary { cursor: pointer; padding: 4px; list-style: none; }
+details.statsd summary::before { content: '▸ '; } details.statsd[open] summary::before { content: '▾ '; }

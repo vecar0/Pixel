@@ -5,6 +5,7 @@ import { ENEMY_DEFS, telegraphOf, EMERGE_F } from './core/enemies.js';
 import { FxLayer, ScreenFx, actorFromImage } from './fx.js';
 import { FxDirector } from './fxmap.js';
 import { iconCanvas } from './icons.js';
+import { BIG_SPELL } from './core/player.js';
 const AMBER7 = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], SPARK4 = ['#fff6c8', '#ffd86b', '#ff9a2a', '#e8561d'];
 
 const C = {
@@ -447,6 +448,7 @@ export class Renderer {
         i = t < 2 ? 2 : t < W ? (t < W / 2 ? 3 : 4) : span(5, 7, (t - W) / CFG.parry.whiffF);
         break;
       }
+      case 'cast': n = 'parry'; i = t < 3 ? 2 : t < CFG.skill[p.spell].castF - 4 ? 4 : 6; break;   // 등불을 앞으로 내밀어 시전
       case 'roll': case 'ghost': n = 'roll'; i = span(0, 7, (p.stateT || 0) / (CFG.roll.totalF + CFG.roll.endLagF)); break;
       case 'hurt': n = 'hurt'; i = span(0, 5, t / CFG.player.hurtStunF); break;
       case 'dead': n = 'hurt'; i = 1; break;
@@ -645,11 +647,12 @@ export class Renderer {
     const full = p.light >= CFG.light.max, k = Math.min(1, p.light / CFG.light.max), gx = 22, gy = 25, gw = 64;
     g.drawImage(I('parry', 'amber'), 7, 21);
     g.fillStyle = '#120e16'; g.fillRect(gx - 1, gy - 1, gw + 2, 7); g.fillStyle = '#2e2537'; g.fillRect(gx, gy, gw, 5);
-    g.fillStyle = full ? ((w.t >> 3) & 1 ? '#fff0c8' : '#ffb347') : '#d0661e'; g.fillRect(gx, gy, Math.round(gw * k), 5);
-    if (!full) { g.fillStyle = '#ffb347'; g.fillRect(gx, gy, Math.round(gw * k), 2); }
-    g.fillStyle = '#120e16'; for (let i = 1; i < 4; i++) g.fillRect(gx + i * gw / 4, gy, 1, 5);
-    if (full) { g.fillStyle = '#ffe2a8'; g.fillText('필살', gx + gw + 4, gy - 3); }
-    else for (let i = 0; i < Math.max(p.maxFlasks, p.flasks); i++) { g.globalAlpha = i < p.flasks ? 1 : 0.25; g.drawImage(I('flask', 'heal'), gx + gw + 3 + i * 9, gy - 4, 9, 9); }
+    // 빛 = 마법 기름. 눈금은 등불 탄·큰 마법 비용 자리, 쓸 수 있는 만큼 밝게
+    const c1 = Math.round(CFG.skill.bolt.cost * (p.mods.costMul || 1)), c2 = Math.round(CFG.skill[BIG_SPELL[p.oil] || 'ring'].cost * (p.mods.costMul || 1));
+    g.fillStyle = p.light >= c2 ? ((w.t >> 3) & 1 ? '#fff0c8' : '#ffb347') : p.light >= c1 ? '#e08a2a' : '#8c4a14'; g.fillRect(gx, gy, Math.round(gw * k), 5);
+    g.fillStyle = '#ffd27a'; g.fillRect(gx, gy, Math.round(gw * k), 1);
+    for (const c of [c1, c2]) { const mx = gx + Math.round(gw * c / CFG.light.max); g.fillStyle = p.light >= c ? '#fff0c8' : '#4a3e57'; g.fillRect(mx, gy - 2, 1, 9); }
+    for (let i = 0; i < Math.max(p.maxFlasks, p.flasks); i++) { g.globalAlpha = i < p.flasks ? 1 : 0.25; g.drawImage(I('flask', 'heal'), gx + gw + 3 + i * 9, gy - 4, 9, 9); }
     g.globalAlpha = 1;
     // 완벽 패링 수: 늘어나는 순간 잠깐 밝게
     if (p.perfectParries !== this.ppSeen) { this.ppSeen = p.perfectParries; this.ppT = 30; }

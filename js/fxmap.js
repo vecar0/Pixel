@@ -10,6 +10,7 @@ const VIOLET = ['#1a0a2a', '#3a1660', '#6a2aa0', '#9a4ae0', '#c890ff', '#f0e0ff'
 const GREY = ['#1a1820', '#3a3640', '#5e5866', '#8a8494', '#b8b2c2', '#e4e0ea', '#ffffff'];
 const LILAC = ['#1e1430', '#3c2a5c', '#6a4e96', '#9a7ccc', '#c8b0f0', '#ece2ff', '#ffffff'];
 const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', '#ffffff'];
+const ICE = ['#081a2a', '#10345a', '#1e5a8c', '#3a8cc8', '#7ac0f0', '#c0e8ff', '#ffffff'];
 const DUST = ['#1c1610', '#33281c', '#4f3f2c', '#6e5a40', '#927a58', '#b89f78', '#dcc8a2'];
 
 // 지역별 배경 생물·불빛 (월드 고정 위치의 반복 이펙트) + 화면 날씨
@@ -31,7 +32,7 @@ const SPAWN = { ghoul: 'spawn/summon-rise', moth: 'spawn/poof', spearman: 'water
 const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['melee/claw-swipe', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['melee/hammer-smash', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
   bellBoss: ['melee/heavy-cleave', DUST], spider: ['melee/claw-swipe', LILAC], shadow: ['melee/sword-slash', VIOLET], saint: ['melee/spear-sweep', CYAN] };
 const DEATH = { ghoul: ['spawn/poof', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/splash'], priest: ['water/wave-crash'], shellguard: ['ice/ice-shatter', LILAC], assassin: ['explosions/implosion', VIOLET] };
-const BOLT = { priest: ['water/water-orb', { radius: 7 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', {}], shadow: ['shadow/void-orb', {}] };
+const BOLT = { lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', {}], shadow: ['shadow/void-orb', {}] };
 
 export const ALL_IDS = [...new Set([
   ...Object.values(AMBIENT).flatMap(a => [...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]),
@@ -49,7 +50,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['fire/fireball', 'arcane/arcane-beam', 'ice/frost-nova', 'melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -113,10 +114,11 @@ export class FxDirector {
       case 'blink': P('arcane/blink-out', ev.x, ev.y + 26, { palette: VIOLET, light: 0.3 }, 2); break;
       case 'enemyParry': P('impacts/parry', ev.x, ev.y + 40, { palette: VIOLET, light: 0.3 }, 3); break;
       case 'flask': P('nature/healing-bloom', ev.x, ev.y, { light: 0.3 }, 2); break;
-      case 'ultStart':                                                     // 필살: 기름 종류별 한 가지 연출만
-        if (p.oil === 'blue') P('holy/sunburst', 0, 0, { follow: p, dy: -10, life: 300, key: 'blue', light: 0.3 }, 3);
-        else if (p.oil === 'black') P('shadow/dark-explosion', p.x + p.w / 2 + p.face * 120, feet, { life: 80, light: 0.4 }, 3);
-        else P('fire/fire-ring', p.x + p.w / 2, feet, { life: 80, light: 0.4 }, 3);
+      case 'castStart': if (ev.spell !== 'bolt') P('holy/sunburst', 0, 0, { follow: p, dy: -10, life: 26, light: 0.3, palette: ev.spell === 'ward' ? ICE : ev.spell === 'spear' ? VIOLET : AMBER }, 3); break;
+      case 'skill':                                                        // 등불 마법: 마법마다 한 가지 연출
+        if (ev.spell === 'ring') P('fire/fire-ring', ev.x, feet, { life: 80, light: 0.4 }, 3);
+        else if (ev.spell === 'ward') { P('ice/frost-nova', ev.x, feet, { life: 70, light: 0.35 }, 3); P('holy/sunburst', 0, 0, { follow: p, dy: -10, life: 300, key: 'blue', light: 0.2, palette: ICE }, 3); }
+        else if (ev.spell === 'spear') P('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: ev.face < 0, life: 40, light: 0.4, palette: VIOLET }, 3);
         break;
       case 'land': if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;
       case 'dead': P('spawn/soul-rise', ev.x, ev.y, { actor: R.actorOf(w.player), flip: w.player.face < 0 }, 3); R.trans.spawn('transitions/burn-away', 0, 0, {}); break;

@@ -2,11 +2,12 @@
 import { CFG } from './config.js';
 import { createPlayer, updatePlayer, overlap } from './player.js';
 import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite } from './enemies.js';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveUlt, updatePoise, damageEnemy } from './combat.js';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, updatePoise, damageEnemy } from './combat.js';
+import { ACTIONS } from './player.js';
 
 export const EMPTY_INPUT = Object.freeze({
   left: false, right: false, down: false, jumpHeld: false,
-  jump: false, attack: false, parry: false, roll: false, ult: false, flask: false,
+  jump: false, attack: false, parry: false, roll: false, skill1: false, skill2: false, flask: false,
 });
 
 const ROOMS = {
@@ -84,7 +85,7 @@ export function tick(w, inp) {
     w.hitstop--;
     const p = w.player;
     if (p.recoverWait > 0) p.recoverWait--;
-    for (const a of ['attack', 'parry', 'roll', 'jump', 'ult', 'flask'])
+    for (const a of ACTIONS)
       if (inp[a]) p.buffer = { action: a, t: CFG.player.bufferF };
     return;
   }
@@ -92,7 +93,7 @@ export function tick(w, inp) {
   w.hitboxes.length = 0;
 
   updatePlayer(w, inp);
-  if (w.events.some(e => e.type === 'ultStart')) resolveUlt(w);
+  for (const ev of [...w.events]) if (ev.type === 'skill') resolveSkill(w, ev);
 
   for (const e of w.enemies) {
     if (e.dead) continue;
@@ -123,8 +124,12 @@ function updateProjectiles(w) {
       if (r === 'perfect') { b.vx *= -1.5; b.owner = 'player'; b.done = false; b.life = 90; }
       else if (r !== 'ignored') b.dead = true;
     } else {
-      const e = w.enemies.find(e => !e.dead && overlap(b, e));
-      if (e) { damageEnemy(w, e, b.dmg * 15, CFG.poise.normal); b.dead = true; }
+      const e = w.enemies.find(e => !e.dead && !(e.spawnT > 0) && overlap(b, e));
+      if (e) {
+        const dmg = b.pdmg ?? b.dmg * 15;                                   // 반사탄은 dmg×15, 마법·검기는 pdmg
+        damageEnemy(w, e, dmg, (b.poise ?? CFG.poise.normal) * (w.player.mods.poiseMul || 1)); b.dead = true;
+        w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 0, face: Math.sign(b.vx) || 1, dmg, crit: false });
+      }
     }
   }
   w.projectiles = w.projectiles.filter(b => !b.dead);

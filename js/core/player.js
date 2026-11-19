@@ -1,15 +1,17 @@
-// 리라: 이동·점프·공격·패링·회피·기름병·필살 상태기계 (순수 로직)
+// 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
 import { CFG } from './config.js';
+import { statMods, startStats } from './stats.js';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll;
-const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'ult', 'flask'];
+export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill1', 'skill2', 'flask'];
+export const BIG_SPELL = { refined: 'ring', blue: 'ward', black: 'spear' };
 
 export function createPlayer(x, y) {
   return {
     x, y, w: P.w, h: P.h, vx: 0, vy: 0, face: 1,
     onGround: false, coyote: 0, jumpCut: false, airAttacked: false,
     hp: P.hp, maxHp: P.hp, light: 0, flasks: CFG.flask.charges, maxFlasks: CFG.flask.charges,
-    relics: new Set(), mods: { rollMul: 1, iExtra: 0, airJumps: 0, execMul: 1, lightMul: 1 }, airLeft: 0, chainN: 0, crit: false,
+    relics: new Set(), mods: { rollMul: 1, iExtra: 0, airJumps: 0, execMul: 1, lightMul: 1, ...statMods(startStats()) }, airLeft: 0, chainN: 0, crit: false,
     state: 'idle', stateT: 0, combo: 0, comboT: 0,
     iframes: 0, buffer: null,
     parryOk: false, recoverWait: 0, dropT: 0, perfectParries: 0, rollDir: 1, swing: 0,
@@ -21,7 +23,7 @@ function setState(p, s) { p.state = s; p.stateT = 0; }
 export function invulnerable(p) {
   if (p.iframes > 0) return true;
   if (p.state === 'roll') return p.stateT >= RO.iStart && p.stateT <= RO.iEnd + p.mods.iExtra;
-  return p.state === 'ult';
+  return p.state === 'cast' && p.spell !== 'bolt';   // 큰 마법 시전 중 무적
 }
 
 export function attackBox(p) {
@@ -38,7 +40,7 @@ function canAct(p, action) {
     case 'idle': case 'run': case 'jump': return true;
     case 'attack': return t >= A.startupF + A.activeF;            // 후딜만 캔슬 가능
     case 'parry': return p.parryOk && p.recoverWait <= 0;        // 성공 후 4틱 뒤 (히트스톱 포함)
-    default: return false;                                        // roll·hurt·flask·ult·dead
+    default: return false;                                        // roll·hurt·flask·cast·dead
   }
 }
 
@@ -67,9 +69,12 @@ function start(w, p, action, inp) {
     case 'flask':
       if (p.flasks <= 0 || p.hp >= p.maxHp) return false;
       setState(p, 'flask'); return true;
-    case 'ult':
-      if (p.light < CFG.light.max) return false;
-      p.light = 0; setState(p, 'ult'); w.events.push({ type: 'ultStart' }); return true;
+    case 'skill1': case 'skill2': {                 // 등불 마법: 빛을 소모해 시전
+      const spell = action === 'skill1' ? 'bolt' : BIG_SPELL[p.oil] || 'ring';
+      const cost = Math.round(CFG.skill[spell].cost * (p.mods.costMul || 1));
+      if (p.light < cost) return false;
+      p.light -= cost; p.spell = spell; setState(p, 'cast'); w.events.push({ type: 'castStart', spell }); return true;
+    }
   }
   return false;
 }
@@ -89,12 +94,18 @@ export function updatePlayer(w, inp) {
 
   // 상태 시간 종료 처리
   const t = p.stateT;
-  if (p.state === 'attack' && t >= A.startupF + A.activeF + A.recoveryF) { p.comboT = A.comboWindowF; setState(p, 'idle'); }
-  if (p.state === 'parry' && (p.parryOk ? t >= PR.normalF : t >= PR.normalF + PR.whiffF)) setState(p, 'idle');
-  if (p.state === 'roll' && t >= RO.totalF + RO.endLagF) setState(p, 'idle');
+  if (p.state === 'attack' && p.combo === 2 && t === A.startupF && p.mods.str7)          // 힘 7: 3타 검기
+    w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 24, y: p.y + 18, w: 24, h: 14, vx: p.face * 6, vy: 0, pdmg: Math.round(8 * p.mods.atkMul), owner: 'player', life: 32, echo: true, src: {} });
+  if (p.state === 'attack' && t >= A.startupF + A.activeF + A.recoveryF + (p.mods.atkLag || 0)) { p.comboT = A.comboWindowF; setState(p, 'idle'); }
+  if (p.state === 'parry' && (p.parryOk ? t >= PR.normalF : t >= PR.normalF + PR.whiffF + (p.mods.whiffLag || 0))) setState(p, 'idle');
+  if (p.state === 'roll' && t >= RO.totalF + RO.endLagF + (p.mods.rollLag || 0)) { if (p.mods.agi10) p.crit = true; setState(p, 'idle'); }   // 민첩 10: 구르기 직후 치명타
   if (p.state === 'hurt' && t >= P.hurtStunF) setState(p, 'idle');
-  if (p.state === 'flask' && t >= CFG.flask.useF) { w.events.push({ type: 'flask', x: p.x + p.w / 2, y: p.y + p.h }); p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + CFG.flask.heal); setState(p, 'idle'); }
-  if (p.state === 'ult' && t >= CFG.ult.castF) setState(p, 'idle');
+  if (p.state === 'flask' && t >= CFG.flask.useF) { w.events.push({ type: 'flask', x: p.x + p.w / 2, y: p.y + p.h }); p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + CFG.flask.heal + (p.mods.flaskBonus || 0)); setState(p, 'idle'); }
+  if (p.state === 'cast') {
+    const S = CFG.skill[p.spell];
+    if (t === S.fireF) w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face });
+    if (t >= S.castF) setState(p, 'idle');
+  }
 
   // 버퍼 소비
   if (p.buffer) {
@@ -109,9 +120,9 @@ export function updatePlayer(w, inp) {
   if (p.state === 'roll') {
     p.vx = t < RO.totalF ? p.rollDir * RO.dist * p.mods.rollMul / RO.totalF : 0;
   } else if (free || p.state === 'flask') {
-    const max = p.state === 'flask' ? P.speed * 0.3 : P.speed;
+    const spd = P.speed * (p.mods.speedMul || 1), max = p.state === 'flask' ? spd * 0.3 : spd;
     if (dir) {
-      p.vx += dir * P.speed / P.accelF;
+      p.vx += dir * spd / P.accelF;
       if (Math.abs(p.vx) > max) p.vx = Math.sign(p.vx) * max;
       if (free) p.face = dir;
     } else {

@@ -1,7 +1,7 @@
 // 런 구조 테스트: node tests/run.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
-import { genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
+import { trainOffer, takeTrain, applyStats, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
 import { tick, EMPTY_INPUT } from '../js/core/world.js';
 import { spawnEnemy, ENEMY_DEFS } from '../js/core/enemies.js';
 import { createWorld } from '../js/core/world.js';
@@ -150,9 +150,9 @@ test('흑염의 순례자: 리라의 공격을 패링하고 반격 예고', () =
   }
   ok(parried);
 });
-test('청유: 필살 후 5초간 늦은 패링도 완벽', () => {
+test('청유: 푸른 결계 후 5초간 늦은 패링도 완벽', () => {
   const w = createWorld({ room: 'test', solids: [{ x: -1000, y: 300, w: 4000, h: 40 }] }); steps(w, 30);
-  w.player.oil = 'blue'; w.player.light = 100; tick(w, I({ ult: true })); steps(w, 31);
+  w.player.oil = 'blue'; w.player.light = 100; tick(w, I({ skill2: true })); steps(w, 31);
   ok(w.player.blueT > 0);
 });
 test('영구 진행: 조각으로 해금, 해금 각인이 풀에 들어감, 클리어 시 어둠 단계 해금', () => {
@@ -205,6 +205,21 @@ test('웨이브 적은 리라 옆에 생기지 않고, 0.8초 동안 솟아오�
   const e = w.enemies[0]; ok(Math.abs(e.x + e.w / 2 - (w.player.x + w.player.w / 2)) >= 190, 'far: ' + e.x); ok(e.spawnT > 40);
   const hp = e.hp; e.x = w.player.x + 30; steps(w, 12, { attack: true }); eq(e.hp, hp); eq(e.st, 'idle');
   steps(w, 50); eq(e.spawnT, 0);
+});
+
+test('스탯: 모두 5에서 시작, 단련은 +1/-0.5, 1~10으로 묶임', () => {
+  const r = newRun(3); ok(Object.values(r.stats).every(v => v === 5));
+  takeTrain(r, 'str', 'agi'); eq(r.stats.str, 6); eq(r.stats.agi, 4.5);
+  for (let i = 0; i < 9; i++) takeTrain(r, 'str', 'agi'); eq(r.stats.str, 10); eq(r.stats.agi, 1);
+  const o = trainOffer(r, 2); eq(o.length, 2); ok(o.every(x => x.up !== x.down && x.up !== 'str' && x.down !== 'agi'));
+});
+test('스탯 구간 능력: 생명 7 체력+1, 생명 3 체력-1, 의지 10 모든 패링 완벽, 힘 7 3타 검기', () => {
+  const mk = st => { const r = newRun(1); chooseOath(r, 'parry'); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
+  eq(mk({ vit: 7 }).player.maxHp, 6); eq(mk({ vit: 3 }).player.maxHp, 4); eq(mk({}).player.maxHp, 5);
+  ok(mk({ wil: 10 }).player.mods.allPerfect); ok(!mk({ wil: 9 }).player.mods.allPerfect);
+  const w = mk({ str: 7 }); w.enemies.length = 0; w.waves = []; steps(w, 20);
+  const p = w.player; p.combo = 1; p.comboT = 10; tick(w, I({ attack: true }));
+  steps(w, CFG.attack.startupF + 1); ok(w.projectiles.some(b => b.owner === 'player' && b.echo), 'wave');
 });
 
 run();

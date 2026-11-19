@@ -6,6 +6,9 @@ import { FxLayer, ScreenFx, actorFromImage } from './fx.js';
 import { FxDirector } from './fxmap.js';
 import { iconCanvas } from './icons.js';
 import { bodyShade } from './shade.js';
+// 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
+const SLASH = [['melee/sword-slash', 10, 0], ['melee/uppercut', 8, 0], ['melee/spear-sweep', 6, -26]];
+const STEEL = ['#14121c', '#2a2838', '#4a4860', '#7a7890', '#b0aec4', '#dcdae8', '#ffffff'];   // 은빛 칼 (색 과하지 않게)
 const AMBER7 = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], SPARK4 = ['#fff6c8', '#ffd86b', '#ff9a2a', '#e8561d'];
 
 const C = {
@@ -66,11 +69,14 @@ export class Renderer {
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
     const p = w.player, feet = p.y + p.h;
-    // 기본 공격 궤적은 스프라이트 프레임에 그려져 있어 따로 이펙트를 얹지 않는다 (겹치면 과함)
+    // 기본 공격: 동작마다 맞는 pixelfx 베기 하나만 (1타 내려베기 · 2타 올려베기 · 3타 가로 휘두르기). 타격 불꽃은 따로 안 띄움
+    if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {
+      const [id, dx, dy] = SLASH[p.combo] || SLASH[0];
+      this.fx.spawn(id, p.x + p.w / 2 + p.face * dx, feet + dy, { flip: p.face < 0, palette: STEEL, light: 0.15, life: 30 });
+    }
     this.dir.events(w); this.dir.tick(w);
     for (const ev of w.events) {
       if (ev.type === 'parry' && ev.perfect) { this.flash = 1; this.zoom = 1; this.texts.push({ x: p.x + p.w / 2, y: p.y - 26, t: 0, s: '완벽!' }); }
-      else if (ev.type === 'attackHit' && !ev.spell) this.burst(ev.x, ev.y, 2, ['#b07a3a', '#6a4a2a'], 1.5);
       else if (ev.type === 'execute') { this.flash = 0.7; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!' }); }
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });

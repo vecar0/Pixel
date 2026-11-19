@@ -53,7 +53,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -91,7 +91,7 @@ export class FxDirector {
         break;
       case 'attackHit':
         if (big) break;                                                   // 처형·완벽 패링 순간엔 그 연출만
-        if (!ev.spell) P('impacts/hit-spark', ev.x, ev.y + 20, { height: 14, flip: ev.face < 0, light: 0, palette: HIT }, 1);   // 기본 공격: 작고 어두운 불꽃만 (마법은 마법 이펙트가 대신)
+        // 기본 공격은 베기 이펙트 하나로 끝 (타격 불꽃을 따로 얹지 않음), 마법은 마법 이펙트가 대신
         P('ui/damage-quiet', ev.x + ev.face * 6, ev.y - 22, { text: String(ev.dmg), palette: ev.crit
           ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);

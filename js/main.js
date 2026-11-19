@@ -15,14 +15,14 @@ const TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in windo
 const showTouch = () => touch.classList.toggle('hidden', !TOUCH);
 input.onAny = () => sfx.unlock();
 
-let mode = 'title', world = createWorld({ room: 'arena' }), acc = 0, last = performance.now();
+let mode = 'title', world = createWorld({ room: 'arena' }), acc = 0, last = performance.now(), slowT = 0;
 // 테스트·디버그용 훅
 const lk = window.__lk = { get world() { return world; }, get mode() { return mode; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y) };
 
 function screen(html) { input.clear(); ui.innerHTML = html ? `<div class="screen">${html}</div>` : ''; }
 function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); fn(); }); }
 
-function setRoom(room) { world = createWorld({ room }); acc = 0; mode = 'play'; screen(''); showTouch(); }
+function setRoom(room) { world = createWorld({ room }); acc = 0; slowT = 0; R.reset(); mode = 'play'; screen(''); showTouch(); }
 function start() { setRoom('arena'); }
 
 function title() {
@@ -54,10 +54,15 @@ function overlay(kind) {
 }
 function resume() { mode = 'play'; screen(''); showTouch(); last = performance.now(); acc = 0; }
 
-const SOUND = { attackHit: 'hit', hurt: 'hurt', kill: 'kill', execute: 'execute', slam: 'slam', ultStart: 'ult', telegraph: 'telegraph' };
+const SOUND = { hurt: 'hurt', kill: 'kill', execute: 'execute', slam: 'slam', ultStart: 'ult', telegraph: 'telegraph' };
 function onEvents(w) {
   for (const ev of w.events) {
-    if (ev.type === 'parry') { sfx.play(ev.perfect ? 'parryPerfect' : 'parryNormal'); if (ev.perfect && navigator.vibrate) navigator.vibrate(30); }
+    if (ev.type === 'parry') {
+      sfx.play(ev.perfect ? 'parryPerfect' : 'parryNormal');
+      if (ev.perfect) { slowT = 18; if (navigator.vibrate) navigator.vibrate(35); }
+    }
+    else if (ev.type === 'attackHit') { sfx.play(ev.combo === 2 ? 'hit3' : 'hit'); if (navigator.vibrate) navigator.vibrate(ev.combo === 2 ? 18 : 8); }
+    else if (ev.type === 'land' && ev.v > 3) sfx.play('land');
     else if (SOUND[ev.type]) sfx.play(SOUND[ev.type]);
   }
   const p = w.player;
@@ -66,9 +71,10 @@ function onEvents(w) {
 }
 
 function step() {
-  tick(world, input.read());
+  tick(world, lk.bot ? lk.bot(world) : input.read());   // lk.bot: 데모·검수용 자동 조작
   onEvents(world);
-  R.spawnFx(world); R.stepFx();
+  R.spawnFx(world); R.stepFx(world);
+  if (slowT > 0 && !world.hitstop) slowT--;
 }
 
 function frame(now) {
@@ -77,7 +83,7 @@ function frame(now) {
   if (mode === 'play') {
     if (input.take('pause')) overlay('pause');
     else {
-      acc = stepLoop(acc, dt, step);
+      acc = stepLoop(acc, slowT > 0 && !world.hitstop ? dt * 0.45 : dt, step);   // 완벽 패링 직후 잠깐 슬로모션
       if (world.over) overlay('dead');
       else if (world.won) overlay('won');
       else if (world.cleared) overlay('cleared');

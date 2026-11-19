@@ -26,12 +26,14 @@ export class Sfx {
     if (!this.ac || !this.on) return;
     switch (name) {
       case 'parryPerfect':   // 챙! 높은 금속음 두 겹 + 짧은 저음 펀치
-        this.tone(2400, 0.28, 'triangle', 0.35); this.tone(3610, 0.22, 'sine', 0.2);
+        this.tone(2400, 0.5, 'triangle', 0.4); this.tone(3610, 0.42, 'sine', 0.22); this.tone(4810, 0.3, 'sine', 0.1);
         this.tone(1210, 0.12, 'square', 0.12); this.noise(0.05, 0.5, 5000, 0.8);
-        this.tone(110, 0.14, 'sine', 0.6, 0.5); break;
+        this.tone(110, 0.18, 'sine', 0.75, 0.5); this.noise(0.25, 0.15, 7000, 0.5, 0.03); break;
       case 'parryNormal': this.tone(1500, 0.12, 'triangle', 0.25); this.noise(0.04, 0.25, 4000); break;
       case 'swing': this.noise(0.08, 0.12, 1800, 2); break;
-      case 'hit': this.noise(0.06, 0.35, 900, 1); this.tone(220, 0.06, 'square', 0.15, 0.6); break;
+      case 'hit': this.noise(0.07, 0.45, 1100, 0.9); this.tone(150, 0.09, 'sine', 0.55, 0.45); this.tone(420, 0.05, 'square', 0.12, 0.5); break;
+      case 'hit3': this.noise(0.12, 0.6, 800, 0.8); this.tone(95, 0.18, 'sine', 0.8, 0.4); this.tone(1600, 0.12, 'triangle', 0.18, 0.7); break;
+      case 'land': this.noise(0.06, 0.18, 400, 1); this.tone(80, 0.06, 'sine', 0.3, 0.6); break;
       case 'hurt': this.tone(300, 0.25, 'sawtooth', 0.3, 0.3); this.noise(0.1, 0.3, 600); break;
       case 'roll': this.noise(0.1, 0.08, 700, 1.5); break;
       case 'kill': this.tone(520, 0.2, 'square', 0.18, 0.4); break;

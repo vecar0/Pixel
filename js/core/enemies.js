@@ -26,7 +26,7 @@ export function spawnEnemy(w, kind, x, y) {
   const e = {
     kind, x, y, w: d.w, h: d.h, vx: 0, vy: 0, face: -1, onGround: false,
     hp: d.hp, maxHp: d.hp, boss: !!d.boss, poise: 0, poiseMax: !!d.poise, stunT: 0, poiseRegenT: 0,
-    st: 'idle', stT: 0, atk: null, srcs: [], cd: 30, hitBy: -1, flash: 0,
+    st: 'idle', stT: 0, atk: null, srcs: [], cd: 30, hitBy: -1, flash: 0, kvx: 0, staggerT: 0,
     speed: d.speed, range: d.range, forceNext: null, dashDx: 0, dashDy: 0,
   };
   w.enemies.push(e);
@@ -41,10 +41,15 @@ const attackers = w => w.enemies.filter(e => !e.boss && !e.dead && (e.st === 'te
 function setSt(e, st) { e.st = st; e.stT = 0; }
 
 export function updateEnemy(w, e) {
+  if (Math.abs(e.kvx) > 0.05) {          // 넉백: 벽에 막히면 멈춤
+    const x0 = e.x; e.x += e.kvx; e.kvx *= 0.8;
+    if (w.solids.some(s => !s.oneWay && e.x < s.x + s.w && e.x + e.w > s.x && e.y < s.y + s.h && e.y + e.h > s.y)) { e.x = x0; e.kvx = 0; }
+  } else e.kvx = 0;
   if (e.update) return e.update(w, e);    // 테스트 더미
   const d = ENEMY_DEFS[e.kind], p = w.player;
   const dx = (p.x + p.w / 2) - (e.x + e.w / 2);
   e.stT++;
+  if (e.staggerT > 0) { e.staggerT--; if (!d.fly) { e.vx = 0; physics(w, e); } return; }
 
   if (e.st === 'idle') {
     if (e.cd > 0) e.cd--;

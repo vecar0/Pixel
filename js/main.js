@@ -4,6 +4,7 @@ import { Renderer } from './render.js';
 import { Input } from './input.js';
 import { Sfx } from './sfx.js';
 import { stepLoop } from './loop.js';
+import { spawnEnemy } from './core/enemies.js';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -15,7 +16,8 @@ const showTouch = () => touch.classList.toggle('hidden', !TOUCH);
 input.onAny = () => sfx.unlock();
 
 let mode = 'title', world = createWorld({ room: 'arena' }), acc = 0, last = performance.now();
-const lk = window.__lk = { get world() { return world; }, get mode() { return mode; }, setRoom, start };
+// 테스트·디버그용 훅
+const lk = window.__lk = { get world() { return world; }, get mode() { return mode; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y) };
 
 function screen(html) { ui.innerHTML = html ? `<div class="screen">${html}</div>` : ''; }
 function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); fn(); }); }

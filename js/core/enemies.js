@@ -55,12 +55,13 @@ export function rng(w) {           // 결정적 난수 (월드에 상태 저장)
   return w.seed / 4294967296;
 }
 
+export const EMERGE_F = 48;   // 웨이브 적이 땅에서 솟아오르는 시간 (0.8초)
 export function spawnEnemy(w, kind, x, y, opt = {}) {
   const d = ENEMY_DEFS[kind], hpMul = opt.hpMul || 1;
   const e = {
     kind, x, y, w: d.w, h: d.h, vx: 0, vy: 0, face: -1, onGround: false,
     hp: Math.round(d.hp * hpMul), maxHp: Math.round(d.hp * hpMul), boss: !!d.boss, poise: 0, poiseMax: !!d.poise, poiseRes: 1, stunT: 0, poiseRegenT: 0,
-    st: 'idle', stT: 0, atk: null, srcs: [], cd: 30, hitBy: -1, flash: 0, kvx: 0, staggerT: 0,
+    st: 'idle', stT: 0, atk: null, srcs: [], cd: 30, spawnT: opt.emerge ? EMERGE_F : 0, hitBy: -1, flash: 0, kvx: 0, staggerT: 0,
     shield: !!d.shield, counter: !!d.counter,
     speed: d.speed, range: d.range, cdMul: 1, mods: [], forceNext: null, variant: opt.variant || null, dashDx: 0, dashDy: 0,
   };
@@ -95,6 +96,7 @@ export function updateEnemy(w, e) {
     if (w.solids.some(s => !s.oneWay && e.x < s.x + s.w && e.x + e.w > s.x && e.y < s.y + s.h && e.y + e.h > s.y)) { e.x = x0; e.kvx = 0; }
   } else e.kvx = 0;
   if (e.update) return e.update(w, e);    // 테스트 더미
+  if (e.spawnT > 0) { e.spawnT--; e.vx = 0; if (!ENEMY_DEFS[e.kind].fly) physics(w, e); return; }   // 등장 중: 행동·피격 없음
   const d = ENEMY_DEFS[e.kind], p = w.player;
   const dx = (p.x + p.w / 2) - (e.x + e.w / 2);
   e.stT++;

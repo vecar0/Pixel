@@ -1,7 +1,7 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
 import { CFG } from './core/config.js';
 import { attackBox } from './core/player.js';
-import { ENEMY_DEFS, telegraphOf } from './core/enemies.js';
+import { ENEMY_DEFS, telegraphOf, EMERGE_F } from './core/enemies.js';
 import { FxLayer, ScreenFx, actorFromImage } from './fx.js';
 import { FxDirector } from './fxmap.js';
 import { iconCanvas } from './icons.js';
@@ -212,6 +212,7 @@ export class Renderer {
     if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.22})`; g.fillRect(0, 0, vw, H); }   // 화면 섬광은 은은하게
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
     if (this.hud !== false) this.drawHud(g, w);
+    if (this.fadeIn > 0) { g.fillStyle = `rgba(5,3,8,${this.fadeIn})`; g.fillRect(0, 0, vw, H); this.fadeIn = Math.max(0, this.fadeIn - 0.045); }
     this.trans.draw(g, vw, H);                                              // 장면 전환 · 임팩트 프레임 (맨 위)
   }
 
@@ -549,6 +550,16 @@ export class Renderer {
     const ew = e.w * (1 + k * 0.25), eh = e.h * (1 - k * 0.15);
     const x = Math.round(e.x + (e.w - ew) / 2), y = Math.round(e.y + e.h - eh);
     const spr = this.enemyFrame(w, e, d);
+    if (e.spawnT > 0 && spr) {                               // 등장: 땅에서 솟아오르며 선명해짐 (나는 적은 위에서 내려옴)
+      const t = 1 - e.spawnT / EMERGE_F, ease = 1 - (1 - t) * (1 - t), feet = Math.round(e.y + e.h);
+      g.save();
+      g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(e.x + e.w / 2, feet, (e.w / 2 + 8) * Math.min(1, t * 2), 4, 0, 0, Math.PI * 2); g.fill();
+      if (!d.fly) { g.beginPath(); g.rect(e.x - 200, -200, e.w + 400, feet + 200 + 1); g.clip(); g.translate(0, Math.round((1 - ease) * (e.h + 6))); }
+      else g.translate(0, Math.round(-(1 - ease) * 40));
+      g.globalAlpha = 0.2 + 0.8 * t;
+      this.drawEnemySprite(g, w, e, d, spr, 0);
+      g.restore(); return;
+    }
     if (spr) this.drawEnemySprite(g, w, e, d, spr, k);
     else {
     g.fillStyle = e.flash > 3 ? C.white : C[e.kind === 'bellBoss' ? 'boss' : e.kind] || '#777';

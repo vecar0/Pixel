@@ -49,7 +49,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/iris', 'transitions/slash-wipe', 'transitions/pixel-dissolve']);
+    preload(['melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -58,7 +58,7 @@ export class FxDirector {
     R.weather.clear(); this.seen = new WeakSet(); this.elites = new WeakSet(); this.bodyFx = new WeakMap(); this.recent = []; this.prevLight = 0; this.streak = 0;
     R.bgfx.clear(); for (const [id, fx, y] of (boss ? a.boss : a.world)) R.bgfx.spawn(id, w.width * fx, y, { light: 0.4 });
     for (const id of a.screen) R.weather.spawn(id, 160, 170, {});   // 날씨 원점 = 화면 하단 중앙 (meta.origin)
-    R.trans.clear(); R.trans.spawn(boss ? 'transitions/slash-wipe' : 'transitions/pixel-dissolve', 0, 0, { skip: boss ? 0.5 : 0.55 });
+    R.trans.clear(); R.fadeIn = 1;   // 방 입장: 검은 화면에서 0.4초 페이드인 (픽셀 전환은 눈이 아파 제외)
   }
 
   // 이펙트 연출 규칙 (눈 아프지 않게):
@@ -139,7 +139,7 @@ export class FxDirector {
     // 적 몸에 감기는 상태 이펙트는 한 번에 하나만: 기절 > 화상 > 엘리트 (겹쳐 감기면 몸이 안 보임)
     for (const e of w.enemies) {
       e._fxid = e._fxid || ++R.fxid;
-      const want = e.dead ? null : e.stunT > 0 ? 'stun' : e.burnT > 0 ? 'burn' : e.elite ? 'elite' : null;
+      const want = e.dead || e.spawnT > 0 ? null : e.stunT > 0 ? 'stun' : e.burnT > 0 ? 'burn' : e.elite ? 'elite' : null;
       if (want === (this.bodyFx.get(e) ?? null)) continue;
       F.stopKey('body' + e._fxid); this.bodyFx.set(e, want);
       const o = { follow: e, dy: e.h / 2, key: 'body' + e._fxid, actor: R.actorOf(e), flip: e.face > 0, light: 0.25 };

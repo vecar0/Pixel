@@ -194,8 +194,17 @@ test('낮은 턱은 걸어서 오르고, 적은 언덕 위에 서서 등장', ()
   w.waves = []; w.enemies.length = 0;
   steps(w, 20); steps(w, 90, { right: true });
   ok(w.player.x > 220, 'climbed: ' + w.player.x); ok(w.player.y + w.player.h <= 286.01 || w.player.x > 400);
-  w.waves = [[['ghoul', 260]]]; w.cleared = false; w.waveDelay = 59; tick(w, I());
+  w.player.x = 1000; w.waves = [[['ghoul', 260]]]; w.cleared = false; w.waveDelay = 59; tick(w, I());
   const e = w.enemies[0]; eq(Math.round(e.y + e.h), 284);
+});
+
+test('웨이브 적은 리라 옆에 생기지 않고, 0.8초 동안 솟아오르며 그동안 맞지도 때리지도 않는다', () => {
+  const w = createWorld({ room: 'arena', width: 1280, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: 1280, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: 1400, h: 60 }] });
+  w.enemies.length = 0; w.player.x = 600; steps(w, 10);
+  w.waves = [[['ghoul', 620]]]; w.cleared = false; w.waveDelay = 59; tick(w, I());
+  const e = w.enemies[0]; ok(Math.abs(e.x + e.w / 2 - (w.player.x + w.player.w / 2)) >= 190, 'far: ' + e.x); ok(e.spawnT > 40);
+  const hp = e.hp; e.x = w.player.x + 30; steps(w, 12, { attack: true }); eq(e.hp, hp); eq(e.st, 'idle');
+  steps(w, 50); eq(e.spawnT, 0);
 });
 
 run();

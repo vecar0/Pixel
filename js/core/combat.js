@@ -75,7 +75,7 @@ export function resolvePlayerAttacks(w) {
   const p = w.player, box = attackBox(p);
   if (!box) return;
   for (const e of w.enemies) {
-    if (e.dead || e.hitBy === p.swing || !overlap(box, e)) continue;
+    if (e.dead || e.spawnT > 0 || e.hitBy === p.swing || !overlap(box, e)) continue;
     e.hitBy = p.swing;
     const front = Math.sign((p.x + p.w / 2) - (e.x + e.w / 2)) === e.face;
     if (e.shield && front && e.st !== 'active' && e.stunT <= 0) {       // 갑각 파수꾼: 정면 방패
@@ -119,7 +119,7 @@ export function resolveUlt(w) {
     const e = w.enemies.filter(e => !e.dead).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
     if (e && Math.abs(e.x + e.w / 2 - cx) < 260) { damageEnemy(w, e, 120); addPoise(w, e, 0.5); }
   } else for (const e of w.enemies)
-    if (!e.dead && Math.abs(e.x + e.w / 2 - cx) <= CFG.ult.radius) damageEnemy(w, e, CFG.ult.dmg);
+    if (!e.dead && !(e.spawnT > 0) && Math.abs(e.x + e.w / 2 - cx) <= CFG.ult.radius) damageEnemy(w, e, CFG.ult.dmg);
   w.projectiles = w.projectiles.filter(b => b.owner !== 'enemy');
   w.shake = 12;
 }

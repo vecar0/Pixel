@@ -67,8 +67,12 @@ function updateWaves(w) {
   if (!w.waves.length) { w.cleared = true; w.events.push({ type: 'cleared' }); return; }
   if (++w.waveDelay < 60) return;
   w.waveDelay = 0;
-  for (const [kind, x, mod, emod] of w.waves.shift()) {
-    const e = spawnEnemy(w, kind, x, kind === 'moth' ? 160 : groundAt(w, x, ENEMY_DEFS[kind].w) - ENEMY_DEFS[kind].h - 2, { hpMul: w.hpMul });
+  const px = w.player.x + w.player.w / 2;
+  for (let [kind, x, mod, emod] of w.waves.shift()) {
+    // 리라 바로 옆(200px 안)에는 생기지 않게: 반대쪽으로 밀어 낸다
+    if (Math.abs(x - px) < 200) x = px + (x >= px ? 220 : -220 - ENEMY_DEFS[kind].w);
+    if (x < 40 || x > w.width - 40 - ENEMY_DEFS[kind].w) x = px < w.width / 2 ? Math.min(w.width - 60 - ENEMY_DEFS[kind].w, px + 240) : Math.max(40, px - 240 - ENEMY_DEFS[kind].w);
+    const e = spawnEnemy(w, kind, x, kind === 'moth' ? 160 : groundAt(w, x, ENEMY_DEFS[kind].w) - ENEMY_DEFS[kind].h - 2, { hpMul: w.hpMul, emerge: true });
     if (mod === 'elite') makeElite(e, emod || 'iron');
   }
 }

@@ -1,0 +1,150 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "lira",
+ "size": [
+  63,
+  75
+ ],
+ "cells": 2758,
+ "colours": 48,
+ "palette": [
+  "#0a0205",
+  "#0b0206",
+  "#0e0409",
+  "#102006",
+  "#170f28",
+  "#191230",
+  "#1b0b16",
+  "#2b1322",
+  "#2e264a",
+  "#37305d",
+  "#44202a",
+  "#4d4677",
+  "#50262e",
+  "#5c465d",
+  "#5d3a2e",
+  "#673536",
+  "#6a5f7c",
+  "#7c708c",
+  "#7f4339",
+  "#846665",
+  "#8c483b",
+  "#8f7c94",
+  "#99513e",
+  "#a291a3",
+  "#a42e2c",
+  "#a48386",
+  "#a76340",
+  "#aa6a21",
+  "#b09aa9",
+  "#b5725c",
+  "#bb3535",
+  "#bb9182",
+  "#bd504a",
+  "#c06a22",
+  "#c3a598",
+  "#d28070",
+  "#d4bebf",
+  "#d87c40",
+  "#de9432",
+  "#e0cac6",
+  "#e5bda2",
+  "#e68b7a",
+  "#ee9e88",
+  "#f5e0d2",
+  "#f8a32c",
+  "#faae33",
+  "#fbd4ba",
+  "#fdf2e3"
+ ],
+ "feet": {
+  "middle": 36.5,
+  "row": 74
+ },
+ "anchor": [
+  37.0,
+  75
+ ],
+ "key": "green",
+ "howZoom": 12,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   13.0,
+   13.667
+  ],
+  "purity": {
+   "walk": 0.9331
+  },
+  "key": [
+   4,
+   249,
+   2
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    10,
+    2,
+    5
+   ],
+   "specks": 3,
+   "bareCells": 7,
+   "lineCellsAdded": 8,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    12.48,
+    13.59
+   ],
+   "blocksTallerBy": 1.0896,
+   "sizeInBlocks": [
+    63,
+    69
+   ],
+   "rowsDoubled": [
+    0,
+    14,
+    24,
+    44,
+    54,
+    63
+   ],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "art/master/lira-takes/chibi2.png",
+  "sha256": "a4b8588a2ee4ddbd129655866e3ccca4bb2ab806ac07435439a95ba73b2cf95b"
+ },
+ "files": {
+  "sprite": "lira.png",
+  "how": "lira-how.png",
+  "review": "lira-review.png",
+  "grounds": "lira-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

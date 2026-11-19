@@ -25,7 +25,7 @@ export class Renderer {
     this.lantern = { a: 0, v: 0 };
     this.squash = 0; this.flash = 0; this.zoom = 0; this.stunFx = new Map();
     this.debug = /debug=1/.test(location.search);
-    // 리라 픽셀 그림 (Higgsfield: 리라 디자인 + 사용자 샘플 화풍 → forge pixel_look로 픽셀 격자 맞춤). 기준점: 발 중앙 (34, 85)
+    // 리라 픽셀 그림 (Higgsfield: 리라 디자인 + 사용자 샘플 화풍 → forge pixel_look로 픽셀 격자 맞춤). 기준점: 발 중앙 (31, 74)
     this.liraImg = new Image(); this.liraImg.src = 'assets/lira.png';
     this.resize();
   }
@@ -231,7 +231,7 @@ export class Renderer {
       const bob = p.state === 'run' ? Math.abs(Math.sin(w.t * 0.45)) * 2 : p.state === 'idle' ? Math.sin(w.t * 0.08) * 0.6 : 0;
       g.save(); g.translate(cx, feet - bob); g.rotate(lean * f); g.scale(sx * f, sy);
       const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50') : this.liraImg;
-      g.drawImage(img, -34, -85);
+      g.drawImage(img, -31, -74);
       g.restore();
       this.drawParryArc(g, p, cx, feet, f);
       return;

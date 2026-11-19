@@ -38,7 +38,11 @@ export function addPoise(w, e, frac) {
   if (!e.poiseMax || e.stunT > 0) return;
   e.poise = Math.min(1, e.poise + frac);
   e.poiseRegenT = PO.regenDelayF;
-  if (e.poise >= 1) { e.stunT = PO.stunF; w.events.push({ type: 'stun', x: e.x + e.w / 2, y: e.y }); }
+  if (e.poise >= 1) {
+    // 그로기: 하던 공격은 취소 → 풀린 뒤엔 반드시 새 예고부터 (예고 없는 공격 방지)
+    e.stunT = PO.stunF; e.st = 'idle'; e.stT = 0; e.atk = null; e.srcs = []; e.cd = 40;
+    w.events.push({ type: 'stun', x: e.x + e.w / 2, y: e.y });
+  }
 }
 
 export function damageEnemy(w, e, dmg, poiseFrac = 0) {

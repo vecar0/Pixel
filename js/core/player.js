@@ -11,7 +11,7 @@ export function createPlayer(x, y) {
     hp: P.hp, light: 0, flasks: CFG.flask.charges,
     state: 'idle', stateT: 0, combo: 0, comboT: 0,
     iframes: 0, buffer: null,
-    parryOk: false, recoverWait: 0, perfectParries: 0, rollDir: 1, swing: 0,
+    parryOk: false, recoverWait: 0, dropT: 0, perfectParries: 0, rollDir: 1, swing: 0,
   };
 }
 
@@ -44,6 +44,7 @@ function canAct(p, action) {
 function start(w, p, action, inp) {
   switch (action) {
     case 'jump':
+      if (inp.down && p.onGround && standingOnOneWay(w, p)) { p.dropT = 10; p.onGround = false; return true; }  // 발판 내려가기
       if (!(p.onGround || p.coyote > 0)) return false;
       p.vy = -Math.sqrt(2 * CFG.GRAV * P.jumpMaxH); p.onGround = false; p.coyote = 0; p.jumpCut = false;
       if (p.state !== 'idle' && p.state !== 'run') setState(p, 'jump');
@@ -75,6 +76,7 @@ export function updatePlayer(w, inp) {
   p.stateT++;
   if (p.iframes > 0) p.iframes--;
   if (p.recoverWait > 0) p.recoverWait--;
+  if (p.dropT > 0) p.dropT--;
   if (p.comboT > 0) p.comboT--;
 
   // 새 입력 → 버퍼 (마지막 입력 우선)
@@ -143,12 +145,17 @@ export function moveAndCollide(w, b, inp = {}) {
   for (const s of w.solids) {
     if (!overlap(b, s)) continue;
     if (s.oneWay) {
-      if (b.vy < 0 || prevBottom > s.y + 0.01 || (inp.down && inp.jumpHeld)) continue;
+      if (b.vy < 0 || prevBottom > s.y + 0.01 || b.dropT > 0) continue;
     }
     if (b.vy >= 0) { b.y = s.y - b.h; b.onGround = true; }
     else b.y = s.y + s.h;
     b.vy = 0;
   }
+}
+
+function standingOnOneWay(w, p) {
+  const feet = p.y + p.h;
+  return w.solids.some(s => s.oneWay && Math.abs(feet - s.y) < 0.5 && p.x + p.w > s.x && p.x < s.x + s.w);
 }
 
 export function overlap(a, b) {

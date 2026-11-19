@@ -70,6 +70,48 @@ await check('보스방 3초 진행 + 스크린샷', PC, async p => {
   eq(await p.evaluate(() => window.__lk.mode), 'play');
   await p.screenshot({ path: path.join(out, 'boss.png') });
 });
+await check('review: 4:3 창에서 화면이 잘리지 않음', { viewport: { width: 1024, height: 768 } }, async p => {
+  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  const r = await p.evaluate(() => { const b = document.querySelector('#game').getBoundingClientRect(); return [b.left, b.right, innerWidth]; });
+  ok(r[0] >= 0 && r[1] <= r[2], JSON.stringify(r));
+});
+const kev = (p, type, key, code) => p.evaluate(([t, k, c]) => dispatchEvent(new KeyboardEvent(t, { key: k, code: c, bubbles: true })), [type, key, code]);
+await check('review: 한글 입력 상태에서도 키 조작 (ㅏ=K)', PC, async p => {
+  await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250);
+  eq(await p.evaluate(() => window.__lk.mode), 'play'); await watch(p);
+  await kev(p, 'keydown', 'ㅏ', 'KeyK'); await kev(p, 'keyup', 'ㅏ', 'KeyK'); await p.waitForTimeout(150);
+  ok((await log(p)).some(l => l.s === 'parry'));
+});
+await check('review: 전투 중 세로로 돌리면 일시정지', PHONE, async p => {
+  await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
+  await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300);
+  eq(await p.evaluate(() => window.__lk.mode), 'pause');
+});
+await check('review: 플레이 중 누른 Enter가 사망 화면을 건너뛰지 않음', PC, async p => {
+  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(100);
+  await p.evaluate(() => { const w = window.__lk.world; w.over = true; });
+  await p.waitForTimeout(300);
+  eq(await p.evaluate(() => window.__lk.mode), 'dead');
+});
+await check('review: 스틱 영역 두 번째 손가락을 떼도 첫 손가락 이동 유지', PHONE, async p => {
+  await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
+  await p.evaluate(() => {
+    const z = document.querySelector('#stickzone'), r = z.getBoundingClientRect(), y = r.top + r.height * 0.7;
+    z.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 31, pointerType: 'touch', clientX: r.left + 100, clientY: y }));
+    z.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 31, pointerType: 'touch', clientX: r.left + 140, clientY: y }));
+    z.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 32, pointerType: 'touch', clientX: r.left + 200, clientY: y - 80 }));
+    z.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 32, pointerType: 'touch' }));
+  });
+  const x0 = await p.evaluate(() => window.__lk.world.player.x); await p.waitForTimeout(400);
+  ok(await p.evaluate(() => window.__lk.world.player.x) - x0 > 20, 'stopped');
+});
+await check('review: 포인터 캡처를 잃으면 버튼이 눌린 채로 남지 않음', PHONE, async p => {
+  await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
+  await p.evaluate(() => { const b = document.querySelector('#b-jump'); b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 41, pointerType: 'touch' })); b.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 41, pointerType: 'touch' })); });
+  await p.waitForTimeout(100);
+  eq(await p.evaluate(() => document.querySelector('#b-jump').classList.contains('down')), false);
+});
 let perf = null;
 await check('성능: 최악 장면 tick+렌더 평균', PC, async p => {
   perf = await p.evaluate(() => {

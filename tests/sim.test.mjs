@@ -284,4 +284,33 @@ test('loop: 16ms씩 나눠도 누적돼서 틱 발생', () => {
   ok(n >= 57 && n <= 58, n);
 });
 
+/* ── 최종 리뷰 수정 ── */
+test('review: 공격 도중 그로기된 보스는 처형 후 예고 없이 공격하지 않음', () => {
+  const { w, b } = bossWorld('double');
+  w.player.hp = 5; b.poise = 0.9;
+  let state = 'wait', hurtNoTele = false, sawTele = false;
+  for (let i = 0; i < 400; i++) {
+    const inp = {};
+    const h = oracleHurtWithin(w, 2);
+    if (state === 'wait' && h) inp.parry = true;
+    if (state === 'stun' && b.stunT > 0 && w.player.state === 'idle' && !w.hitstop) { b.x = w.player.x + w.player.w + 2; inp.attack = true; }
+    tick(w, I(inp)); b.forceNext = null;
+    if (state === 'wait' && b.stunT > 0) state = 'stun';
+    if (state === 'stun' && w.events.some(e => e.type === 'execute')) state = 'after';
+    if (state === 'after') {
+      if (w.events.some(e => e.type === 'telegraph')) sawTele = true;
+      if (w.events.some(e => e.type === 'hurt') && !sawTele) hurtNoTele = true;
+    }
+  }
+  eq(state, 'after'); ok(!hurtNoTele, 'hit without telegraph');
+});
+test('review: 일방향 발판에서 아래+점프 → 올라가지 않고 내려감', () => {
+  const w = W({ solids: [{ x: 0, y: 200, w: 300, h: 8, oneWay: true }, { x: -1000, y: 300, w: 4000, h: 40 }], spawn: { x: 100, y: 150 } });
+  settle(w); eq(w.player.y + w.player.h, 200);
+  const y0 = w.player.y; let minY = y0;
+  tick(w, I({ down: true, jump: true, jumpHeld: true }));
+  for (let i = 0; i < 40; i++) { tick(w, I({ down: true, jumpHeld: true })); minY = Math.min(minY, w.player.y); }
+  ok(minY >= y0 - 1, 'rose ' + (y0 - minY)); eq(w.player.y + w.player.h, 300);
+});
+
 run();

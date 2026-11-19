@@ -19,7 +19,7 @@ let mode = 'title', world = createWorld({ room: 'arena' }), acc = 0, last = perf
 // 테스트·디버그용 훅
 const lk = window.__lk = { get world() { return world; }, get mode() { return mode; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y) };
 
-function screen(html) { ui.innerHTML = html ? `<div class="screen">${html}</div>` : ''; }
+function screen(html) { input.clear(); ui.innerHTML = html ? `<div class="screen">${html}</div>` : ''; }
 function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); fn(); }); }
 
 function setRoom(room) { world = createWorld({ room }); acc = 0; mode = 'play'; screen(''); showTouch(); }
@@ -90,6 +90,9 @@ function frame(now) {
 
 $('#b-pause').addEventListener('pointerup', () => mode === 'play' && overlay('pause'));
 addEventListener('resize', () => R.resize());
+// 전투 중 세로로 돌리면 일시정지 (안내 화면 뒤에서 싸움이 계속되지 않게)
+const portrait = matchMedia('(orientation: portrait) and (pointer: coarse)');
+portrait.addEventListener('change', () => { if (portrait.matches && mode === 'play') overlay('pause'); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && mode === 'play') overlay('pause'); });
 touch.addEventListener('contextmenu', e => e.preventDefault());
 

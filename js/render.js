@@ -21,7 +21,7 @@ export class Renderer {
 
   resize() {
     const H = CFG.VIEW_H, ih = innerHeight, iw = innerWidth;
-    let s = ih / H; if (s >= 2) s = Math.floor(s);
+    let s = Math.min(ih / H, iw / CFG.VIEW_W); if (s >= 2) s = Math.floor(s);   // 좁은 창(4:3 등)에서도 잘리지 않게
     this.vw = Math.min(CFG.VIEW_W_MAX, Math.max(CFG.VIEW_W, Math.floor(iw / s)));
     this.cv.width = this.vw; this.cv.height = H;
     this.dark.width = this.vw; this.dark.height = H;

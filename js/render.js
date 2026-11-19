@@ -57,7 +57,7 @@ export class Renderer {
   // 이번 틱 이벤트 → 이펙트
   spawnFx(w) {
     const p = w.player, feet = p.y + p.h;
-    if (p.state === 'attack' && p.stateT === CFG.attack.startupF - 1) {
+    if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {
       const c = p.combo;
       this.fx.spawn('slash', p.x + p.w / 2 - p.face * 4, feet, { flip: p.face < 0, radius: [34, 36, 44][c], angle: [0, -0.35, 0.2][c] * p.face });
     }
@@ -246,7 +246,7 @@ export class Renderer {
       else if (p.state === 'hurt') lean = -0.18;
       else if (p.state === 'run') lean = 0.06;
       const bob = p.state === 'run' ? Math.abs(Math.sin(w.t * 0.45)) * 2 : p.state === 'idle' ? Math.sin(w.t * 0.08) * 0.6 : 0;
-      g.save(); g.translate(cx, feet - bob); g.rotate(lean * f); g.scale(sx * f, sy);
+      g.save(); g.translate(cx + push * f, feet - bob); g.rotate(lean * f); g.scale(1, 1 - crouch); g.rotate(lean * f); g.scale(sx * f, sy);
       const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50') : this.liraImg;
       g.drawImage(img, -43, -85);
       g.restore();
@@ -358,7 +358,23 @@ export class Renderer {
     else if (e.st === 'telegraph' && a && ((w.t >> (telegraphOf(e, a) - e.stT < 10 ? 1 : 2)) & 1)) img = this.tinted(a.parryable ? '#ffffff' : '#ff4f5e', img);
     else if (e.staggerT > 0 && (w.t >> 2) & 1) img = this.tinted('#9aa0ad', img);
     const cx = Math.round(e.x + e.w / 2), base = e.kind === 'moth' ? Math.round(e.y + e.h / 2) : Math.round(e.y + e.h);
-    g.save(); g.translate(cx, base); g.scale((e.face > 0 ? -1 : 1) * (1 + k * 0.15), 1 - k * 0.1);
+    const big = e.boss ? 0.5 : 1;                          // 큰 몸은 덜 흔들리고 묵직하게
+    let ox = 0, oy = 0, rot = 0, sy = 1;
+    if (e.kind === 'moth') oy = Math.sin(w.t * 0.25 + e.x * 0.05) * 2;
+    else if (e.st === 'idle' && Math.abs(e.vx) > 0.1) {                    // 걷기: 발걸음마다 들썩 + 좌우로 기우뚱
+      const ph = e.x * (e.boss ? 0.07 : 0.16);
+      oy = -Math.abs(Math.sin(ph)) * (e.boss ? 3 : 2.5); rot = Math.sin(ph) * 0.05 * big;
+      if (e.boss && Math.abs(Math.sin(ph)) < 0.12 && !e.stepShook) { e.stepShook = true; } else if (Math.abs(Math.sin(ph)) > 0.5) e.stepShook = false;
+    } else if (e.st === 'idle') sy = 1 + Math.sin(w.t * 0.07 + e.x) * 0.012;   // 숨쉬기
+    else if (e.st === 'telegraph' && a) {                                  // 예고: 뒤로 움츠림 → 막판엔 떨림
+      const kk = Math.min(1, e.stT / telegraphOf(e, a));
+      rot = -e.face * 0.09 * kk * big; ox = -e.face * 4 * kk * big; sy = 1 - 0.04 * kk;
+      if (kk > 0.65) ox += (w.t & 2 ? 1 : -1);
+    } else if (e.st === 'active') { ox = e.face * 7 * big; rot = e.face * 0.07 * big; }   // 공격: 앞으로 내딛기
+    else if (e.st === 'recover' && a) {                                     // 후딜: 천천히 복귀
+      const kk = 1 - Math.min(1, e.stT / a.recoverF); ox = e.face * 7 * big * kk * kk; rot = e.face * 0.07 * big * kk * kk;
+    }
+    g.save(); g.translate(cx + Math.round(ox), base + Math.round(oy)); g.rotate(rot); g.scale((e.face > 0 ? -1 : 1) * (1 + k * 0.15), (1 - k * 0.1) * sy);
     g.drawImage(img, -f.ax, -f.ay);
     g.restore();
   }
@@ -372,9 +388,11 @@ export class Renderer {
       case 'run': n = ['run1', 'run3', 'run2', 'run4'][((w.t / 6) | 0) & 3]; break;   // 4프레임 달리기
       case 'jump': n = p.vy < 1 ? 'jump' : 'fall'; break;
       case 'attack': {
-        // 1타·3타: 치켜듦 → 휘두르는 중 → 앞으로 / 2타: 반대 순서(올려베기)
-        const seq = p.combo === 1 ? ['atk2', 'atkmid', 'atk1'] : ['atk1', 'atkmid', 'atk2'];
-        n = seq[t < A.startupF - 1 ? 0 : t < A.startupF + 1 ? 1 : 2]; break;
+        // 1타·3타: 치켜듦(준비) → 앞으로 벰(판정·후딜) → 칼을 거둠
+        // 2타(올려베기): 칼을 낮게 끌어(대기 자세, 몸을 숙임) → 치켜 올림 → 거둠
+        const wind = p.combo === 1 ? 'idle' : 'atk1', hit = p.combo === 1 ? 'atk1' : 'atk2';
+        const end = A.startupF + A.activeF + A.recoveryF;
+        n = t < A.startupF ? wind : t < end - 4 ? hit : 'atkmid'; break;
       }
       case 'parry': n = t < 2 ? 'parrymid' : t < CFG.parry.normalF + 4 ? 'parry' : 'parrymid'; break;
       case 'roll': case 'ghost': n = 'roll'; break;
@@ -387,6 +405,14 @@ export class Renderer {
     const sq = this.squash, st = !p.onGround && p.vy < -1 ? 0.06 : 0;
     const sy = 1 - sq * 0.2 + st, sx = 1 + sq * 0.16 - st * 0.5;
     const bob = p.state === 'idle' ? Math.round(Math.sin(w.t * 0.08) * 0.8) : 0;
+    let lean = 0, push = 0, crouch = 0;
+    if (p.state === 'attack') {
+      const A = CFG.attack, t = p.stateT, s0 = A.startupF, s1 = s0 + A.activeF, end = s1 + A.recoveryF;
+      if (t < s0) { const k = t / s0; lean = -0.07 * k; crouch = 0.05 * k; }               // 준비: 뒤로 무게
+      else if (t < s1) { lean = 0.1; push = 5; }                                            // 벰: 앞으로
+      else { const k = 1 - (t - s1) / (end - s1); lean = 0.1 * k * k; push = 5 * k * k; }   // 복귀: 감속
+      if (p.combo === 2 && t >= s0 && t < s1) { lean = 0.14; push = 8; }                    // 3타는 더 크게
+    }
     g.save(); g.translate(cx, feet - bob);
     const src = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50', img) : img;
     if (p.state === 'roll' || p.state === 'ghost') {            // 공처럼 굴러감: 공 중심(그림 66,69)을 축으로, 바닥에 닿게

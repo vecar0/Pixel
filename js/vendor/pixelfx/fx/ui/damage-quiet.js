@@ -54,7 +54,7 @@ export function create(o) {
         const W = word.w * sx, H = 7 * sy, x0 = n.x - W / 2, y0 = n.y - H - 6 * ease.inQuad(out);
         const flash = 0;
         const items = word.letters.filter((L) => L.g).map((L) => ({ g: L.g, x: x0 + L.x * sx, y: y0, sx, sy, flash, a: 1 - out }));
-        drawWord(p, items, { fill: [C[3], C[3], C[4], C[5]], edge: C[6], under: C[2], outline: C[0], shadow: scale(C[0], 0.5) });
+        drawWord(p, items, { fill: [C[5], C[5], C[5], C[5]], edge: C[5], under: C[5], outline: C[0], shadow: scale(C[0], 0.5) });   // 단색 (그라데이션·베벨 없음)
       }
       lights.draw(p);
     },

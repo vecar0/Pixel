@@ -48,6 +48,13 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
   return w;
 }
 
+// x~x+bw 위치의 바닥 높이 (언덕 위면 언덕 윗면)
+export function groundAt(w, x, bw = 1) {
+  let y = 300;
+  for (const s of w.solids) if (!s.oneWay && s.h > 8 && s.y >= 180 && x + bw > s.x && x < s.x + s.w) y = Math.min(y, s.y);
+  return y;
+}
+
 function updateCamera(w) {
   const p = w.player, vw = CFG.VIEW_W;
   w.camX = Math.max(0, Math.min(w.width - vw, p.x + p.w / 2 - vw * 0.4));
@@ -61,7 +68,7 @@ function updateWaves(w) {
   if (++w.waveDelay < 60) return;
   w.waveDelay = 0;
   for (const [kind, x, mod, emod] of w.waves.shift()) {
-    const e = spawnEnemy(w, kind, x, kind === 'moth' ? 160 : 300 - ENEMY_DEFS[kind].h - 2, { hpMul: w.hpMul });
+    const e = spawnEnemy(w, kind, x, kind === 'moth' ? 160 : groundAt(w, x, ENEMY_DEFS[kind].w) - ENEMY_DEFS[kind].h - 2, { hpMul: w.hpMul });
     if (mod === 'elite') makeElite(e, emod || 'iron');
   }
 }

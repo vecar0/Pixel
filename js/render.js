@@ -300,15 +300,25 @@ export class Renderer {
       }
       if (dark) { g.fillStyle = `rgba(8,6,14,${dark})`; g.fillRect(0, 0, vw, H); }
     };
+    const cam0 = camX; camX += w.bgOff || 0;                       // 방마다 배경 시작 위치가 달라 풍경이 바뀐다
     tile(B.far, 0.2, 0, 0.45);
     tile(B.mid, 0.55, 300 - B.mid.naturalHeight + 6, 0.25);
+    camX = cam0;
     // 땅과 발판
     const G = B.ground, gw = G.naturalWidth, top = 14;   // 그림 14행 = 걷는 면
     g.save(); g.translate(Math.round(-camX) + sx, sy);
     for (const s of w.solids) {
       if (s.oneWay) continue;                       // 발판은 drawPlatforms에서 어둠 위에
       else if (s.h >= 40 && s.w > 100) {
-        for (let x = s.x - ((s.x % gw) + gw) % gw; x < s.x + s.w; x += gw) g.drawImage(G, x, s.y - top);
+        if (s.y < 300) {                             // 언덕: 타일을 언덕 폭으로 잘라 그리고 옆면에 그림자·윗면에 빛
+          for (let x = s.x; x < s.x + s.w; x += gw) { const ww = Math.min(gw, s.x + s.w - x); g.drawImage(G, 0, 0, ww, G.naturalHeight, x, s.y - top, ww, G.naturalHeight); }
+          const fg = g.createLinearGradient(0, s.y + 6, 0, 300);                 // 앞면: 아래로 갈수록 어둡게 (높이가 느껴지게)
+          fg.addColorStop(0, 'rgba(8,6,14,0.15)'); fg.addColorStop(1, 'rgba(8,6,14,0.6)');
+          g.fillStyle = fg; g.fillRect(s.x, s.y + 6, s.w, 300 - s.y - 6);
+          g.fillStyle = 'rgba(8,6,14,0.7)'; g.fillRect(s.x, s.y + 2, 4, 300 - s.y); g.fillRect(s.x + s.w - 4, s.y + 2, 4, 300 - s.y);
+          g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(s.x - 8, 296, 8, 4); g.fillRect(s.x + s.w, 296, 8, 4);
+          g.fillStyle = '#e8dcc0'; g.globalAlpha = 0.6; g.fillRect(s.x + 1, s.y, s.w - 2, 1); g.globalAlpha = 1;   // 윗면 테두리 = 밟는 면
+        } else for (let x = s.x - ((s.x % gw) + gw) % gw; x < s.x + s.w; x += gw) g.drawImage(G, x, s.y - top);
       }
     }
     g.restore();

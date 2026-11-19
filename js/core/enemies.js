@@ -3,7 +3,7 @@
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
 import { CFG } from './config.js';
-import { moveAndCollide } from './player.js';
+import { moveAndCollide, overlap } from './player.js';
 import { BOSSES, bossPick, bossWant } from './boss.js';
 
 export const ENEMY_DEFS = {
@@ -198,7 +198,15 @@ function spawnRain(w, e, a) {
 
 function physics(w, e) {
   e.vy = Math.min(CFG.MAX_FALL, e.vy + CFG.GRAV);
+  const want = e.vx, ground = e.onGround;
   moveAndCollide(w, e);
+  // 걷다가 언덕 벽에 막히면 뛰어오른다 (언덕 높이만큼)
+  if (ground && want && !e.vx && !e.boss && e.st === 'idle') {
+    const wall = w.solids.find(s => !s.oneWay && s.y < e.y + e.h && s.y > e.y + e.h - 90 && (want > 0 ? Math.abs(s.x - (e.x + e.w)) < 2 : Math.abs(s.x + s.w - e.x) < 2));
+    if (wall) { e.vy = -Math.sqrt(2 * CFG.GRAV * (e.y + e.h - wall.y + 10)); e.onGround = false; e.hopVx = want; }
+  }
+  if (!e.onGround && e.hopVx) { e.x += e.hopVx; if (w.solids.some(s => !s.oneWay && overlap(e, s))) e.x -= e.hopVx; }   // 공중에서도 앞으로
+  if (e.onGround) e.hopVx = 0;
 }
 
 function walkToward(w, e, dx) {

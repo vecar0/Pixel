@@ -140,11 +140,15 @@ export function updatePlayer(w, inp) {
     p.state = !p.onGround ? 'jump' : Math.abs(p.vx) > 0.1 ? 'run' : 'idle';
 }
 
+const STEP = 16;   // 걸어서 넘는 턱 높이
 // 축 분리 AABB 충돌. oneWay 발판은 위에서 떨어질 때만, 아래+점프로 통과
 export function moveAndCollide(w, b, inp = {}) {
   b.x += b.vx;
   for (const s of w.solids) {
     if (s.oneWay || !overlap(b, s)) continue;
+    // 낮은 턱(STEP 이하)은 걸어서 올라간다: 땅에 서 있었고, 올라선 자리가 비어 있으면
+    const rise = b.y + b.h - s.y;
+    if (b.onGround && rise > 0 && rise <= STEP && !w.solids.some(o => o !== s && !o.oneWay && overlap({ x: b.x, y: s.y - b.h, w: b.w, h: b.h }, o))) { b.y = s.y - b.h; continue; }
     if (b.vx > 0) b.x = s.x - b.w; else if (b.vx < 0) b.x = s.x + s.w;
     b.vx = 0;
   }

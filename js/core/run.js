@@ -128,11 +128,40 @@ export function applyRelics(p, relics) {
 }
 
 // 방 배치 3종 (발판 위치만 다름)
-const LAYOUTS = [
-  [{ x: 340, y: 210, w: 150, h: 8 }, { x: 820, y: 210, w: 150, h: 8 }],
-  [{ x: 520, y: 200, w: 220, h: 8 }],
-  [{ x: 260, y: 220, w: 120, h: 8 }, { x: 600, y: 170, w: 120, h: 8 }, { x: 940, y: 220, w: 120, h: 8 }],
-];
+// 전투방 지형 생성 (시드 고정): 방 길이 · 언덕(1~2단, 한 단 36px = 점프로 오름, 적은 뛰어오름) · 발판(낮은 층/높은 층)
+// 규칙: 시작 지점(0~260)은 평지, 높은 발판은 아래에 디딤(언덕·낮은 발판)이 있을 때만 → 항상 올라갈 수 있다
+export function genArena(r) {
+  const R = () => rand(r), W = [1120, 1280, 1440, 1600][(R() * 4) | 0];
+  const solids = [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }];
+  const hills = [];
+  let x = 300 + ((R() * 120) | 0);
+  while (x < W - 260 && hills.length < 3) {
+    if (R() < 0.55) {
+      const hw = 160 + ((R() * 200) | 0), tier2 = hw > 260 && R() < 0.5;
+      hills.push({ x, w: hw, top: tier2 ? 228 : 264 });
+      solids.push({ x, y: 264, w: hw, h: 96 });
+      if (tier2) solids.push({ x: x + 60, y: 228, w: hw - 120, h: 132 });
+      x += hw + 140 + ((R() * 160) | 0);
+    } else x += 180 + ((R() * 160) | 0);
+  }
+  const plats = [], baseAt = (x, w) => Math.max(...solids.filter(o => o.y < 300 && o.y > 180 && x + 10 > o.x && x + w - 10 < o.x + o.w).map(o => o.y), 0) || 300;   // 발판 전체 아래가 같은 높이일 때만 그 높이
+  let px = 220 + ((R() * 120) | 0);
+  while (px < W - 200) {
+    const pw = 100 + ((R() * 90) | 0), prev = plats[plats.length - 1];
+    const base = baseAt(px, pw), under = base < 300;
+    let y = base - 78 - ((R() * 14) | 0);                                   // 낮은 층: 바닥에서 바로 점프
+    if (under) y = base - 80 - ((R() * 8) | 0);                            // 언덕 위: 언덕에서 점프해 닿는 높이 (더 높은 층)
+    else if (prev && prev.y > 200 && R() < 0.45) {                          // 낮은 발판 바로 옆에 붙여 높은 층 (계단)
+      px = prev.x + prev.w + 30 + ((R() * 40) | 0);
+      y = prev.y - 50 - ((R() * 12) | 0);
+    }
+    plats.push({ x: px, y, w: pw, h: 8 });
+    px += pw + 90 + ((R() * 200) | 0);
+  }
+  solids.push(...plats.map(s => ({ ...s, oneWay: true })));
+  return { width: W, solids, bgOff: (R() * 3000) | 0 };
+}
+
 
 export function buildRoomWorld(r) {
   const type = r.room, g = regionOf(r);
@@ -140,14 +169,11 @@ export function buildRoomWorld(r) {
   let w;
   if (type === 'boss') w = createWorld({ room: 'boss', boss: g.boss, variant: r.variants[r.region - 1], hpMul });
   else {
-    const L = LAYOUTS[(rand(r) * LAYOUTS.length) | 0];
-    const solids = [
-      { x: -40, y: 0, w: 40, h: 360 }, { x: 1280, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: 1360, h: 60 },
-      ...L.map(s => ({ ...s, oneWay: true })),
-    ];
-    w = createWorld({ room: 'arena', solids, hpMul });
+    const A = genArena(r);
+    w = createWorld({ room: 'arena', solids: A.solids, width: A.width, hpMul });
+    w.bgOff = A.bgOff;
     const lvl = r.roomIdx;                         // 뒤로 갈수록 적이 늘어난다
-    const xs = () => 480 + ((rand(r) * 700) | 0);
+    const xs = () => 480 + ((rand(r) * (w.width - 600)) | 0);
     const kinds = g.enemies, mods = Object.keys(ELITE_MODS);
     const pick = () => kinds[(rand(r) * kinds.length) | 0];
     const wave = n => Array.from({ length: n }, () => [pick(), xs()]);
@@ -155,7 +181,7 @@ export function buildRoomWorld(r) {
     if (lvl > 3 || r.dark >= 4) w.waves.push(wave(3));
     const mod = () => mods[(rand(r) * mods.length) | 0];
     if (r.dark >= 3 && rand(r) < 0.3) w.waves[1][0] = [w.waves[1][0][0], w.waves[1][0][1], 'elite', mod()];
-    if (type === 'elite') w.waves = [[[kinds[0], 760, 'elite', mod()], [pick(), 980]], [[pick(), 700], [kinds[0], 900, 'elite', mod()]]];
+    if (type === 'elite') { const m = w.width / 2; w.waves = [[[kinds[0], m, 'elite', mod()], [pick(), m + 220]], [[pick(), m - 80], [kinds[0], m + 140, 'elite', mod()]]]; }
   }
   const p = w.player;
   applyRelics(p, r.relics);

@@ -1,7 +1,7 @@
 // 런 구조 테스트: node tests/run.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
-import { REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
+import { genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
 import { tick, EMPTY_INPUT } from '../js/core/world.js';
 import { spawnEnemy, ENEMY_DEFS } from '../js/core/enemies.js';
 import { createWorld } from '../js/core/world.js';
@@ -165,6 +165,37 @@ test('영구 진행: 조각으로 해금, 해금 각인이 풀에 들어감, 클
 test('오늘의 시련: 같은 날은 같은 시드', () => {
   const a = dailySeed(new Date(2026, 10, 19)), b = dailySeed(new Date(2026, 10, 19, 23)), c = dailySeed(new Date(2026, 10, 20));
   eq(a.seed, b.seed); ok(a.seed !== c.seed);
+});
+
+test('지형 생성: 방마다 다양, 시작 지점 평지, 높은 발판은 디딤이 있어 도달 가능', () => {
+  const widths = new Set(), shapes = new Set();
+  for (let seed = 1; seed <= 60; seed++) {
+    const r = newRun(seed), A = genArena(r);
+    widths.add(A.width); shapes.add(A.solids.map(s => s.x + ':' + s.y).join());
+    const hills = A.solids.filter(s => !s.oneWay && s.y < 300 && s.h < 200), plats = A.solids.filter(s => s.oneWay);
+    ok(hills.every(h => h.x >= 260), 'start flat');
+    for (const h of hills) ok(h.y === 264 || (h.y === 228 && hills.some(o => o.y === 264 && o.x < h.x && o.x + o.w > h.x + h.w)), 'tier 36');
+    for (const p of plats) {
+      const under = Math.min(300, ...hills.filter(h => p.x + p.w > h.x && p.x < h.x + h.w).map(h => h.y));
+      const step = plats.some(o => o !== p && o.y > p.y && Math.abs(o.y - p.y) <= CFG.player.jumpMaxH - 10 && (Math.max(o.x, p.x) - Math.min(o.x + o.w, p.x + p.w)) < 80);
+      ok(under - p.y <= CFG.player.jumpMaxH - 4 || step, 'reachable ' + JSON.stringify(p));
+    }
+  }
+  ok(widths.size >= 3); ok(shapes.size >= 50);
+});
+test('적은 언덕 벽에 막히면 뛰어올라 넘어간다', () => {
+  const w = createWorld({ room: 'arena', width: 1280, solids: [{ x: -40, y: 300, w: 1400, h: 60 }, { x: 400, y: 264, w: 200, h: 96 }] });
+  w.waves = []; w.cleared = true; w.enemies.length = 0; w.player.x = 680; w.player.y = 238;
+  const e = spawnEnemy(w, 'ghoul', 200, 300 - ENEMY_DEFS.ghoul.h - 2); e.cd = 99999;
+  steps(w, 400); ok(e.x > 600, 'ghoul passed hill: ' + e.x);
+});
+test('낮은 턱은 걸어서 오르고, 적은 언덕 위에 서서 등장', () => {
+  const w = createWorld({ room: 'arena', width: 1280, solids: [{ x: -40, y: 300, w: 1400, h: 60 }, { x: 200, y: 286, w: 200, h: 74 }] });
+  w.waves = []; w.enemies.length = 0;
+  steps(w, 20); steps(w, 90, { right: true });
+  ok(w.player.x > 220, 'climbed: ' + w.player.x); ok(w.player.y + w.player.h <= 286.01 || w.player.x > 400);
+  w.waves = [[['ghoul', 260]]]; w.cleared = false; w.waveDelay = 59; tick(w, I());
+  const e = w.enemies[0]; eq(Math.round(e.y + e.h), 284);
 });
 
 run();

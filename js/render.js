@@ -4,6 +4,7 @@ import { attackBox } from './core/player.js';
 import { ENEMY_DEFS, telegraphOf } from './core/enemies.js';
 import { FxLayer, ScreenFx, actorFromImage } from './fx.js';
 import { FxDirector } from './fxmap.js';
+import { iconCanvas } from './icons.js';
 const AMBER7 = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], SPARK4 = ['#fff6c8', '#ffd86b', '#ff9a2a', '#e8561d'];
 
 const C = {
@@ -211,7 +212,7 @@ export class Renderer {
     // 화면 번쩍: 완벽 패링은 흰색, 피격은 붉은색
     if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.45})`; g.fillRect(0, 0, vw, H); }
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
-    this.drawHud(g, w);
+    if (this.hud !== false) this.drawHud(g, w);
     this.trans.draw(g, vw, H);                                              // 장면 전환 · 임팩트 프레임 (맨 위)
   }
 
@@ -547,21 +548,61 @@ export class Renderer {
     if (!e.boss && e.hp < e.maxHp) { g.fillStyle = '#000'; g.fillRect(Math.round(e.x), Math.round(e.y) - 5, e.w, 2); g.fillStyle = C.red; g.fillRect(Math.round(e.x), Math.round(e.y) - 5, Math.round(e.w * e.hp / e.maxHp), 2); }
   }
 
+  // HUD: 왼쪽 위 체력·빛·기름병, 가운데 위 방 진행·불씨, 아래 보스 체력
   drawHud(g, w) {
-    const p = w.player;
-    for (let i = 0; i < CFG.player.hp; i++) { g.fillStyle = i < p.hp ? C.red : '#3a2a34'; g.fillRect(10 + i * 13, 10, 10, 10); }
-    g.fillStyle = '#2a2230'; g.fillRect(10, 25, 80, 6);
-    g.fillStyle = p.light >= CFG.light.max && (w.t >> 3) % 2 ? C.amberHi : C.amber; g.fillRect(10, 25, Math.round(80 * p.light / CFG.light.max), 6);
-    for (let i = 0; i < CFG.flask.charges; i++) { g.fillStyle = i < p.flasks ? '#7fe08a' : '#2a3a2c'; g.fillRect(96 + i * 8, 25, 5, 6); }
-    g.fillStyle = C.amberHi; g.font = '10px Galmuri9, monospace'; g.textBaseline = 'top';
-    g.fillText('완벽 패링 ' + p.perfectParries, 10, 36);
-    if (this.runInfo) { const r = this.runInfo; g.textAlign = 'right'; g.fillText(`방 ${r.roomIdx + 1}/${r.length}  불씨 ${r.embers}  각인 ${r.relics.length}`, this.vw - 110, 12); g.textAlign = 'left'; }
-    const boss = w.enemies.find(e => e.boss);
-    if (boss) {
-      const bw = Math.min(360, this.vw - 80), bx = Math.round((this.vw - bw) / 2), by = CFG.VIEW_H - 26;
-      g.fillStyle = C.white; g.fillText(ENEMY_DEFS[boss.kind].name, bx, by - 12);
-      g.fillStyle = '#2a2230'; g.fillRect(bx, by, bw, 6); g.fillStyle = C.red; g.fillRect(bx, by, Math.round(bw * boss.hp / boss.maxHp), 6);
-      g.fillStyle = '#2a2230'; g.fillRect(bx, by + 8, bw, 3); g.fillStyle = boss.stunT > 0 ? C.white : C.yellow; g.fillRect(bx, by + 8, Math.round(bw * (boss.stunT > 0 ? 1 : boss.poise)), 3);
+    const p = w.player, I = iconCanvas;
+    g.save(); g.textBaseline = 'top'; g.font = '10px Galmuri9, monospace';
+    const hs = this.vw < 760 ? 1.5 : 1.25;                     // 폰에서 읽히도록 HUD만 크게 (보스 바 제외)
+    g.save(); g.scale(hs, hs); this.vw /= hs;
+    const plate = (x, y, ww, hh) => { g.fillStyle = 'rgba(13,10,17,.55)'; g.fillRect(x, y, ww, hh); };
+    plate(4, 4, Math.max(p.maxHp * 13, 112) + 8, 40);
+    for (let i = 0; i < p.maxHp; i++) {                      // 체력: 픽셀 하트
+      g.globalAlpha = i < p.hp ? 1 : 0.28;
+      g.drawImage(I('heart', i < p.hp ? 'red' : 'bone'), 8 + i * 13, 8);
     }
+    g.globalAlpha = 1;
+    // 빛 게이지: 랜턴 + 4칸 눈금. 가득 차면 깜빡임
+    const full = p.light >= CFG.light.max, k = Math.min(1, p.light / CFG.light.max), gx = 22, gy = 25, gw = 64;
+    g.drawImage(I('parry', 'amber'), 7, 21);
+    g.fillStyle = '#120e16'; g.fillRect(gx - 1, gy - 1, gw + 2, 7); g.fillStyle = '#2e2537'; g.fillRect(gx, gy, gw, 5);
+    g.fillStyle = full ? ((w.t >> 3) & 1 ? '#fff0c8' : '#ffb347') : '#d0661e'; g.fillRect(gx, gy, Math.round(gw * k), 5);
+    if (!full) { g.fillStyle = '#ffb347'; g.fillRect(gx, gy, Math.round(gw * k), 2); }
+    g.fillStyle = '#120e16'; for (let i = 1; i < 4; i++) g.fillRect(gx + i * gw / 4, gy, 1, 5);
+    if (full) { g.fillStyle = '#ffe2a8'; g.fillText('필살', gx + gw + 4, gy - 3); }
+    else for (let i = 0; i < Math.max(p.maxFlasks, p.flasks); i++) { g.globalAlpha = i < p.flasks ? 1 : 0.25; g.drawImage(I('flask', 'heal'), gx + gw + 3 + i * 9, gy - 4, 9, 9); }
+    g.globalAlpha = 1;
+    // 완벽 패링 수: 늘어나는 순간 잠깐 밝게
+    if (p.perfectParries !== this.ppSeen) { this.ppSeen = p.perfectParries; this.ppT = 30; }
+    if (this.ppT > 0) this.ppT--;
+    g.fillStyle = this.ppT > 0 ? '#fff0c8' : '#b89a6a'; g.fillText('완벽 패링 ' + p.perfectParries + (p.chainN ? '  연쇄 ×' + p.chainN : ''), 8, 33);
+    // 방 진행 (마름모) + 불씨
+    if (this.runInfo) {
+      const r = this.runInfo, n = r.length, cx = Math.round(this.vw / 2), x0 = cx - n * 6;
+      plate(x0 - 8, 4, n * 12 + 64, 16);
+      for (let i = 0; i < n; i++) {
+        const x = x0 + i * 12, y = 12, s2 = i === n - 1 ? 4 : 3;
+        g.fillStyle = i < r.roomIdx ? '#8a5a26' : i === r.roomIdx ? '#ffb347' : i === n - 1 ? '#4a1a14' : '#2e2537';
+        g.beginPath(); g.moveTo(x, y - s2); g.lineTo(x + s2, y); g.lineTo(x, y + s2); g.lineTo(x - s2, y); g.fill();
+        if (i === n - 1 || i > r.roomIdx) { g.strokeStyle = i === n - 1 ? '#ff6a3d' : '#4a3e57'; g.lineWidth = 1; g.stroke(); }
+      }
+      g.drawImage(I('ember', 'amber'), x0 + n * 12 + 2, 6);
+      g.fillStyle = '#ffe2a8'; g.fillText(String(r.embers), x0 + n * 12 + 16, 7);
+    }
+    this.vw *= hs; g.restore();
+    const boss = w.enemies.find(e => e.boss);
+    if (boss) {                                               // 보스: 이름판 + 체력 + 자세
+      const bw = Math.min(320, this.vw - 260), bx = Math.round((this.vw - bw) / 2), by = Math.round(44 * hs + 20), name = ENEMY_DEFS[boss.kind].name;   // 위쪽: 아래는 엄지 버튼 자리
+      plate(bx - 4, by - 15, bw + 8, 30);
+      g.drawImage(I('boss', 'ember'), bx, by - 14); g.fillStyle = '#ece3d3'; g.fillText(name, bx + 15, by - 12);
+      g.fillStyle = '#120e16'; g.fillRect(bx - 1, by - 1, bw + 2, 8);
+      g.fillStyle = '#3a1820'; g.fillRect(bx, by, bw, 6);
+      const hk = boss.hp / boss.maxHp; this.bossShadow = Math.max(hk, (this.bossShadow ?? 1) - 0.004);
+      g.fillStyle = '#ffd0d6'; g.fillRect(bx, by, Math.round(bw * this.bossShadow), 6);     // 깎인 체력 잔상
+      g.fillStyle = '#d33a4a'; g.fillRect(bx, by, Math.round(bw * hk), 6); g.fillStyle = '#ff6a78'; g.fillRect(bx, by, Math.round(bw * hk), 2);
+      g.fillStyle = '#2e2537'; g.fillRect(bx, by + 8, bw, 3);
+      g.fillStyle = boss.stunT > 0 ? ((w.t >> 2) & 1 ? '#fff' : '#ffe2a8') : '#e8c060'; g.fillRect(bx, by + 8, Math.round(bw * (boss.stunT > 0 ? 1 : boss.poise)), 3);
+      if (boss.stunT > 0) { g.fillStyle = '#ffe2a8'; g.textAlign = 'right'; g.fillText('처형 가능', bx + bw, by - 12); g.textAlign = 'left'; }
+    } else this.bossShadow = 1;
+    g.restore();
   }
 }

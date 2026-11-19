@@ -65,6 +65,7 @@ export function spawnEnemy(w, kind, x, y, opt = {}) {
     speed: d.speed, range: d.range, cdMul: 1, mods: [], forceNext: null, variant: opt.variant || null, dashDx: 0, dashDy: 0,
   };
   w.enemies.push(e);
+  if (w.events) w.events.push({ type: 'spawn', kind, x: x + d.w / 2, y: y + d.h, boss: !!d.boss });
   return e;
 }
 
@@ -121,6 +122,7 @@ export function updateEnemy(w, e) {
     if (e.stT >= telegraphOf(e, d.attacks[e.atk])) {
       setSt(e, 'active'); e.srcs = [];
       const a = d.attacks[e.atk];
+      w.events.push({ type: 'enemyStrike', kind: e.kind, atk: e.atk, x: e.face > 0 ? e.x + e.w : e.x, y: e.y + e.h, face: e.face, reach: a.reach || 0 });
       if (a.dashSpeed) { const l = Math.hypot(dx, (p.y + 28) - e.y) || 1; e.dashDx = dx / l; e.dashDy = ((p.y + 28) - e.y) / l; }
       if (a.charge) e.face = Math.sign(dx) || e.face;
       if (a.wave) spawnWaves(w, e, a);

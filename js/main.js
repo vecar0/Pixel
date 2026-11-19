@@ -33,8 +33,9 @@ function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEvent
 
 function play() {
   world = buildRoomWorld(run); R.runInfo = run; R.region = run.region;
+  R.reset(); R.dir.preloadRegion(run.region); R.dir.enterRoom(world, run.region, run.room === 'boss');
   world.player.lagTicks = Math.max(0, Math.min(6, Math.round(save.settings.offsetMs / 16.7)));   // 타이밍 보정
-  sfx.musicFor(run.region, run.room === 'boss'); acc = 0; slowT = 0; R.reset(); mode = 'play'; screen(''); showTouch(); }
+  sfx.musicFor(run.region, run.room === 'boss'); acc = 0; slowT = 0; mode = 'play'; screen(''); showTouch(); }
 // 디버그·테스트용: 방 바로 열기
 function setRoom(room) { if (!run) { run = newRun(); chooseOath(run, 'parry'); } enterRoom(run, room === 'arena' ? 'combat' : room); play(); }
 // 빠른 시작 (패링의 서약)

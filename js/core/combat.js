@@ -40,7 +40,7 @@ export function resolveEnemyHit(w, hb) {
   p.iframes = CFG.player.iframesHurt;
   p.buffer = null;
   p.vx = (hb.dir || -p.face) * 1.5; p.vy = -2;
-  if (p.hp <= 0) { p.hp = 0; p.state = 'dead'; p.stateT = 0; w.over = true; }
+  if (p.hp <= 0) { p.hp = 0; p.state = 'dead'; p.stateT = 0; w.over = true; w.events.push({ type: 'dead', x: p.x + p.w / 2, y: p.y + p.h }); }
   else { p.state = 'hurt'; p.stateT = 0; }
   w.shake = Math.max(w.shake, 5);
   w.events.push({ type: 'hurt', x: p.x + p.w / 2, y: p.y + 10 });
@@ -66,7 +66,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0) {
   if (e.hp <= 0) {
     e.hp = 0; e.dead = true;
     w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill * w.player.mods.lightMul);
-    w.events.push({ type: 'kill', x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
+    w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
   }
 }
 
@@ -106,7 +106,7 @@ export function resolvePlayerAttacks(w) {
       w.hitstop = Math.max(w.hitstop, CFG.attack.hitstop[p.combo]);
       e.kvx = p.face * CFG.attack.push[p.combo] * (e.boss ? 0.15 : 1);
       if (p.combo === 2) w.shake = Math.max(w.shake, 6);
-      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: p.combo, face: p.face });
+      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: p.combo, face: p.face, dmg: Math.round(CFG.attack.dmg[p.combo] * mul), crit: mul >= 2 });
     }
   }
 }

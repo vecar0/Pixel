@@ -2,7 +2,9 @@
 import { CFG } from './core/config.js';
 import { attackBox } from './core/player.js';
 import { ENEMY_DEFS, telegraphOf } from './core/enemies.js';
-import { FxLayer } from './fx.js';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js';
+import { FxDirector } from './fxmap.js';
+const AMBER7 = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], SPARK4 = ['#fff6c8', '#ffd86b', '#ff9a2a', '#e8561d'];
 
 const C = {
   bg0: '#0b0910', bg1: '#15111d', pillar: '#1d1826', ground: '#2a2433', groundTop: '#4a4058',
@@ -18,7 +20,7 @@ export class Renderer {
   constructor(canvas) {
     this.cv = canvas; this.ctx = canvas.getContext('2d');
     this.dark = document.createElement('canvas'); this.dctx = this.dark.getContext('2d');
-    this.fx = new FxLayer();
+    this.fx = new FxLayer(); this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
     this.parts = []; this.texts = [];
     this.ghosts = [];             // 회피 잔상
     this.tail = null;             // 포니테일 스프링
@@ -57,51 +59,33 @@ export class Renderer {
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); }
+  reset() { this.fx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); }
 
-  // 이번 틱 이벤트 → 이펙트
+  // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
     const p = w.player, feet = p.y + p.h;
-    if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {
-      const c = p.combo;
-      this.fx.spawn('slash', p.x + p.w / 2 - p.face * 4, feet, { flip: p.face < 0, radius: [34, 36, 44][c], angle: [0, -0.35, 0.2][c] * p.face });
+    if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {      // 리라 베기 궤적: 1타 내려베기 · 2타 올려베기 · 3타 회전베기
+      const c = p.combo, id = ['melee/sword-slash', 'melee/uppercut', 'melee/spin-slash'][c] || 'melee/sword-slash';
+      this.fx.spawn(id, p.x + p.w / 2 - p.face * 4, feet, { flip: p.face < 0, palette: AMBER7, sparks: SPARK4, life: 40 });
     }
+    this.dir.events(w); this.dir.tick(w);
     for (const ev of w.events) {
-      if (ev.type === 'parry') {
-        if (ev.perfect) {
-          this.fx.spawn('parry', ev.x, feet, {});
-          this.flash = 1; this.zoom = 1;
-          this.texts.push({ x: ev.x, y: p.y - 6, t: 0, s: '완벽!' });
-        } else this.fx.spawn('hit', ev.x, feet, { height: feet - ev.y, flip: p.face > 0, palette: ['#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] });
-      } else if (ev.type === 'attackHit') {
-        const e = { x: ev.x, y: ev.y };
-        if (ev.combo === 2) this.fx.spawn('crit', e.x, ev.y + 20, { flip: ev.face < 0 });
-        else this.fx.spawn('hit', e.x, ev.y + 20, { height: 20, flip: ev.face < 0 });
-        this.burst(ev.x, ev.y, 4, ['#ffffff', C.amberHi], 2);
-      } else if (ev.type === 'execute') {
-        this.fx.spawn('crit', ev.x, ev.y + 30, {}); this.flash = 0.7;
-        this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!' });
-      } else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
-      else if (ev.type === 'kill') this.fx.spawn('poof', ev.x, ev.y + 16, {});
-      else if (ev.type === 'ultStart') this.fx.spawn('fireRing', p.x + p.w / 2, feet, { life: 80 });
-      else if (ev.type === 'slam') { const b = w.enemies.find(e => e.boss); if (b) this.fx.spawn('slam', b.x + b.w / 2, b.y + b.h, { light: 0.6, life: 70 }); }
-      else if (ev.type === 'block') this.burst(ev.x, ev.y, 8, ['#d8d0ff', '#ffffff'], 2.5);
-      else if (ev.type === 'enemyParry') { this.fx.spawn('parry', ev.x, ev.y + 40, { palette: ['#1a0a2a', '#3a1660', '#6a2aa0', '#9a4ae0', '#c890ff', '#f0e0ff', '#ffffff'] }); this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' }); }
-      else if (ev.type === 'blink') this.burst(ev.x, ev.y, 14, ['#2a2236', '#4a3a5e', '#8a6ab0'], 2);
+      if (ev.type === 'parry' && ev.perfect) { this.flash = 1; this.zoom = 1; this.texts.push({ x: ev.x, y: p.y - 6, t: 0, s: '완벽!' }); }
+      else if (ev.type === 'attackHit') this.burst(ev.x, ev.y, 4, ['#ffffff', C.amberHi], 2);
+      else if (ev.type === 'execute') { this.flash = 0.7; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!' }); }
+      else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
+      else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
       else if (ev.type === 'land') {
         this.squash = Math.min(1, ev.v / 7);
         if (ev.v > 3) { this.dust(ev.x - 4, ev.y, -1, 5); this.dust(ev.x + 4, ev.y, 1, 5); }
       }
     }
-    // 달리기 먼지
-    if (p.state === 'run' && w.t % 9 === 0) this.dust(p.x + p.w / 2 - p.face * 5, feet, -p.face, 2);
-    // 회피 잔상
-    if (p.state === 'roll' && p.stateT < CFG.roll.totalF && p.stateT % 3 === 0) this.ghosts.push({ x: p.x, y: p.y, face: p.face, life: 12 });
-    // 보스 그로기 별
-    for (const e of w.enemies) {
-      const has = this.stunFx.get(e);
-      if (e.stunT > 0 && !has) this.stunFx.set(e, this.fx.spawn('stunned', e.x + e.w / 2, e.y - 2, {}));
-      if (has) { has.options.x = Math.round(e.x + e.w / 2); has.options.y = Math.round(e.y - 2); if (e.stunT <= 0 || e.dead) { has.stop(); this.stunFx.delete(e); } }
+    if (p.state === 'run' && w.t % 9 === 0) this.dust(p.x + p.w / 2 - p.face * 5, feet, -p.face, 2);   // 달리기 먼지
+    if (p.state === 'roll' && p.stateT < CFG.roll.totalF && p.stateT % 3 === 0) this.ghosts.push({ x: p.x, y: p.y, face: p.face, life: 12 });   // 회피 잔상
+    for (const e of w.enemies) {                                        // 그로기 별 (적을 따라감)
+      e._fxid = e._fxid || ++this.fxid;
+      if (e.stunT > 0 && !this.stunFx.has(e)) { this.stunFx.set(e, true); this.fx.spawn('status/stunned', 0, 0, { follow: e, dy: e.h / 2, key: 'stun' + e._fxid, actor: this.actorOf(e), flip: e.face > 0 }); }
+      if (this.stunFx.has(e) && (e.stunT <= 0 || e.dead)) { this.fx.stopKey('stun' + e._fxid); this.stunFx.delete(e); }
     }
   }
 
@@ -123,6 +107,7 @@ export class Renderer {
   stepFx(w) {
     const frozen = w.hitstop > 0;
     if (!frozen) this.fx.update(1 / CFG.TICK);
+    this.weather.update(1 / CFG.TICK); this.trans.update(1 / CFG.TICK);
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
     this.parts = this.parts.filter(p => p.life > 0);
     for (const g of this.ghosts) g.life--;
@@ -167,7 +152,9 @@ export class Renderer {
 
     const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, C.bg1); grd.addColorStop(1, C.bg0);
     g.fillStyle = grd; g.fillRect(-20, -20, vw + 40, H + 40);
-    if (!this.drawBackdrop(g, w, camX, sx, sy)) {
+    const bd = this.drawBackdrop(g, w, camX, sx, sy);
+    this.weather.draw(g, vw, H, 0.8);                                     // 날씨 (안개·반딧불·빛줄기·오로라)
+    if (!bd) {
       g.fillStyle = C.pillar;
       for (let i = -1; i < 12; i++) { const x = Math.round(i * 140 - (camX * 0.4) % 140); g.fillRect(x, 40, 36, 260); }
       g.save(); g.translate(ox, oy);
@@ -225,6 +212,7 @@ export class Renderer {
     if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.45})`; g.fillRect(0, 0, vw, H); }
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
     this.drawHud(g, w);
+    this.trans.draw(g, vw, H);                                              // 장면 전환 · 임팩트 프레임 (맨 위)
   }
 
   // 리라 임시 실루엣 (진짜 그림은 Higgsfield 단계에서 교체)
@@ -347,6 +335,15 @@ export class Renderer {
     }
   }
 
+  // pixelfx actor: 상태 이펙트가 감쌀 실루엣 (서 있는 프레임 기준, 발이 원점)
+  actorOf(ent) {
+    if (ent === this.lastW?.player || ent.relics) {
+      const f = this.anims?.idle?.[0];
+      return f && f.img.naturalWidth ? actorFromImage(f.img, f.ax, f.ay) : actorFromImage(this.liraImg, 43, 85);
+    }
+    const f = this.enemyFrame({ t: 0 }, { kind: ent.kind, st: 'idle', vx: 0, x: 0 }, ENEMY_DEFS[ent.kind]);
+    return f ? actorFromImage(f.img, f.ax, f.ay) : undefined;
+  }
   // 적 그림 (Higgsfield → 픽셀 격자). 원본은 왼쪽을 봄
   enemyFrame(w, e, d) {
     const EA = this.enemyAnims && this.enemyAnims[e.kind];

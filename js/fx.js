@@ -1,75 +1,95 @@
-// pixelfx 이펙트 레이어: 월드 좌표로 이펙트를 띄우고 한 장의 캔버스로 합성
-import { createFrame, clearFrame, createFx, PAL } from './vendor/pixelfx/core/index.js';
-import * as slash from './vendor/pixelfx/fx/melee/sword-slash.js';
-import * as hitSpark from './vendor/pixelfx/fx/impacts/hit-spark.js';
-import * as parry from './vendor/pixelfx/fx/impacts/parry.js';
-import * as crit from './vendor/pixelfx/fx/impacts/crit-hit.js';
-import * as poof from './vendor/pixelfx/fx/spawn/poof.js';
-import * as fireRing from './vendor/pixelfx/fx/fire/fire-ring.js';
-import * as groundSlam from './vendor/pixelfx/fx/impacts/ground-slam.js';
-import * as stunned from './vendor/pixelfx/fx/status/stunned.js';
+// pixelfx 이펙트 레이어
+// - 월드 레이어: 월드 좌표에 이펙트를 띄움. 'follow' 대상(탄·적)을 따라다니게 할 수 있음
+// - 화면 레이어: 320x180 화면용 이펙트(날씨·장면 전환)를 화면 크기로 늘려 그림
+// 이펙트 모듈은 처음 쓸 때 import()로 불러와 캐시한다 (pixelfx 171종 중 필요한 것만 받음)
+import { createFrame, clearFrame, createFx } from './vendor/pixelfx/core/index.js';
+import { rgb } from './vendor/pixelfx/core/color.js';
 
-// 등불 팔레트: 앰버 · 주황 · 크림
-const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
-const SPARK = ['#fff6c8', '#ffd86b', '#ff9a2a', '#e8561d'];
+const mods = new Map();              // id → 모듈 (또는 로딩 중 Promise)
+export function preload(ids) { for (const id of ids) load(id); }
+function load(id) {
+  if (!mods.has(id)) mods.set(id, import(`./vendor/pixelfx/fx/${id}.js`).then(m => { mods.set(id, m); return m; }).catch(() => { mods.set(id, null); }));
+  return mods.get(id);
+}
 
-const KINDS = {
-  slash: [slash, { palette: AMBER, sparks: SPARK }],
-  hit: [hitSpark, {}],
-  parry: [parry, {}],
-  crit: [crit, {}],
-  poof: [poof, { palette: PAL.smoke }],
-  fireRing: [fireRing, {}],
-  slam: [groundSlam, { palette: PAL.dust }],
-  stunned: [stunned, {}],
-};
+class Layer {
+  constructor() { this.list = []; this.pending = []; this.cv = document.createElement('canvas'); this.ctx = this.cv.getContext('2d'); this.n = 0; this.dirty = true; this.has = false; this.cam = 0; }
+  resize(w, h) { this.frame = createFrame(w, h); this.img = new ImageData(w, h); this.cv.width = w; this.cv.height = h; }
+  clear() { this.list.length = 0; this.pending.length = 0; this.has = false; }
 
-export class FxLayer {
-  constructor() { this.list = []; this.cv = document.createElement('canvas'); this.ctx = this.cv.getContext('2d'); this.n = 0; this.dirty = true; this.cam = 0; this.has = false; }
-
-  resize(w, h) {
-    this.frame = createFrame(w, h); this.img = new ImageData(w, h);
-    this.cv.width = w; this.cv.height = h;
+  // id: 'impacts/hit-spark' 처럼 분류/이름. opts.follow: {x,y,w,h,dead?} 객체를 따라감, opts.dx/dy: 따라갈 때 오프셋
+  // opts.life: 틱 수가 지나면 서서히 끔, opts.key: 같은 키는 하나만 (중복 방지)
+  spawn(id, x, y, opts = {}) {
+    if (opts.key && (this.list.some(f => f.key === opts.key) || this.pending.some(p => p.opts.key === opts.key))) return null;
+    const m = mods.get(id);
+    if (m && !(m instanceof Promise)) return this.add(m, x, y, opts);
+    if (m === null) return null;
+    this.pending.push({ id, x, y, opts });
+    load(id).then(() => {
+      const i = this.pending.findIndex(p => p.id === id && p.x === x && p.y === y && p.opts === opts);
+      if (i >= 0) { this.pending.splice(i, 1); const mm = mods.get(id); if (mm) this.add(mm, x, y, opts); }
+    });
+    return null;
   }
-
-  spawn(kind, x, y, opts = {}) {
-    const [mod, base] = KINDS[kind];
-    const { life, ...rest } = opts;
-    const fx = createFx(mod, { ...base, x: Math.round(x), y: Math.round(y), seed: (Math.random() * 1e6) | 0, ...rest });
-    fx.life = life ?? Infinity;   // 틱 수: 지나면 서서히 끔 (긴 이펙트 비용 절약)
+  add(m, x, y, opts) {
+    const { life, follow, dx = 0, dy = 0, key, skip, ...rest } = opts;
+    for (const k in rest) if (rest[k] === undefined) delete rest[k];   // undefined가 이펙트 기본값을 덮지 않게
+    const fx = createFx(m, { x: Math.round(x), y: Math.round(y), seed: (Math.random() * 1e6) | 0, ...rest });
+    if (skip) fx.update((m.meta.duration || 1) * skip);   // 화면 전환: 덮인 상태에서 시작해 걷히는 절반만
+    fx.life = life ?? Infinity; fx.follow = follow; fx.dx = dx; fx.dy = dy; fx.key = key;
     this.list.push(fx); this.dirty = true;
     return fx;
   }
-
+  stopKey(key) { for (const f of this.list) if (f.key === key) f.stop(); }
   update(dt) {
-    for (const fx of this.list) { fx.update(dt); if (--fx.life <= 0) fx.stop(); }
+    for (const fx of this.list) {
+      fx.update(dt);
+      if (--fx.life <= 0) fx.stop();
+      const t = fx.follow;
+      if (t) {
+        if (t.dead || t.gone) fx.stop();
+        else { fx.options.x = Math.round(t.x + (t.w || 0) / 2 + fx.dx); fx.options.y = Math.round(t.y + (t.h || 0) / 2 + fx.dy); }
+      }
+    }
     this.list = this.list.filter(fx => !fx.done());
   }
+}
 
-  clear() { this.list.length = 0; this.has = false; }
-
-  // pixelfx 이펙트는 30fps로 만들어졌다 → 합성도 2프레임에 한 번, 사이 프레임은 이전 결과를 카메라만 보정해 재사용
+// 월드 레이어 (카메라 따라 스크롤). 이펙트는 30fps로 만들어졌으니 2프레임에 한 번 합성
+export class FxLayer extends Layer {
   draw(g, camX, dx, dy) {
     if (!this.list.length) { this.has = false; return; }
     if (++this.n % 2 && !this.dirty && this.has) { g.drawImage(this.cv, dx + this.cam - Math.round(camX), dy); return; }
     this.dirty = false;
     const f = this.frame; f.ox = Math.round(camX); f.oy = 0; this.cam = f.ox;
     clearFrame(f);
-    // 이펙트가 닿을 수 있는 영역만 합성 (전체 화면 합성은 폰에서 무겁다)
     let x0 = f.w, y0 = f.h, x1 = 0, y1 = 0;
     for (const fx of this.list) {
       fx.draw(f);
-      const [w, h] = fx.meta.size, o = fx.options, cx = o.x - f.ox;
-      x0 = Math.min(x0, cx - w); x1 = Math.max(x1, cx + w);
-      y0 = Math.min(y0, o.y - h); y1 = Math.max(y1, o.y + h * 0.5);
+      const [w, h] = fx.meta.size || [f.w, f.h], o = fx.options, cx = o.x - f.ox;
+      x0 = Math.min(x0, cx - w); x1 = Math.max(x1, cx + w); y0 = Math.min(y0, o.y - h); y1 = Math.max(y1, o.y + h);
     }
-    x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0));
-    x1 = Math.min(f.w, Math.ceil(x1)); y1 = Math.min(f.h, Math.ceil(y1));
+    x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); x1 = Math.min(f.w, Math.ceil(x1)); y1 = Math.min(f.h, Math.ceil(y1));
     if (x1 <= x0 || y1 <= y0) { this.has = false; return; }
     compositeRect(f, this.img.data, x0, y0, x1, y1);
     this.ctx.clearRect(0, 0, f.w, f.h);
     this.ctx.putImageData(this.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
     g.drawImage(this.cv, dx, dy); this.has = true;
+  }
+}
+
+// 화면 레이어: 320x180 화면 이펙트를 (vw x 360)으로 늘려 그림 (날씨는 배경 위, 전환은 맨 위)
+export class ScreenFx extends Layer {
+  constructor() { super(); this.resize(320, 180); }
+  draw(g, vw, vh, alpha = 1) {
+    if (!this.list.length) return;
+    if (++this.n % 2 || this.dirty || !this.has) {
+      this.dirty = false; const f = this.frame; f.ox = 0; f.oy = 0;
+      clearFrame(f); for (const fx of this.list) fx.draw(f);
+      compositeRect(f, this.img.data, 0, 0, f.w, f.h);
+      this.ctx.putImageData(this.img, 0, 0); this.has = true;
+    }
+    g.save(); g.imageSmoothingEnabled = false; g.globalAlpha = alpha; g.drawImage(this.cv, 0, 0, vw, vh); g.restore();
   }
 }
 
@@ -89,4 +109,24 @@ function compositeRect(f, out, x0, y0, x1, y1) {
     }
     out[j] = r; out[j + 1] = g; out[j + 2] = b; out[j + 3] = a;
   }
+}
+
+// 내 캐릭터 실루엣을 pixelfx actor로 (설명서 "Got your own character?"):
+// 상태이상(화상·기절·분노)·소멸 이펙트가 기본 더미 대신 실제 스프라이트 모양을 감싸게 한다.
+// ax, ay: 이미지 안에서 발 위치(이펙트 원점). 이미지당 한 번만 계산해 캐시
+const actors = new WeakMap();
+export function actorFromImage(img, ax, ay) {
+  if (!img || !img.naturalWidth) return undefined;
+  let a = actors.get(img); if (a) return a;
+  const w = img.naturalWidth, h = img.naturalHeight, c = document.createElement('canvas');
+  c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+  const d = x.getImageData(0, 0, w, h).data, mask = new Uint8Array(w * h), px = new Uint32Array(w * h);
+  let top = h;
+  for (let i = 0; i < w * h; i++) if (d[i * 4 + 3] > 96) {
+    mask[i] = 1; px[i] = rgb(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]);
+    top = Math.min(top, (i / w) | 0);
+  }
+  const ox = -Math.round(ax), oy = -Math.round(ay);
+  a = { mask: { w, h, data: mask }, pixels: px, x: ox, y: oy, w, h, k: 2, head: [0, oy + top], chest: [0, Math.round(oy + top + (ay - top) * 0.35)] };
+  actors.set(img, a); return a;
 }

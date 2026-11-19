@@ -31,8 +31,8 @@ export class Renderer {
     this.bgs = {}; this.region = 1;   // 지역별 배경은 처음 쓸 때 불러온다
     // 리라 8프레임 애니메이션 (Higgsfield GIF 생성 → 게임 크기·팔레트로 변환). 프레임마다 발 기준점(ax, ay)
     fetch('assets/anims.json').then(r => r.json()).then(J => {
-      for (const n in J.lira) for (const f of J.lira[n]) { const im = new Image(); im.src = f.src; f.img = im; }
-      this.anims = J.lira;
+      for (const k in J) for (const n in J[k]) for (const f of J[k][n]) { const im = new Image(); im.src = f.src; f.img = im; }
+      this.anims = J.lira; this.enemyAnims = J;
     }).catch(() => {});
     this.pose = {};
     fetch('assets/enemies.json').then(r => r.json()).then(J => {
@@ -349,6 +349,17 @@ export class Renderer {
 
   // 적 그림 (Higgsfield → 픽셀 격자). 원본은 왼쪽을 봄
   enemyFrame(w, e, d) {
+    const EA = this.enemyAnims && this.enemyAnims[e.kind];
+    if (EA && EA.walk && EA.attack) {                       // 8프레임 애니메이션: 걷기는 이동 거리에 맞춰, 공격은 예고→판정→후딜에 맞춰
+      const a = e.atk && d.attacks[e.atk], span = (lo, hi, k) => Math.min(hi, lo + Math.floor(Math.max(0, k) * (hi - lo + 1)));
+      let list = EA.walk, i;
+      if (e.st === 'telegraph' && a) { list = EA.attack; i = span(0, 3, e.stT / telegraphOf(e, a)); }
+      else if (e.st === 'active' && a) { list = EA.attack; i = span(4, 5, e.stT / Math.max(1, (a.hits || 1) > 1 ? a.gapF : a.activeF)); }
+      else if (e.st === 'recover' && a) { list = EA.attack; i = span(6, 7, e.stT / a.recoverF); }
+      else if (e.kind === 'moth') i = ((w.t / 4) | 0) % 8;
+      else i = Math.abs(e.vx) > 0.1 ? Math.floor(Math.abs(e.x) * (e.boss ? 0.06 : 0.11)) % 8 : 0;
+      const f = list[i]; if (f && f.img.complete && f.img.naturalWidth) { f.anim = true; return f; }
+    }
     const S = this.enemySprites; if (!S || !S[e.kind]) return null;
     const F = S[e.kind]; let n;
     if (e.kind === 'moth') n = e.st === 'active' ? 'down' : e.st === 'telegraph' ? 'up' : (w.t >> 2) & 1 ? 'up' : 'down';
@@ -367,7 +378,9 @@ export class Renderer {
     const cx = Math.round(e.x + e.w / 2), base = e.kind === 'moth' ? Math.round(e.y + e.h / 2) : Math.round(e.y + e.h);
     const big = e.boss ? 0.5 : 1;                          // 큰 몸은 덜 흔들리고 묵직하게
     let ox = 0, oy = 0, rot = 0, sy = 1;
-    if (e.kind === 'moth') oy = Math.sin(w.t * 0.25 + e.x * 0.05) * 2;
+    if (f.anim) {                                          // 애니메이션이 동작을 담고 있으니 예고 막판 떨림만
+      if (e.st === 'telegraph' && a && e.stT / telegraphOf(e, a) > 0.65) ox = (w.t & 2 ? 1 : -1);
+    } else if (e.kind === 'moth') oy = Math.sin(w.t * 0.25 + e.x * 0.05) * 2;
     else if (e.st === 'idle' && Math.abs(e.vx) > 0.1) {                    // 걷기: 발걸음마다 들썩 + 좌우로 기우뚱
       const ph = e.x * (e.boss ? 0.07 : 0.16);
       oy = -Math.abs(Math.sin(ph)) * (e.boss ? 3 : 2.5); rot = Math.sin(ph) * 0.05 * big;

@@ -1,0 +1,29 @@
+{
+  "schema": "generate2dsprite.master_run.v1",
+  "tool": {
+    "name": "master_still",
+    "version": "0.6.0"
+  },
+  "command": "prompt",
+  "created": "2026-11-19T06:25:56.857Z",
+  "name": "lira",
+  "class": "hero",
+  "finish": "hibit",
+  "facing": "right",
+  "key": "#00FF00",
+  "prompt": {
+    "path": "prompt.txt",
+    "sha256": "48dfc03c136d48dc4b05397f24a32f9c5bcca2fb0001f6eb52210e480f2a4495",
+    "bytes": 2378
+  },
+  "spec": {
+    "path": "spec.json",
+    "sha256": "c23130c8dc98b1725ffe47c7686484e5e311795fc863439bff2073f554a67012",
+    "bytes": 1398
+  },
+  "references": [],
+  "media": null,
+  "takes": [],
+  "status": "ok",
+  "warnings": []
+}

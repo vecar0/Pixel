@@ -1,0 +1,157 @@
+{
+  "schema": "generate2dsprite.master.v1",
+  "tool": {
+    "name": "master_still",
+    "version": "0.6.0"
+  },
+  "created": "2026-11-19T06:27:08.648Z",
+  "name": "lira",
+  "subject": "Lira, a teenage lantern pilgrim girl, heroine of a dark-fantasy side-scrolling action game",
+  "identity_recap": "Lira, a teenage lantern pilgrim girl, heroine of a dark-fantasy side-scrolling action game (a tall, slender girl of about seventeen with a determined, calm expression and sharp amber (honey-gold) eyes; very long silver-white hair tied in a high ponytail that sweeps behind her, short side bangs; pale skin. She wears a short deep-navy hooded travelling cape (hood down) fastened at the collarbone with a small brass clasp, a fitted cream and beige travelling tunic with a brown leather belt carrying a small glass oil flask and a paper charm talisman, dark brown fitted trousers and knee-high dark brown boots. No armour, no helmet, no metal plates. In her right hand she holds a plain straight one-handed steel sword pointing down and slightly forward; from her left hand hangs an old-fashioned iron and glass lantern on a short chain, glowing warm amber inside. Standing in a ready stance, knees slightly bent)",
+  "facing": "right",
+  "view": "side view (profile to three-quarter)",
+  "finish": "hibit",
+  "class": "hero",
+  "framing": {
+    "canvas": [
+      1024,
+      1024
+    ],
+    "subject_height_px": 788,
+    "top_margin_px": 138,
+    "lead_px": 0,
+    "preset": "hero",
+    "subject_bbox": [
+      201,
+      138,
+      822,
+      926
+    ],
+    "anchor": [
+      572.5,
+      926.0
+    ],
+    "opaque_area_px": 213864,
+    "width_limited": false
+  },
+  "key": "#00FF00",
+  "files": {
+    "master": {
+      "path": "master.png",
+      "sha256": "956b1115a62078edf2cd05d98ada64d80f15b28fca6d1587111c94b8ce9e5c7e",
+      "bytes": 342938,
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "cutout": {
+      "path": "master_rgba.png",
+      "sha256": "e0e5de3063c02904ea77d13238bef63dd917641e1446fb2a0ca7667066b50f52",
+      "bytes": 406590,
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "source": {
+      "path": "source.png",
+      "sha256": "fb66190cf10dfda1a8b16c1f10f6017468ebcf3fab0cb068714bec10589fdddb",
+      "bytes": 998152,
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "spec": {
+      "path": "spec.json",
+      "sha256": "dc82ed62c9422374872abdc902ad5388e7d8ced3d95a2137c2776d9bd18982a1",
+      "bytes": 2245
+    },
+    "prompt": null
+  },
+  "references": [],
+  "transform": {
+    "mapping": "master = scale * source + offset (continuous pixel coordinates: pixel i spans [i, i + 1))",
+    "source_size": [
+      1024,
+      1024
+    ],
+    "source_subject_bbox": [
+      129,
+      108,
+      786,
+      942
+    ],
+    "crop_box": [
+      123,
+      102,
+      792,
+      948
+    ],
+    "crop_margin_px": 6,
+    "scale": 0.9448441247002398,
+    "offset": [
+      79.73381294964031,
+      35.9568345323741
+    ],
+    "canvas": [
+      1024,
+      1024
+    ],
+    "resampler": "lanczos",
+    "premultiplied": true,
+    "alpha_floor_px": 4227,
+    "subject_parts": 1,
+    "ignored_parts": 0,
+    "ignored_px": 0,
+    "source_touches": [],
+    "key_rgb": [
+      0,
+      255,
+      0
+    ]
+  },
+  "route": "higgsfield:gpt_image_2_6",
+  "provenance": {
+    "command": "external",
+    "run": null,
+    "take": null,
+    "source_name": "take2.png",
+    "source_sha256": "fb66190cf10dfda1a8b16c1f10f6017468ebcf3fab0cb068714bec10589fdddb",
+    "media": null,
+    "media_cli_source": null,
+    "edit": null
+  },
+  "matte": {
+    "requested": "soft",
+    "key_estimate": {
+      "key": [
+        3.0,
+        248.0,
+        2.0
+      ],
+      "source": "border_median",
+      "valid": true,
+      "ring_share": 1.0,
+      "coverage": 0.7681980133056641,
+      "distance_from_declared": 7.87
+    },
+    "quality": "soft",
+    "interior_despill": true,
+    "qa": {
+      "opaque_key_px": 0,
+      "outer_ring_spill_fraction": 0.0,
+      "semitransparent_fraction": 0.04276803295945706,
+      "enclosed_key_pockets": 0,
+      "key_hued_px": 0,
+      "visible_px": 242237
+    },
+    "key_choice": {
+      "status": "ok",
+      "overlap_share": 0.0,
+      "rule": "reject a key when more than 0.5% of subject pixels have key dominance >= 40; first acceptable candidate wins"
+    }
+  },
+  "warnings": []
+}

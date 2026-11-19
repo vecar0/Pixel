@@ -1,0 +1,9 @@
+{
+  "name": "lira",
+  "subject": "Lira, a teenage lantern pilgrim girl, heroine of a dark-fantasy side-scrolling action game",
+  "identity": "a tall, slender girl of about seventeen with a determined, calm expression and sharp amber (honey-gold) eyes; very long silver-white hair tied in a high ponytail that sweeps behind her, short side bangs; pale skin. She wears a short deep-navy hooded travelling cape (hood down) fastened at the collarbone with a small brass clasp, a fitted cream and beige travelling tunic with a brown leather belt carrying a small glass oil flask and a paper charm talisman, dark brown fitted trousers and knee-high dark brown boots. No armour, no helmet, no metal plates. In her right hand she holds a plain straight one-handed steel sword pointing down and slightly forward; from her left hand hangs an old-fashioned iron and glass lantern on a short chain, glowing warm amber inside. Standing in a ready stance, knees slightly bent.",
+  "facing": "right",
+  "class": "hero",
+  "finish": "hibit",
+  "key": "#00FF00"
+}

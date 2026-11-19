@@ -14,7 +14,11 @@ export function resolveEnemyHit(w, hb) {
     const perfect = p.stateT < PR.perfectF;
     hb.src.done = true;
     p.parryOk = true; p.recoverWait = PR.successRecoverF;
-    p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal));
+    p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal) * p.mods.lightMul);
+    if (perfect && p.mods.chain) p.chainN = Math.min(5, p.chainN + 1);          // 불씨 연쇄
+    if (perfect && p.mods.echo) w.projectiles.push({                           // 반향: 앞으로 검기
+      x: p.face > 0 ? p.x + p.w : p.x - 24, y: p.y + 18, w: 24, h: 14, vx: p.face * 6, vy: 0,
+      dmg: 1.5, parryable: true, owner: 'player', life: 50, echo: true, src: {} });
     w.hitstop = Math.max(w.hitstop, perfect ? PR.hitstopPerfect : PR.hitstopNormal);
     if (perfect) { p.perfectParries++; w.shake = 8; }
     const o = hb.owner;
@@ -26,9 +30,12 @@ export function resolveEnemyHit(w, hb) {
     w.events.push({ type: 'parry', perfect, x: p.face > 0 ? p.x + p.w : p.x, y: p.y + 14 });
     return perfect ? 'perfect' : 'normal';
   }
-  if (invulnerable(p)) return 'ignored';
+  if (invulnerable(p)) {
+    if (p.state === 'roll' && p.mods.afterglow && !hb.src.glow) { hb.src.glow = true; p.crit = true; w.events.push({ type: 'afterglow', x: p.x + p.w / 2, y: p.y }); }
+    return 'ignored';
+  }
   hb.src.done = true;
-  p.hp -= hb.dmg;
+  p.hp -= hb.dmg; p.chainN = 0;
   p.iframes = CFG.player.iframesHurt;
   p.buffer = null;
   p.vx = (hb.dir || -p.face) * 1.5; p.vy = -2;
@@ -57,7 +64,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0) {
   addPoise(w, e, poiseFrac);
   if (e.hp <= 0) {
     e.hp = 0; e.dead = true;
-    w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill);
+    w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill * w.player.mods.lightMul);
     w.events.push({ type: 'kill', x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
   }
 }
@@ -71,11 +78,14 @@ export function resolvePlayerAttacks(w) {
     e.hitBy = p.swing;
     if (e.stunT > 0) {                      // 그로기 → 처형
       e.stunT = 0; e.poise = 0;
-      damageEnemy(w, e, Math.round(e.maxHp * PO.executeFrac));
+      damageEnemy(w, e, Math.round(e.maxHp * PO.executeFrac * p.mods.execMul));
       w.hitstop = Math.max(w.hitstop, 10); w.shake = 10;
       w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2 });
     } else {
-      damageEnemy(w, e, CFG.attack.dmg[p.combo], PO.hit);
+      const mul = (1 + 0.1 * p.chainN) * (p.crit ? 2 : 1);
+      if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
+      damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit);
+      if (p.combo === 2 && p.mods.flame) e.burnT = 180;                       // 화염 칼날
       w.hitstop = Math.max(w.hitstop, CFG.attack.hitstop[p.combo]);
       e.kvx = p.face * CFG.attack.push[p.combo] * (e.boss ? 0.15 : 1);
       if (p.combo === 2) w.shake = Math.max(w.shake, 6);

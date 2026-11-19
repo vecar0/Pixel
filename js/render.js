@@ -28,6 +28,8 @@ export class Renderer {
     // 리라 픽셀 그림 (Higgsfield: 리라 디자인 + 사용자 샘플 화풍 → forge pixel_look로 픽셀 격자 맞춤). 기준점: 발 중앙 (43, 85)
     this.liraImg = new Image(); this.liraImg.src = 'assets/lira.png';
     // 동작 포즈 (Higgsfield 포즈 생성 → 기준 리라 격자로 읽음). 모두 132x111, 발 기준점 (69, 111)
+    this.bg = {};
+    for (const n of ['far', 'mid', 'ground']) { const im = new Image(); im.src = `assets/bg1-${n}.png`; this.bg[n] = im; }
     this.pose = {};
     fetch('assets/enemies.json').then(r => r.json()).then(J => {
       for (const kind in J) for (const n in J[kind]) { const im = new Image(); im.src = J[kind][n].src; J[kind][n].img = im; }
@@ -158,18 +160,19 @@ export class Renderer {
 
     const grd = g.createLinearGradient(0, 0, 0, H); grd.addColorStop(0, C.bg1); grd.addColorStop(1, C.bg0);
     g.fillStyle = grd; g.fillRect(-20, -20, vw + 40, H + 40);
-    g.fillStyle = C.pillar;
-    for (let i = -1; i < 12; i++) { const x = Math.round(i * 140 - (camX * 0.4) % 140); g.fillRect(x, 40, 36, 260); }
-
-    g.save(); g.translate(ox, oy);
-    g.fillStyle = C.ground; for (const s of w.solids) g.fillRect(s.x, s.y, s.w, s.h);
-    g.fillStyle = C.groundTop; for (const s of w.solids) g.fillRect(s.x, s.y, s.w, 2);
-    g.restore();
+    if (!this.drawBackdrop(g, w, camX, sx, sy)) {
+      g.fillStyle = C.pillar;
+      for (let i = -1; i < 12; i++) { const x = Math.round(i * 140 - (camX * 0.4) % 140); g.fillRect(x, 40, 36, 260); }
+      g.save(); g.translate(ox, oy);
+      g.fillStyle = C.ground; for (const s of w.solids) g.fillRect(s.x, s.y, s.w, s.h);
+      g.fillStyle = C.groundTop; for (const s of w.solids) g.fillRect(s.x, s.y, s.w, 2);
+      g.restore();
+    }
 
     // 어둠: 리라 랜턴 주변만 밝다 (적·예고·탄은 이 위에 그려서 절대 가려지지 않음)
     const d = this.dctx;
     d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, vw, H);
-    d.fillStyle = 'rgba(4,2,8,0.62)'; d.fillRect(0, 0, vw, H);
+    d.fillStyle = 'rgba(4,2,8,0.5)'; d.fillRect(0, 0, vw, H);
     d.globalCompositeOperation = 'destination-out';
     const lx = p.x + p.w / 2 + ox + p.face * 8, ly = p.y + 18 + oy, lr = 110 + p.light * 0.9;
     const lg = d.createRadialGradient(lx, ly, 10, lx, ly, lr); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
@@ -282,6 +285,35 @@ export class Renderer {
     this.drawSword(g, p, cx, top, f);
     g.restore();
     this.drawParryArc(g, p, cx, feet, f);
+  }
+
+  // 지역 1 '이끼 묘지' 배경: 먼 배경(0.2) · 중간 묘비(0.55) · 바닥/발판 타일. 좌우 반전으로 이어 붙여 이음새를 숨김
+  drawBackdrop(g, w, camX, sx, sy) {
+    const B = this.bg, ok = im => im.complete && im.naturalWidth;
+    if (!ok(B.far) || !ok(B.mid) || !ok(B.ground)) return false;
+    const H = CFG.VIEW_H, vw = this.vw;
+    const tile = (im, k, y, dark) => {
+      const iw = im.naturalWidth, off = (camX * k) % (iw * 2);
+      for (let x = -off, i = 0; x < vw; x += iw, i++) {
+        const flip = Math.floor((camX * k) / iw + i) & 1;
+        g.save(); g.translate(Math.round(x) + sx + (flip ? iw : 0), y + sy); g.scale(flip ? -1 : 1, 1); g.drawImage(im, 0, 0); g.restore();
+      }
+      if (dark) { g.fillStyle = `rgba(8,6,14,${dark})`; g.fillRect(0, 0, vw, H); }
+    };
+    tile(B.far, 0.2, 0, 0.45);
+    tile(B.mid, 0.55, 300 - B.mid.naturalHeight + 6, 0.25);
+    // 땅과 발판
+    const G = B.ground, gw = G.naturalWidth, top = 14;   // 그림 14행 = 걷는 면
+    g.save(); g.translate(Math.round(-camX) + sx, sy);
+    for (const s of w.solids) {
+      if (s.oneWay) {
+        for (let x = s.x; x < s.x + s.w; x += gw) g.drawImage(G, 0, 0, Math.min(gw, s.x + s.w - x), 30, x, s.y - top, Math.min(gw, s.x + s.w - x), 30);
+      } else if (s.h >= 40 && s.w > 100) {
+        for (let x = s.x - ((s.x % gw) + gw) % gw; x < s.x + s.w; x += gw) g.drawImage(G, x, s.y - top);
+      }
+    }
+    g.restore();
+    return true;
   }
 
   // 적 그림 (Higgsfield → 픽셀 격자). 원본은 왼쪽을 봄

@@ -8,7 +8,8 @@ export function createPlayer(x, y) {
   return {
     x, y, w: P.w, h: P.h, vx: 0, vy: 0, face: 1,
     onGround: false, coyote: 0, jumpCut: false, airAttacked: false,
-    hp: P.hp, light: 0, flasks: CFG.flask.charges,
+    hp: P.hp, maxHp: P.hp, light: 0, flasks: CFG.flask.charges, maxFlasks: CFG.flask.charges,
+    relics: new Set(), mods: { rollMul: 1, iExtra: 0, airJumps: 0, execMul: 1, lightMul: 1 }, airLeft: 0, chainN: 0, crit: false,
     state: 'idle', stateT: 0, combo: 0, comboT: 0,
     iframes: 0, buffer: null,
     parryOk: false, recoverWait: 0, dropT: 0, perfectParries: 0, rollDir: 1, swing: 0,
@@ -19,7 +20,7 @@ function setState(p, s) { p.state = s; p.stateT = 0; }
 
 export function invulnerable(p) {
   if (p.iframes > 0) return true;
-  if (p.state === 'roll') return p.stateT >= RO.iStart && p.stateT <= RO.iEnd;
+  if (p.state === 'roll') return p.stateT >= RO.iStart && p.stateT <= RO.iEnd + p.mods.iExtra;
   return p.state === 'ult';
 }
 
@@ -45,7 +46,10 @@ function start(w, p, action, inp) {
   switch (action) {
     case 'jump':
       if (inp.down && p.onGround && standingOnOneWay(w, p)) { p.dropT = 10; p.onGround = false; return true; }  // 발판 내려가기
-      if (!(p.onGround || p.coyote > 0)) return false;
+      if (!(p.onGround || p.coyote > 0)) {
+        if (p.airLeft <= 0) return false;
+        p.airLeft--;                                 // 두 번째 날개: 공중 점프
+      }
       p.vy = -Math.sqrt(2 * CFG.GRAV * P.jumpMaxH); p.onGround = false; p.coyote = 0; p.jumpCut = false;
       if (p.state !== 'idle' && p.state !== 'run') setState(p, 'jump');
       return true;
@@ -61,7 +65,7 @@ function start(w, p, action, inp) {
       p.rollDir = inp.left ? -1 : inp.right ? 1 : p.face; p.face = p.rollDir;
       setState(p, 'roll'); return true;
     case 'flask':
-      if (p.flasks <= 0 || p.hp >= P.hp) return false;
+      if (p.flasks <= 0 || p.hp >= p.maxHp) return false;
       setState(p, 'flask'); return true;
     case 'ult':
       if (p.light < CFG.light.max) return false;
@@ -88,7 +92,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'parry' && (p.parryOk ? t >= PR.normalF : t >= PR.normalF + PR.whiffF)) setState(p, 'idle');
   if (p.state === 'roll' && t >= RO.totalF + RO.endLagF) setState(p, 'idle');
   if (p.state === 'hurt' && t >= P.hurtStunF) setState(p, 'idle');
-  if (p.state === 'flask' && t >= CFG.flask.useF) { p.flasks--; p.hp = Math.min(P.hp, p.hp + CFG.flask.heal); setState(p, 'idle'); }
+  if (p.state === 'flask' && t >= CFG.flask.useF) { p.flasks--; p.hp = Math.min(p.maxHp, p.hp + CFG.flask.heal); setState(p, 'idle'); }
   if (p.state === 'ult' && t >= CFG.ult.castF) setState(p, 'idle');
 
   // 버퍼 소비
@@ -102,7 +106,7 @@ export function updatePlayer(w, inp) {
   const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
   const free = p.state === 'idle' || p.state === 'run' || p.state === 'jump';
   if (p.state === 'roll') {
-    p.vx = t < RO.totalF ? p.rollDir * RO.dist / RO.totalF : 0;
+    p.vx = t < RO.totalF ? p.rollDir * RO.dist * p.mods.rollMul / RO.totalF : 0;
   } else if (free || p.state === 'flask') {
     const max = p.state === 'flask' ? P.speed * 0.3 : P.speed;
     if (dir) {
@@ -128,7 +132,7 @@ export function updatePlayer(w, inp) {
   moveAndCollide(w, p, inp);
 
   if (p.onGround && wasAir) w.events.push({ type: 'land', x: p.x + p.w / 2, y: p.y + p.h, v: fallV });
-  if (p.onGround) { p.coyote = P.coyoteF; p.airAttacked = false; }
+  if (p.onGround) { p.coyote = P.coyoteF; p.airAttacked = false; p.airLeft = p.mods.airJumps; }
   else if (p.coyote > 0) p.coyote--;
 
   if (p.state === 'idle' || p.state === 'run' || p.state === 'jump')

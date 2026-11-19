@@ -60,7 +60,10 @@ function updateWaves(w) {
   if (!w.waves.length) { w.cleared = true; w.events.push({ type: 'cleared' }); return; }
   if (++w.waveDelay < 60) return;
   w.waveDelay = 0;
-  for (const [kind, x] of w.waves.shift()) spawnEnemy(w, kind, x, kind === 'moth' ? 160 : 230);
+  for (const [kind, x, mod] of w.waves.shift()) {
+    const e = spawnEnemy(w, kind, x, kind === 'moth' ? 160 : 230);
+    if (mod === 'elite') { e.elite = true; e.hp = e.maxHp = Math.round(e.maxHp * 2.5); e.poiseMax = true; }
+  }
 }
 
 export function tick(w, inp) {
@@ -83,6 +86,7 @@ export function tick(w, inp) {
   for (const e of w.enemies) {
     if (e.dead) continue;
     if (e.flash > 0) e.flash--;
+    if (e.burnT > 0 && --e.burnT % 60 === 0) { damageEnemy(w, e, 3); if (e.dead) continue; }   // 화상
     updatePoise(e);
     if (e.stunT > 0) continue;
     updateEnemy(w, e);

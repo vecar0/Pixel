@@ -1,0 +1,143 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "priest",
+ "size": [
+  75,
+  82
+ ],
+ "cells": 3433,
+ "colours": 48,
+ "palette": [
+  "#000000",
+  "#010101",
+  "#030202",
+  "#040302",
+  "#070604",
+  "#101314",
+  "#1b262a",
+  "#233338",
+  "#2f4248",
+  "#302c26",
+  "#384f57",
+  "#3e4c25",
+  "#453832",
+  "#465f67",
+  "#48572e",
+  "#4c889a",
+  "#566630",
+  "#57443b",
+  "#5b7c84",
+  "#604f44",
+  "#657838",
+  "#698e94",
+  "#6d8152",
+  "#6e515c",
+  "#719ba3",
+  "#73863c",
+  "#745e50",
+  "#778e68",
+  "#7b8e40",
+  "#7dabb3",
+  "#826d5a",
+  "#866771",
+  "#89c6d1",
+  "#927980",
+  "#937f6b",
+  "#949a98",
+  "#9cd8e3",
+  "#9f9077",
+  "#a4aca9",
+  "#a88b8f",
+  "#b2a187",
+  "#bab3aa",
+  "#bd9fa2",
+  "#c7b79c",
+  "#c8eaf1",
+  "#d3d4d2",
+  "#dcc7c4",
+  "#def5f8"
+ ],
+ "feet": {
+  "middle": 50.5,
+  "row": 81
+ },
+ "anchor": [
+  51.0,
+  82
+ ],
+ "key": "magenta",
+ "howZoom": 11,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   11.667,
+   11.667
+  ],
+  "purity": {
+   "walk": 0.9121
+  },
+  "key": [
+   250,
+   3,
+   250
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    3,
+    2,
+    2
+   ],
+   "specks": 6,
+   "bareCells": 18,
+   "lineCellsAdded": 21,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    11.91,
+    11.77
+   ],
+   "blocksTallerBy": 0.9879,
+   "sizeInBlocks": [
+    75,
+    82
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "priest.png",
+  "sha256": "25b7c6ae59ab43cc727a2aa5063a35d30e8197a4e36516135f5279816d8651d9"
+ },
+ "files": {
+  "sprite": "priest.png",
+  "how": "priest-how.png",
+  "review": "priest-review.png",
+  "grounds": "priest-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

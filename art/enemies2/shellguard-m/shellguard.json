@@ -1,0 +1,143 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "shellguard",
+ "size": [
+  79,
+  69
+ ],
+ "cells": 3666,
+ "colours": 48,
+ "palette": [
+  "#000000",
+  "#010001",
+  "#030103",
+  "#080207",
+  "#10050f",
+  "#1a0c1a",
+  "#271928",
+  "#301e35",
+  "#382722",
+  "#3b2641",
+  "#482e51",
+  "#4a3b54",
+  "#52355c",
+  "#5d3e67",
+  "#604c55",
+  "#6c617c",
+  "#704e7a",
+  "#784f94",
+  "#7a4e41",
+  "#7a5684",
+  "#875ba7",
+  "#87628f",
+  "#886f7c",
+  "#966656",
+  "#9767b7",
+  "#98729e",
+  "#987e84",
+  "#a28994",
+  "#a57a66",
+  "#a979c6",
+  "#b395b4",
+  "#b4826e",
+  "#b49599",
+  "#bc8ad5",
+  "#c3a4a4",
+  "#c49278",
+  "#ca99de",
+  "#cbaec8",
+  "#cdaeae",
+  "#d2a58c",
+  "#d4b6b5",
+  "#d7a8e4",
+  "#e0b5ea",
+  "#ecd6d0",
+  "#edcaf3",
+  "#f1def0",
+  "#fbefdb",
+  "#fbf1f8"
+ ],
+ "feet": {
+  "middle": 31.0,
+  "row": 68
+ },
+ "anchor": [
+  31.5,
+  69
+ ],
+ "key": "green",
+ "howZoom": 12,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   12.0,
+   12.0
+  ],
+  "purity": {
+   "walk": 0.9505
+  },
+  "key": [
+   4,
+   250,
+   2
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    1,
+    0,
+    1
+   ],
+   "specks": 0,
+   "bareCells": 1,
+   "lineCellsAdded": 1,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    11.68,
+    11.93
+   ],
+   "blocksTallerBy": 1.0209,
+   "sizeInBlocks": [
+    79,
+    69
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "shellguard.png",
+  "sha256": "1030823627c4fe451de9e2703f3425d0e945150e4515ee3f87eac9337659179a"
+ },
+ "files": {
+  "sprite": "shellguard.png",
+  "how": "shellguard-how.png",
+  "review": "shellguard-review.png",
+  "grounds": "shellguard-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

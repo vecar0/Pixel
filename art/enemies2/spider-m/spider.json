@@ -1,0 +1,143 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "spider",
+ "size": [
+  61,
+  37
+ ],
+ "cells": 1118,
+ "colours": 48,
+ "palette": [
+  "#000000",
+  "#000200",
+  "#020201",
+  "#070405",
+  "#1e141e",
+  "#2e1d30",
+  "#392539",
+  "#463047",
+  "#4c206f",
+  "#553b57",
+  "#634667",
+  "#6f527e",
+  "#72427b",
+  "#725268",
+  "#795b8b",
+  "#8655a0",
+  "#886872",
+  "#8e92be",
+  "#916b98",
+  "#987688",
+  "#a189d4",
+  "#a263c0",
+  "#a682a4",
+  "#aa46d7",
+  "#b072c4",
+  "#b08891",
+  "#ba99f2",
+  "#bc989d",
+  "#bc9fc6",
+  "#bd4aee",
+  "#c279dc",
+  "#c284ca",
+  "#c388aa",
+  "#c6bbfa",
+  "#cda8ab",
+  "#d091d3",
+  "#d66af6",
+  "#d788e4",
+  "#dab6b6",
+  "#dc99f2",
+  "#deaed6",
+  "#dfa1e4",
+  "#e2dffb",
+  "#e8b0f0",
+  "#e9c2e0",
+  "#f0d1de",
+  "#f0e8f8",
+  "#fcf0eb"
+ ],
+ "feet": {
+  "middle": 36.5,
+  "row": 34
+ },
+ "anchor": [
+  37.0,
+  35
+ ],
+ "key": "green",
+ "howZoom": 15,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   16.0,
+   16.0
+  ],
+  "purity": {
+   "walk": 0.7418
+  },
+  "key": [
+   3,
+   249,
+   2
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    0,
+    2,
+    0
+   ],
+   "specks": 10,
+   "bareCells": 64,
+   "lineCellsAdded": 67,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    16.34,
+    16.22
+   ],
+   "blocksTallerBy": 0.9928,
+   "sizeInBlocks": [
+    61,
+    37
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "spider.png",
+  "sha256": "7fae74eb2726445e610fcd54a6bfa43cf2b326c13c2f574859fb196ce161d28c"
+ },
+ "files": {
+  "sprite": "spider.png",
+  "how": "spider-how.png",
+  "review": "spider-review.png",
+  "grounds": "spider-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

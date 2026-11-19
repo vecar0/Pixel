@@ -1,6 +1,7 @@
 // 한 판(런)의 진행: 서약 → 방 → 각인 → 문 선택 → … → 보스. 순수 로직 (DOM 없음)
 import { CFG } from './config.js';
 import { createWorld } from './world.js';
+import { ELITE_MODS, ENEMY_DEFS } from './enemies.js';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -25,15 +26,57 @@ export const OATHS = [
   { id: 'execute', name: '처형의 서약', desc: '끝내는 자. 처형자를 들고 시작', start: 'executioner' },
 ];
 
+// 지역 4곳. 지역마다 적 구성·보스·배경·체력 배수가 다르다
+export const REGIONS = [
+  { id: 1, name: '이끼 묘지', bg: 'bg1', enemies: ['ghoul', 'moth'], boss: 'bellBoss', rooms: 5, hp: 1.0 },
+  { id: 2, name: '침수 대성당', bg: 'bg2', enemies: ['spearman', 'priest', 'ghoul'], boss: 'saint', rooms: 5, hp: 1.3 },
+  { id: 3, name: '유리 광산', bg: 'bg3', enemies: ['shellguard', 'moth', 'spearman'], boss: 'spider', rooms: 5, hp: 1.6 },
+  { id: 4, name: '꺼진 태양의 심연', bg: 'bg4', enemies: ['assassin', 'shellguard', 'priest'], boss: 'shadow', rooms: 3, hp: 2.0 },
+];
+
+// 이번 판 도전 (출발 시 1개)
+export const CHALLENGES = [
+  { id: 'perfect30', name: '완벽 패링 30회', test: r => r.perfect >= 30 },
+  { id: 'exec3', name: '처형 3회', test: r => r.executes >= 3 },
+  { id: 'nohitBoss', name: '보스를 맞지 않고 쓰러뜨리기', test: r => r.noHitBoss },
+  { id: 'noFlask', name: '기름병 없이 지역 하나 돌파', test: r => r.noFlaskRegion },
+];
+
 export const ROOM_TYPES = {
   combat: { name: '전투', icon: '⚔' }, elite: { name: '엘리트', icon: '☠' },
   rest: { name: '휴식', icon: '🕯' }, shop: { name: '상점', icon: '⚖' }, boss: { name: '보스', icon: '🔔' },
 };
 
-export function newRun(seed = (Math.random() * 1e9) | 0) {
-  return { seed, rng: seed >>> 0 || 1, region: 1, roomIdx: 0, length: 6, relics: [], oath: null,
-    embers: 0, hp: null, flasks: null, room: 'combat', perfect: 0, kills: 0, t: 0 };
+// opts: { dark: 어둠 단계 0~10, pool: 해금된 각인 목록, oil, shortcut: 지역1 단축, daily }
+export function newRun(seed = (Math.random() * 1e9) | 0, opts = {}) {
+  const r = { seed, rng: seed >>> 0 || 1, region: 1, roomIdx: 0, length: 6, relics: [], oath: null,
+    embers: 0, hp: null, flasks: null, room: 'combat', perfect: 0, executes: 0, kills: 0, t: 0,
+    dark: opts.dark || 0, pool: opts.pool || Object.keys(RELICS), oil: opts.oil || 'refined', daily: !!opts.daily,
+    shortcut: !!opts.shortcut, noHitBoss: false, noFlaskRegion: false, regionFlasksUsed: 0, shards: 0, done: [] };
+  r.variants = REGIONS.map(() => null);
+  for (const g of REGIONS) { const v = ENEMY_DEFS[g.boss].variants; r.variants[g.id - 1] = v[(rand(r) * v.length) | 0]; }
+  r.challenge = CHALLENGES[(rand(r) * CHALLENGES.length) | 0].id;
+  setRegion(r, 1);
+  return r;
 }
+
+export function setRegion(r, id) {
+  r.region = id; r.roomIdx = 0; r.regionFlasksUsed = 0;
+  const g = REGIONS[id - 1];
+  r.length = (id === 1 && r.shortcut ? 2 : g.rooms) + 1;
+}
+
+// 보스 격파 후: 다음 지역으로 (체력 전부 회복). 마지막이면 false
+export function advanceRegion(r) {
+  if (r.regionFlasksUsed === 0) r.noFlaskRegion = true;
+  r.shards += 3;
+  if (r.region >= REGIONS.length) return false;
+  setRegion(r, r.region + 1); r.hp = null; r.room = 'combat';
+  return true;
+}
+
+export const regionOf = r => REGIONS[r.region - 1];
+export const challengeDone = r => CHALLENGES.find(c => c.id === r.challenge).test(r);
 
 export function chooseOath(r, id) {
   const o = OATHS.find(o => o.id === id); r.oath = id;
@@ -42,7 +85,7 @@ export function chooseOath(r, id) {
 
 // 각인 3택1: 가진 것 제외, 서약과 같은 계열은 3배 확률
 export function relicOffer(r, n = 3) {
-  const pool = Object.keys(RELICS).filter(k => !r.relics.includes(k));
+  const pool = Object.keys(RELICS).filter(k => !r.relics.includes(k) && r.pool.includes(k));
   const out = [];
   while (out.length < n && pool.length) {
     const wts = pool.map(k => RELICS[k].tag === r.oath ? 3 : 1);
@@ -92,25 +135,32 @@ const LAYOUTS = [
 ];
 
 export function buildRoomWorld(r) {
-  const type = r.room;
+  const type = r.room, g = regionOf(r);
+  const hpMul = g.hp * (1 + 0.08 * r.dark);                     // 어둠 단계마다 적 체력 +8%
   let w;
-  if (type === 'boss') w = createWorld({ room: 'boss' });
+  if (type === 'boss') w = createWorld({ room: 'boss', boss: g.boss, variant: r.variants[r.region - 1], hpMul });
   else {
     const L = LAYOUTS[(rand(r) * LAYOUTS.length) | 0];
     const solids = [
       { x: -40, y: 0, w: 40, h: 360 }, { x: 1280, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: 1360, h: 60 },
       ...L.map(s => ({ ...s, oneWay: true })),
     ];
-    w = createWorld({ room: 'arena', solids });
+    w = createWorld({ room: 'arena', solids, hpMul });
     const lvl = r.roomIdx;                         // 뒤로 갈수록 적이 늘어난다
     const xs = () => 480 + ((rand(r) * 700) | 0);
-    const wave = n => Array.from({ length: n }, () => [rand(r) < 0.35 ? 'moth' : 'ghoul', xs()]);
+    const kinds = g.enemies, mods = Object.keys(ELITE_MODS);
+    const pick = () => kinds[(rand(r) * kinds.length) | 0];
+    const wave = n => Array.from({ length: n }, () => [pick(), xs()]);
     w.waves = [wave(2 + (lvl > 2 ? 1 : 0)), wave(2 + (lvl > 1 ? 1 : 0))];
-    if (lvl > 3) w.waves.push(wave(3));
-    if (type === 'elite') w.waves = [[['ghoul', 760, 'elite'], ['ghoul', 980]], [['moth', 700], ['ghoul', 900, 'elite']]];
+    if (lvl > 3 || r.dark >= 4) w.waves.push(wave(3));
+    const mod = () => mods[(rand(r) * mods.length) | 0];
+    if (r.dark >= 3 && rand(r) < 0.3) w.waves[1][0] = [w.waves[1][0][0], w.waves[1][0][1], 'elite', mod()];
+    if (type === 'elite') w.waves = [[[kinds[0], 760, 'elite', mod()], [pick(), 980]], [[pick(), 700], [kinds[0], 900, 'elite', mod()]]];
   }
   const p = w.player;
   applyRelics(p, r.relics);
+  p.oil = r.oil;
+  if (r.dark >= 5) p.maxFlasks = Math.max(1, p.maxFlasks - 1);   // 어둠 5+: 기름병 -1
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);
   p.flasks = r.flasks == null ? p.maxFlasks : r.flasks;
   return w;
@@ -118,5 +168,8 @@ export function buildRoomWorld(r) {
 
 // 방을 나갈 때 리라 상태를 런에 저장
 export function saveFromWorld(r, w) {
-  r.hp = w.player.hp; r.flasks = w.player.flasks; r.perfect += w.player.perfectParries;
+  const p = w.player;
+  r.regionFlasksUsed += p.flasksUsed || 0;
+  r.hp = p.hp; r.flasks = p.flasks; r.perfect += p.perfectParries; r.executes += p.executes || 0;
+  if (r.room === 'boss' && w.won && !p.hurtCount) r.noHitBoss = true;
 }

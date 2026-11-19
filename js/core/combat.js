@@ -10,8 +10,9 @@ export function resolveEnemyHit(w, hb) {
   const p = w.player;
   if (hb.src.done || p.state === 'dead' || !overlap(p, hb)) return 'ignored';
   const front = hb.dir === -p.face;
-  if (p.state === 'parry' && p.stateT < PR.normalF && hb.parryable && front) {
-    const perfect = p.stateT < PR.perfectF;
+  const lag = p.lagTicks || 0;                                   // 설정의 타이밍 보정 (터치 지연만큼 판정창을 늘림)
+  if (p.state === 'parry' && p.stateT < PR.normalF + lag && hb.parryable && front) {
+    const perfect = p.stateT < PR.perfectF + lag || p.blueT > 0;   // 청유: 모든 패링이 완벽
     hb.src.done = true;
     p.parryOk = true; p.recoverWait = PR.successRecoverF;
     p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal) * p.mods.lightMul);
@@ -35,7 +36,7 @@ export function resolveEnemyHit(w, hb) {
     return 'ignored';
   }
   hb.src.done = true;
-  p.hp -= hb.dmg; p.chainN = 0;
+  p.hp -= hb.dmg; p.chainN = 0; p.hurtCount = (p.hurtCount || 0) + 1;
   p.iframes = CFG.player.iframesHurt;
   p.buffer = null;
   p.vx = (hb.dir || -p.face) * 1.5; p.vy = -2;
@@ -48,7 +49,7 @@ export function resolveEnemyHit(w, hb) {
 
 export function addPoise(w, e, frac) {
   if (!e.poiseMax || e.stunT > 0) return;
-  e.poise = Math.min(1, e.poise + frac);
+  e.poise = Math.min(1, e.poise + frac * (e.poiseRes || 1));
   e.poiseRegenT = PO.regenDelayF;
   if (e.poise >= 1) {
     // 그로기: 하던 공격은 취소 → 풀린 뒤엔 반드시 새 예고부터 (예고 없는 공격 방지)
@@ -76,8 +77,24 @@ export function resolvePlayerAttacks(w) {
   for (const e of w.enemies) {
     if (e.dead || e.hitBy === p.swing || !overlap(box, e)) continue;
     e.hitBy = p.swing;
+    const front = Math.sign((p.x + p.w / 2) - (e.x + e.w / 2)) === e.face;
+    if (e.shield && front && e.st !== 'active' && e.stunT <= 0) {       // 갑각 파수꾼: 정면 방패
+      w.hitstop = Math.max(w.hitstop, 3); p.vx = -p.face * 2; e.poise = Math.min(1, e.poise + 0);
+      w.events.push({ type: 'block', x: e.face > 0 ? e.x + e.w : e.x, y: e.y + e.h / 2 }); continue;
+    }
+    if (e.counter && front && e.st === 'idle' && e.stunT <= 0) {        // 흑염의 순례자: 리라의 공격을 패링
+      w.seed = (w.seed * 1664525 + 1013904223) >>> 0;
+      if (w.seed / 4294967296 < 0.4) {
+        w.hitstop = Math.max(w.hitstop, 6); w.shake = 6;
+        p.state = 'hurt'; p.stateT = CFG.player.hurtStunF - 8; p.buffer = null;   // 8틱 경직 (피해 없음)
+        e.atk = 'counter'; e.st = 'telegraph'; e.stT = 0;
+        w.events.push({ type: 'enemyParry', x: e.face > 0 ? e.x + e.w : e.x, y: e.y + 20 });
+        w.events.push({ type: 'telegraph', boss: true, parryable: true });
+        continue;
+      }
+    }
     if (e.stunT > 0) {                      // 그로기 → 처형
-      e.stunT = 0; e.poise = 0;
+      e.stunT = 0; e.poise = 0; p.executes = (p.executes || 0) + 1;
       damageEnemy(w, e, Math.round(e.maxHp * PO.executeFrac * p.mods.execMul));
       w.hitstop = Math.max(w.hitstop, 10); w.shake = 10;
       w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2 });
@@ -97,7 +114,11 @@ export function resolvePlayerAttacks(w) {
 // 필살: 반경 내 적 피해 + 적 탄 소거
 export function resolveUlt(w) {
   const p = w.player, cx = p.x + p.w / 2;
-  for (const e of w.enemies)
+  if (p.oil === 'blue') p.blueT = 300;                                  // 청유: 5초간 모든 패링이 완벽
+  else if (p.oil === 'black') {                                         // 흑유: 가장 가까운 적 하나에 강타 + 자세 50%
+    const e = w.enemies.filter(e => !e.dead).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
+    if (e && Math.abs(e.x + e.w / 2 - cx) < 260) { damageEnemy(w, e, 120); addPoise(w, e, 0.5); }
+  } else for (const e of w.enemies)
     if (!e.dead && Math.abs(e.x + e.w / 2 - cx) <= CFG.ult.radius) damageEnemy(w, e, CFG.ult.dmg);
   w.projectiles = w.projectiles.filter(b => b.owner !== 'enemy');
   w.shake = 12;

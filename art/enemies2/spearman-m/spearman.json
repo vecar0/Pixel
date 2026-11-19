@@ -1,0 +1,150 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "spearman",
+ "size": [
+  106,
+  79
+ ],
+ "cells": 3215,
+ "colours": 48,
+ "palette": [
+  "#090506",
+  "#0c0608",
+  "#0e0808",
+  "#120c0c",
+  "#1a3550",
+  "#1b0213",
+  "#1c1616",
+  "#262326",
+  "#2d2f37",
+  "#2e486e",
+  "#363d47",
+  "#3c4856",
+  "#3e322e",
+  "#4276ab",
+  "#465666",
+  "#4c3e39",
+  "#50627a",
+  "#5490d4",
+  "#568ec0",
+  "#584b49",
+  "#586e87",
+  "#5fa1e1",
+  "#62778b",
+  "#645c57",
+  "#6aa9ea",
+  "#6c4c41",
+  "#6c6660",
+  "#71706c",
+  "#773c34",
+  "#78b8f0",
+  "#7f5848",
+  "#80736c",
+  "#837e79",
+  "#898886",
+  "#905d4b",
+  "#968678",
+  "#976e5b",
+  "#98928b",
+  "#a69d8b",
+  "#aecef4",
+  "#b2a791",
+  "#bab8b6",
+  "#c4b9a2",
+  "#cfc5b1",
+  "#dcd2bf",
+  "#e6ddc8",
+  "#eee7d5",
+  "#f6f4f0"
+ ],
+ "feet": {
+  "middle": 62.5,
+  "row": 78
+ },
+ "anchor": [
+  63.0,
+  79
+ ],
+ "key": "magenta",
+ "howZoom": 9,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   9.333,
+   10.667
+  ],
+  "purity": {
+   "walk": 0.8755
+  },
+  "key": [
+   251,
+   2,
+   251
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 1
+   },
+   "keyTinted": 1,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 1,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 3
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    12,
+    6,
+    8
+   ],
+   "specks": 11,
+   "bareCells": 67,
+   "lineCellsAdded": 86,
+   "closed": true,
+   "offset": [
+    -2,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    9.24,
+    10.04
+   ],
+   "blocksTallerBy": 1.0858,
+   "sizeInBlocks": [
+    106,
+    73
+   ],
+   "rowsDoubled": [
+    0,
+    14,
+    27,
+    42,
+    60,
+    67
+   ],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "spearman.png",
+  "sha256": "fe7aa73e75b7024d2d9e953a01cca249b932f61365388d1407be1f73a19a522b"
+ },
+ "files": {
+  "sprite": "spearman.png",
+  "how": "spearman-how.png",
+  "review": "spearman-review.png",
+  "grounds": "spearman-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

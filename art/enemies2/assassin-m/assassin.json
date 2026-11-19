@@ -1,0 +1,143 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "assassin",
+ "size": [
+  78,
+  72
+ ],
+ "cells": 2700,
+ "colours": 48,
+ "palette": [
+  "#050505",
+  "#060606",
+  "#070707",
+  "#090909",
+  "#121112",
+  "#1e1c1c",
+  "#232023",
+  "#282528",
+  "#2f2a2d",
+  "#373033",
+  "#3f363b",
+  "#493e44",
+  "#4b3c37",
+  "#51454b",
+  "#584b51",
+  "#5c4a44",
+  "#60525a",
+  "#68544e",
+  "#685a61",
+  "#74636a",
+  "#7a645e",
+  "#806a72",
+  "#856e66",
+  "#8c747e",
+  "#8d8282",
+  "#8f756a",
+  "#906ca6",
+  "#977c87",
+  "#9e8173",
+  "#9f858e",
+  "#a4948b",
+  "#a68e82",
+  "#ad9f9c",
+  "#b0aba8",
+  "#b58872",
+  "#ba9f8f",
+  "#c09a81",
+  "#c286eb",
+  "#c28e81",
+  "#c3aa9c",
+  "#c5bab6",
+  "#c990ee",
+  "#caa085",
+  "#cfa88c",
+  "#d1c2b9",
+  "#ded1ca",
+  "#eee2d8",
+  "#f6ece4"
+ ],
+ "feet": {
+  "middle": 15.0,
+  "row": 71
+ },
+ "anchor": [
+  15.5,
+  72
+ ],
+ "key": "green",
+ "howZoom": 12,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   11.667,
+   12.0
+  ],
+  "purity": {
+   "walk": 0.9733
+  },
+  "key": [
+   3,
+   249,
+   3
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 0
+   },
+   "keyTinted": 0,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 0
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    6,
+    6,
+    6
+   ],
+   "specks": 33,
+   "bareCells": 6,
+   "lineCellsAdded": 6,
+   "closed": true,
+   "offset": [
+    -1,
+    -1
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    11.79,
+    12.0
+   ],
+   "blocksTallerBy": 1.0178,
+   "sizeInBlocks": [
+    78,
+    72
+   ],
+   "rowsDoubled": [],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "assassin.png",
+  "sha256": "dceeff31fe1e22f9a6df275b0348ce590d5b6b7e32dd943664ac9d74a8dfc2c2"
+ },
+ "files": {
+  "sprite": "assassin.png",
+  "how": "assassin-how.png",
+  "review": "assassin-review.png",
+  "grounds": "assassin-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

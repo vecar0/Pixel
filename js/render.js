@@ -28,8 +28,7 @@ export class Renderer {
     // 리라 픽셀 그림 (Higgsfield: 리라 디자인 + 사용자 샘플 화풍 → forge pixel_look로 픽셀 격자 맞춤). 기준점: 발 중앙 (43, 85)
     this.liraImg = new Image(); this.liraImg.src = 'assets/lira.png';
     // 동작 포즈 (Higgsfield 포즈 생성 → 기준 리라 격자로 읽음). 모두 132x111, 발 기준점 (69, 111)
-    this.bg = {};
-    for (const n of ['far', 'mid', 'ground']) { const im = new Image(); im.src = `assets/bg1-${n}.png`; this.bg[n] = im; }
+    this.bgs = {}; this.region = 1;   // 지역별 배경은 처음 쓸 때 불러온다
     this.pose = {};
     fetch('assets/enemies.json').then(r => r.json()).then(J => {
       for (const kind in J) for (const n in J[kind]) { const im = new Image(); im.src = J[kind][n].src; J[kind][n].img = im; }
@@ -81,6 +80,9 @@ export class Renderer {
       else if (ev.type === 'kill') this.fx.spawn('poof', ev.x, ev.y + 16, {});
       else if (ev.type === 'ultStart') this.fx.spawn('fireRing', p.x + p.w / 2, feet, { life: 80 });
       else if (ev.type === 'slam') { const b = w.enemies.find(e => e.boss); if (b) this.fx.spawn('slam', b.x + b.w / 2, b.y + b.h, { light: 0.6, life: 70 }); }
+      else if (ev.type === 'block') this.burst(ev.x, ev.y, 8, ['#d8d0ff', '#ffffff'], 2.5);
+      else if (ev.type === 'enemyParry') { this.fx.spawn('parry', ev.x, ev.y + 40, { palette: ['#1a0a2a', '#3a1660', '#6a2aa0', '#9a4ae0', '#c890ff', '#f0e0ff', '#ffffff'] }); this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' }); }
+      else if (ev.type === 'blink') this.burst(ev.x, ev.y, 14, ['#2a2236', '#4a3a5e', '#8a6ab0'], 2);
       else if (ev.type === 'land') {
         this.squash = Math.min(1, ev.v / 7);
         if (ev.v > 3) { this.dust(ev.x - 4, ev.y, -1, 5); this.dust(ev.x + 4, ev.y, 1, 5); }
@@ -185,6 +187,7 @@ export class Renderer {
 
     g.save(); g.translate(ox, oy);
     for (const e of w.enemies) this.drawEnemy(g, w, e);
+    this.drawWarnings(g, w);
     for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
     g.globalAlpha = 1;
     this.drawLira(g, w, p);
@@ -289,7 +292,9 @@ export class Renderer {
 
   // 지역 1 '이끼 묘지' 배경: 먼 배경(0.2) · 중간 묘비(0.55) · 바닥/발판 타일. 좌우 반전으로 이어 붙여 이음새를 숨김
   drawBackdrop(g, w, camX, sx, sy) {
-    const B = this.bg, ok = im => im.complete && im.naturalWidth;
+    const r = this.region || 1;
+    if (!this.bgs[r]) { this.bgs[r] = {}; for (const n of ['far', 'mid', 'ground']) { const im = new Image(); im.src = `assets/bg${r}-${n}.png`; this.bgs[r][n] = im; } }
+    const B = this.bgs[r], ok = im => im.complete && im.naturalWidth;
     if (!ok(B.far) || !ok(B.mid) || !ok(B.ground)) return false;
     const H = CFG.VIEW_H, vw = this.vw;
     const tile = (im, k, y, dark) => {
@@ -316,15 +321,34 @@ export class Renderer {
     return true;
   }
 
+  // 공격 예고 표시: 광선 예고선 · 고리 원 · 낙하 파편 위치 (패링 불가는 붉게)
+  drawWarnings(g, w) {
+    const blink = (w.t >> 2) & 1;
+    for (const e of w.enemies) {
+      if (e.st !== 'telegraph' || !e.atk) continue;
+      const a = ENEMY_DEFS[e.kind].attacks[e.atk];
+      if (a.beam) { g.fillStyle = blink ? 'rgba(255,79,94,0.5)' : 'rgba(255,79,94,0.2)'; g.fillRect(e.face > 0 ? e.x + e.w : e.x - a.beam.len, e.y + a.beam.y + a.beam.h / 2 - 1, a.beam.len, 3); }
+      if (a.ring) { g.strokeStyle = blink ? 'rgba(255,79,94,0.8)' : 'rgba(255,79,94,0.35)'; g.lineWidth = 2; g.beginPath(); g.ellipse(e.x + e.w / 2, e.y + e.h / 2, e.w / 2 + a.ring, e.h / 2 + 10, 0, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1; }
+    }
+    for (const b of w.projectiles) if (b.shard && b.y < 0) {          // 떨어질 자리 표시
+      g.fillStyle = blink ? C.white : 'rgba(255,255,255,0.4)'; g.fillRect(b.x + b.w / 2 - 1, 6, 3, 10); g.fillRect(b.x + b.w / 2 - 1, 20, 3, 3);
+    }
+    for (const e of w.enemies) if (e.st === 'active' && e.atk) {
+      const a = ENEMY_DEFS[e.kind].attacks[e.atk];
+      if (a.beam) { g.fillStyle = 'rgba(220,200,255,0.85)'; g.fillRect(e.face > 0 ? e.x + e.w : e.x - a.beam.len, e.y + a.beam.y, a.beam.len, a.beam.h); g.fillStyle = '#fff'; g.fillRect(e.face > 0 ? e.x + e.w : e.x - a.beam.len, e.y + a.beam.y + 8, a.beam.len, 5); }
+      if (a.ring) { g.fillStyle = e.kind === 'shadow' ? 'rgba(120,40,170,0.55)' : 'rgba(200,170,255,0.5)'; g.beginPath(); g.ellipse(e.x + e.w / 2, e.y + e.h / 2, e.w / 2 + a.ring, e.h / 2 + 10, 0, 0, Math.PI * 2); g.fill(); }
+    }
+  }
+
   // 적 그림 (Higgsfield → 픽셀 격자). 원본은 왼쪽을 봄
   enemyFrame(w, e, d) {
     const S = this.enemySprites; if (!S || !S[e.kind]) return null;
     const F = S[e.kind]; let n;
     if (e.kind === 'moth') n = e.st === 'active' ? 'down' : e.st === 'telegraph' ? 'up' : (w.t >> 2) & 1 ? 'up' : 'down';
-    else if (e.st === 'telegraph') n = 'wind';
-    else if (e.st === 'active' || (e.st === 'recover' && e.stT < 12)) n = e.kind === 'ghoul' ? 'slash' : 'strike';
+    else if (e.st === 'telegraph') n = F.wind ? 'wind' : 'idle';
+    else if (e.st === 'active' || (e.st === 'recover' && e.stT < 12)) n = F.slash ? 'slash' : 'strike';
     else n = 'idle';
-    const f = F[n]; return f && f.img.complete && f.img.naturalWidth ? f : null;
+    const f = F[n] || F.idle; return f && f.img.complete && f.img.naturalWidth ? f : null;
   }
 
   drawEnemySprite(g, w, e, d, f, k) {
@@ -455,7 +479,7 @@ export class Renderer {
     const boss = w.enemies.find(e => e.boss);
     if (boss) {
       const bw = Math.min(360, this.vw - 80), bx = Math.round((this.vw - bw) / 2), by = CFG.VIEW_H - 26;
-      g.fillStyle = C.white; g.fillText('무덤종', bx, by - 12);
+      g.fillStyle = C.white; g.fillText(ENEMY_DEFS[boss.kind].name, bx, by - 12);
       g.fillStyle = '#2a2230'; g.fillRect(bx, by, bw, 6); g.fillStyle = C.red; g.fillRect(bx, by, Math.round(bw * boss.hp / boss.maxHp), 6);
       g.fillStyle = '#2a2230'; g.fillRect(bx, by + 8, bw, 3); g.fillStyle = boss.stunT > 0 ? C.white : C.yellow; g.fillRect(bx, by + 8, Math.round(bw * (boss.stunT > 0 ? 1 : boss.poise)), 3);
     }

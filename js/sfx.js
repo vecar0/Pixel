@@ -5,6 +5,7 @@ export class Sfx {
     if (this.ac) { if (this.ac.state === 'suspended') this.ac.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (AC) { this.ac = new AC(); this.master = this.ac.createGain(); this.master.gain.value = 0.5; this.master.connect(this.ac.destination); }
+    if (this.ac && this.want) { this.musicKey = null; this.musicFor(...this.want); }
   }
   tone(freq, dur, type = 'square', vol = 0.3, slide = 0, delay = 0) {
     const a = this.ac, t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
@@ -21,6 +22,38 @@ export class Sfx {
     s.buffer = buf; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     s.connect(f).connect(g).connect(this.master); s.start(t);
+  }
+  // 배경음악: 지역마다 다른 음계의 느린 아르페지오 + 저음. 0 = 마을, 보스방은 빠르고 낮게
+  musicFor(region, boss = false) {
+    this.want = [region, boss];
+    const key = region + (boss ? 'b' : '');
+    if (this.musicKey === key && this.musicTimer) return;
+    this.stopMusic(); this.musicKey = key;
+    if (!this.ac || this.musicOn === false) return;
+    const SCALES = [[220, 261.6, 329.6, 392, 440], [196, 233.1, 293.7, 349.2, 392], [174.6, 207.7, 261.6, 311.1, 349.2],
+      [164.8, 196, 246.9, 293.7, 329.6], [146.8, 174.6, 220, 261.6, 277.2]];
+    const sc = SCALES[Math.min(region, 4)], step = boss ? 0.2 : 0.42;
+    let i = 0;
+    const g = this.ac.createGain(); g.gain.value = 0.16; g.connect(this.master); this.musicGain = g;
+    const note = (f, dur, type, vol, when) => {
+      const o = this.ac.createOscillator(), v = this.ac.createGain();
+      o.type = type; o.frequency.value = f; v.gain.setValueAtTime(0.0001, when);
+      v.gain.exponentialRampToValueAtTime(vol, when + 0.03); v.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.connect(v).connect(g); o.start(when); o.stop(when + dur + 0.05);
+    };
+    const tickFn = () => {
+      if (!this.ac) return;
+      const t = this.ac.currentTime + 0.05;
+      const pat = boss ? [0, 2, 1, 3, 0, 4, 2, 1] : [0, 2, 4, 2, 1, 3, 2, 0];
+      note(sc[pat[i % 8]] * (i % 16 < 8 ? 1 : 2), step * 1.8, 'triangle', 0.5, t);
+      if (i % 4 === 0) note(sc[0] / 2, step * 4, boss ? 'sawtooth' : 'sine', boss ? 0.35 : 0.6, t);
+      i++;
+    };
+    this.musicTimer = setInterval(tickFn, step * 1000); tickFn();
+  }
+  stopMusic() {
+    if (this.musicTimer) clearInterval(this.musicTimer); this.musicTimer = null;
+    if (this.musicGain) { try { this.musicGain.disconnect(); } catch (e) { } this.musicGain = null; }
   }
   play(name) {
     if (!this.ac || !this.on) return;

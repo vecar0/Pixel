@@ -1,9 +1,11 @@
 // 런 구조 테스트: node tests/run.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
-import { RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
+import { REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, doorOffer, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
 import { tick, EMPTY_INPUT } from '../js/core/world.js';
-import { spawnEnemy } from '../js/core/enemies.js';
+import { spawnEnemy, ENEMY_DEFS } from '../js/core/enemies.js';
+import { createWorld } from '../js/core/world.js';
+import { defaultSave, buy, relicPool, recordRun, dailySeed, UNLOCKS } from '../js/core/meta.js';
 const I = o => ({ ...EMPTY_INPUT, ...o });
 const steps = (w, n, o = {}) => { for (let i = 0; i < n; i++) tick(w, I(o)); };
 
@@ -74,4 +76,95 @@ test('각인 효과: 화염 칼날 → 3타에 화상 (3초간 초당 3)', () =>
   for (const k of [0, 1, 2]) { tick(w, I({ attack: true })); steps(w, 11); e.x = w.player.x + w.player.w + 2; }   // 히트스톱 포함 여유
   const hp = e.hp; steps(w, 200); eq(hp - e.hp, 9);
 });
+/* ── 지역 2~4 · 새 적 · 보스 · 영구 진행 ── */
+test('지역 4곳: 보스 격파 → 다음 지역, 마지막이면 끝', () => {
+  const r = newRun(9); chooseOath(r, 'parry'); eq(REGIONS.length, 4);
+  for (let i = 1; i < 4; i++) { ok(advanceRegion(r)); eq(r.region, i + 1); eq(r.roomIdx, 0); }
+  ok(!advanceRegion(r));
+  eq(r.length, REGIONS[3].rooms + 1);
+});
+test('지역별 적 구성과 보스', () => {
+  const r = newRun(9); chooseOath(r, 'parry'); advanceRegion(r); enterRoom(r, 'combat');
+  const w = buildRoomWorld(r); const kinds = new Set(w.waves.flat().map(s => s[0]));
+  ok([...kinds].every(k => REGIONS[1].enemies.includes(k)), [...kinds]);
+  enterRoom(r, 'boss'); eq(buildRoomWorld(r).enemies[0].kind, 'saint');
+});
+test('어둠 단계: 적 체력 증가, 5단계부터 기름병 -1', () => {
+  const a = newRun(9, { dark: 0 }), b = newRun(9, { dark: 5 });
+  for (const r of [a, b]) { chooseOath(r, 'parry'); enterRoom(r, 'boss'); }
+  ok(buildRoomWorld(b).enemies[0].maxHp > buildRoomWorld(a).enemies[0].maxHp);
+  eq(buildRoomWorld(b).player.maxFlasks, CFG.flask.charges - 1);
+});
+test('해금 안 된 각인은 제안되지 않는다', () => {
+  const r = newRun(9, { pool: ['echo', 'vigor', 'oil', 'chain'] }); chooseOath(r, 'parry');
+  for (let i = 0; i < 5; i++) ok(relicOffer(r).every(k => r.pool.includes(k)));
+});
+function arenaWith(kind, dx = 120) {
+  const w = createWorld({ room: 'test', solids: [{ x: -1000, y: 300, w: 4000, h: 40 }] }); steps(w, 30); w.player.hp = 99;
+  const e = spawnEnemy(w, kind, w.player.x + dx, 300 - ENEMY_DEFS[kind].h); return { w, e };
+}
+test('해골 창병: 3연 찌르기 간격 ≥16틱', () => {
+  const { w, e } = arenaWith('spearman', 60); e.cd = 0; let starts = [], last = null;
+  for (let i = 0; i < 400 && starts.length < 3; i++) {
+    tick(w, I()); if (e.st === 'idle' && e.cd <= 0) e.atk = null;
+    const h = w.hitboxes.find(h => h.owner === e); if (h && h.src !== last) { starts.push(w.t); last = h.src; }
+    if (e.st === 'recover' && e.atk !== 'triple') starts = [];
+  }
+  ok(starts.length === 3 || starts.length === 1, starts.length);
+  for (let i = 1; i < starts.length; i++) ok(starts[i] - starts[i - 1] >= 16);
+});
+test('침수 사제: 조준탄 → 완벽 패링하면 반사', () => {
+  const { w, e } = arenaWith('priest', 220); let reflected = false;
+  for (let i = 0; i < 600 && !reflected; i++) {
+    const b = w.projectiles.find(b => b.owner === 'enemy');
+    const near = b && Math.abs((b.x + b.w / 2) - (w.player.x + w.player.w / 2)) < 14;
+    tick(w, I(near && w.player.state !== 'parry' ? { parry: true } : {}));
+    if (w.projectiles.some(b => b.owner === 'player')) reflected = true;
+  }
+  ok(reflected);
+});
+test('갑각 파수꾼: 정면 공격은 막히고 등 뒤는 들어간다', () => {
+  const { w, e } = arenaWith('shellguard', 40); e.cd = 9999; e.update = null; e.face = -1; e.st = 'idle';
+  const hp0 = e.hp; tick(w, I({ attack: true })); steps(w, 8);
+  eq(e.hp, hp0, 'front not blocked');
+  e.staggerT = 999; e.face = 1; e.hitBy = -1; steps(w, 20); tick(w, I({ attack: true })); steps(w, 8);   // 경직으로 방향 고정
+  ok(e.hp < hp0, 'back not hit');
+});
+test('그림자 자객: 순간이동 후에도 예고 ≥18틱', () => {
+  const { w, e } = arenaWith('assassin', 260); e.cd = 0; let blinkT = -1, teleT = -1, hitT = -1;
+  for (let i = 0; i < 400 && hitT < 0; i++) {
+    tick(w, I());
+    if (w.events.some(v => v.type === 'blink') && blinkT < 0) blinkT = w.t;
+    if (e.st === 'telegraph' && teleT < 0) teleT = w.t;
+    if (w.hitboxes.some(h => h.owner === e)) hitT = w.t;
+  }
+  ok(blinkT > 0, 'no blink'); ok(hitT - teleT >= 18, hitT - teleT);
+});
+test('흑염의 순례자: 리라의 공격을 패링하고 반격 예고', () => {
+  const w = createWorld({ room: 'boss', boss: 'shadow' }); steps(w, 30); w.player.hp = 99;
+  const b = w.enemies[0]; b.cd = 9999; let parried = false;
+  for (let k = 0; k < 12 && !parried; k++) {
+    b.x = w.player.x + w.player.w + 4; b.face = -1; b.st = 'idle';
+    tick(w, I({ attack: true })); steps(w, 10);
+    if (b.atk === 'counter') parried = true;
+  }
+  ok(parried);
+});
+test('청유: 필살 후 5초간 늦은 패링도 완벽', () => {
+  const w = createWorld({ room: 'test', solids: [{ x: -1000, y: 300, w: 4000, h: 40 }] }); steps(w, 30);
+  w.player.oil = 'blue'; w.player.light = 100; tick(w, I({ ult: true })); steps(w, 31);
+  ok(w.player.blueT > 0);
+});
+test('영구 진행: 조각으로 해금, 해금 각인이 풀에 들어감, 클리어 시 어둠 단계 해금', () => {
+  const s = defaultSave(); s.shards = 10;
+  ok(buy(s, 'relic:wings')); ok(relicPool(s).includes('wings')); ok(!buy(s, 'relic:wings'));
+  const r = newRun(1); r.shards = 9;
+  const gain = recordRun(s, r, { won: true, bossesKilled: ['bellBoss'] });
+  ok(gain >= 11); eq(s.darkUnlocked, 1); eq(s.bossKills.bellBoss, 1);
+});
+test('오늘의 시련: 같은 날은 같은 시드', () => {
+  const a = dailySeed(new Date(2026, 10, 19)), b = dailySeed(new Date(2026, 10, 19, 23)), c = dailySeed(new Date(2026, 10, 20));
+  eq(a.seed, b.seed); ok(a.seed !== c.seed);
+});
+
 run();

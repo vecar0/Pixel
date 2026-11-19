@@ -25,10 +25,16 @@ const log = p => p.evaluate(() => window.__log);
 const PC = { viewport: { width: 1280, height: 720 } };
 const PHONE = { ...devices['iPhone 13 landscape'] };
 
-await check('PC: 타이틀 → Enter → 서약 → Enter → 플레이', PC, async p => {
+await check('PC: 타이틀 → Enter(마을) → Enter(출발) → 서약 → 지역 입장 → 플레이', PC, async p => {
   eq(await p.evaluate(() => window.__lk.mode), 'title');
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  eq(await p.evaluate(() => window.__lk.mode), 'town');
+  await p.screenshot({ path: path.join(out, 'town.png') });
+  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'oath');
+  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  eq(await p.evaluate(() => window.__lk.mode), 'intro');
+  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'play');
 });
@@ -82,6 +88,11 @@ await check('모바일: 0ms 짧은 탭도 패링 실행', PHONE, async p => {
 await check('모바일 세로 → 가로 안내', { ...devices['iPhone 13'] }, async p => {
   ok(await p.locator('#rotate').isVisible());
 });
+for (const [reg, name] of [[2, 'saint'], [3, 'spider'], [4, 'shadow']]) await check(`지역 ${reg} 보스 ${name} 3초 진행`, PC, async p => {
+  await p.evaluate(r => { const lk = window.__lk; lk.start(); lk.gotoBoss(r); }, reg); await p.waitForTimeout(3000);
+  eq(await p.evaluate(() => window.__lk.world.enemies[0]?.kind), name);
+  await p.screenshot({ path: path.join(out, `boss${reg}.png`) });
+});
 await check('보스방 3초 진행 + 스크린샷', PC, async p => {
   await p.evaluate(() => window.__lk.setRoom('boss')); await p.waitForTimeout(3000);
   eq(await p.evaluate(() => window.__lk.mode), 'play');
@@ -96,6 +107,7 @@ const kev = (p, type, key, code) => p.evaluate(([t, k, c]) => dispatchEvent(new 
 await check('review: 한글 입력 상태에서도 키 조작 (ㅏ=K)', PC, async p => {
   await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250);
   await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250);   // 서약 화면 → 첫 서약
+  for (let i = 0; i < 2; i++) { await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250); }   // 마을 → 출발, 지역 입장
   eq(await p.evaluate(() => window.__lk.mode), 'play'); await watch(p);
   await kev(p, 'keydown', 'ㅏ', 'KeyK'); await kev(p, 'keyup', 'ㅏ', 'KeyK'); await p.waitForTimeout(150);
   ok((await log(p)).some(l => l.s === 'parry'));
@@ -106,7 +118,7 @@ await check('review: 전투 중 세로로 돌리면 일시정지', PHONE, async 
   eq(await p.evaluate(() => window.__lk.mode), 'pause');
 });
 await check('review: 플레이 중 누른 Enter가 사망 화면을 건너뛰지 않음', PC, async p => {
-  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
   await p.keyboard.press('Enter'); await p.waitForTimeout(100);
   await p.evaluate(() => { const w = window.__lk.world; w.over = true; });
   await p.waitForTimeout(300);

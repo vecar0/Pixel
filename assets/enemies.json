@@ -60,5 +60,117 @@
    "w": 174,
    "h": 150
   }
+ },
+ "spearman": {
+  "idle": {
+   "src": "assets/spearman-idle.png",
+   "ax": 63,
+   "ay": 79,
+   "w": 106,
+   "h": 79
+  },
+  "strike": {
+   "src": "assets/spearman-strike.png",
+   "ax": 57,
+   "ay": 71,
+   "w": 104,
+   "h": 71
+  }
+ },
+ "priest": {
+  "idle": {
+   "src": "assets/priest-idle.png",
+   "ax": 36,
+   "ay": 82,
+   "w": 75,
+   "h": 82
+  },
+  "strike": {
+   "src": "assets/priest-strike.png",
+   "ax": 38,
+   "ay": 84,
+   "w": 83,
+   "h": 84
+  }
+ },
+ "shellguard": {
+  "idle": {
+   "src": "assets/shellguard-idle.png",
+   "ax": 36,
+   "ay": 69,
+   "w": 79,
+   "h": 69
+  },
+  "strike": {
+   "src": "assets/shellguard-strike.png",
+   "ax": 42,
+   "ay": 70,
+   "w": 79,
+   "h": 70
+  }
+ },
+ "assassin": {
+  "idle": {
+   "src": "assets/assassin-idle.png",
+   "ax": 34,
+   "ay": 72,
+   "w": 78,
+   "h": 72
+  },
+  "strike": {
+   "src": "assets/assassin-strike.png",
+   "ax": 41,
+   "ay": 70,
+   "w": 86,
+   "h": 70
+  }
+ },
+ "saint": {
+  "idle": {
+   "src": "assets/saint-idle.png",
+   "ax": 48,
+   "ay": 93,
+   "w": 85,
+   "h": 93
+  },
+  "strike": {
+   "src": "assets/saint-strike.png",
+   "ax": 54,
+   "ay": 92,
+   "w": 92,
+   "h": 92
+  }
+ },
+ "spider": {
+  "idle": {
+   "src": "assets/spider-idle.png",
+   "ax": 136,
+   "ay": 154,
+   "w": 246,
+   "h": 154
+  },
+  "strike": {
+   "src": "assets/spider-strike.png",
+   "ax": 140,
+   "ay": 154,
+   "w": 246,
+   "h": 154
+  }
+ },
+ "shadow": {
+  "idle": {
+   "src": "assets/shadow-idle.png",
+   "ax": 44,
+   "ay": 99,
+   "w": 92,
+   "h": 99
+  },
+  "strike": {
+   "src": "assets/shadow-strike.png",
+   "ax": 58,
+   "ay": 94,
+   "w": 104,
+   "h": 94
+  }
  }
 }

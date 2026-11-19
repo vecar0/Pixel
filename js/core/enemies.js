@@ -1,8 +1,10 @@
 // 적 공용 상태기계: idle(접근) → telegraph(예고) → active(판정) → recover(후딜) → idle
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
+// 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
+//                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
 import { CFG } from './config.js';
 import { moveAndCollide } from './player.js';
-import { BELL_BOSS, bellMove, bellWant, bellPick, bellActiveStart } from './boss.js';
+import { BOSSES, bossPick, bossWant } from './boss.js';
 
 export const ENEMY_DEFS = {
   ghoul: {
@@ -13,7 +15,39 @@ export const ENEMY_DEFS = {
     hp: 12, w: 20, h: 16, speed: 1.6, fly: true, range: 190, cooldown: [60, 110],
     attacks: { dash: { name: 'dash', telegraphF: 18, activeF: 24, recoverF: 30, dmg: 1, parryable: true, dashSpeed: 6.6 } },
   },
-  bellBoss: BELL_BOSS,
+  // 지역 2: 침수 대성당
+  spearman: {
+    hp: 40, w: 24, h: 58, speed: 0.9, range: 74, cooldown: [45, 85],
+    attacks: {
+      thrust: { name: 'thrust', telegraphF: 20, activeF: 5, recoverF: 26, dmg: 1, parryable: true, reach: 62, height: 22 },
+      triple: { name: 'triple', telegraphF: 22, activeF: 4, recoverF: 32, dmg: 1, parryable: true, reach: 62, height: 22, hits: 3, gapF: 16 },
+    },
+  },
+  priest: {
+    hp: 25, w: 24, h: 56, speed: 0.7, range: 280, keepAway: 140, cooldown: [70, 110],
+    attacks: { bolts: { name: 'bolts', telegraphF: 24, activeF: 1, recoverF: 40, dmg: 1, parryable: true, hits: 3, gapF: 16, bolt: { speed: 3.4, w: 10, h: 10 } } },
+  },
+  // 지역 3: 유리 광산
+  shellguard: {
+    hp: 70, w: 34, h: 54, speed: 0.6, range: 60, shield: true, cooldown: [50, 90],
+    attacks: {
+      bash: { name: 'bash', telegraphF: 22, activeF: 5, recoverF: 28, dmg: 1, parryable: true, reach: 40 },
+      grab: { name: 'grab', telegraphF: 26, activeF: 6, recoverF: 36, dmg: 2, parryable: false, reach: 34 },
+    },
+  },
+  // 지역 4: 꺼진 태양의 심연
+  assassin: {
+    hp: 35, w: 22, h: 52, speed: 1.4, range: 46, blink: true, cooldown: [70, 120],
+    attacks: { cut: { name: 'cut', telegraphF: 18, activeF: 4, recoverF: 26, dmg: 1, parryable: true, reach: 40 } },
+  },
+  ...BOSSES,
+};
+
+// 엘리트 수식어 (판마다 무작위)
+export const ELITE_MODS = {
+  swift: { name: '가속', desc: '빠르고 쉴 틈이 적다' },
+  split: { name: '분열', desc: '쓰러지면 나방 둘이 나온다' },
+  iron:  { name: '강철', desc: '체력이 높고 자세가 잘 무너지지 않는다' },
 };
 
 export function rng(w) {           // 결정적 난수 (월드에 상태 저장)
@@ -21,16 +55,24 @@ export function rng(w) {           // 결정적 난수 (월드에 상태 저장)
   return w.seed / 4294967296;
 }
 
-export function spawnEnemy(w, kind, x, y) {
-  const d = ENEMY_DEFS[kind];
+export function spawnEnemy(w, kind, x, y, opt = {}) {
+  const d = ENEMY_DEFS[kind], hpMul = opt.hpMul || 1;
   const e = {
     kind, x, y, w: d.w, h: d.h, vx: 0, vy: 0, face: -1, onGround: false,
-    hp: d.hp, maxHp: d.hp, boss: !!d.boss, poise: 0, poiseMax: !!d.poise, stunT: 0, poiseRegenT: 0,
+    hp: Math.round(d.hp * hpMul), maxHp: Math.round(d.hp * hpMul), boss: !!d.boss, poise: 0, poiseMax: !!d.poise, poiseRes: 1, stunT: 0, poiseRegenT: 0,
     st: 'idle', stT: 0, atk: null, srcs: [], cd: 30, hitBy: -1, flash: 0, kvx: 0, staggerT: 0,
-    speed: d.speed, range: d.range, forceNext: null, dashDx: 0, dashDy: 0,
+    shield: !!d.shield, counter: !!d.counter,
+    speed: d.speed, range: d.range, cdMul: 1, mods: [], forceNext: null, variant: opt.variant || null, dashDx: 0, dashDy: 0,
   };
   w.enemies.push(e);
   return e;
+}
+
+export function makeElite(e, mod) {
+  e.elite = true; e.poiseMax = true; e.mods = [mod];
+  e.hp = e.maxHp = Math.round(e.maxHp * (mod === 'iron' ? 3.5 : 2.5));
+  if (mod === 'swift') { e.speed *= 1.6; e.cdMul = 0.5; }
+  if (mod === 'iron') e.poiseRes = 0.6;
 }
 
 export const telegraphOf = (e, a) => a.telegraphF - (e.boss && e.hp <= e.maxHp / 2 ? 4 : 0);
@@ -39,6 +81,12 @@ const onScreen = (w, e) => e.x + e.w > w.camX && e.x < w.camX + CFG.VIEW_W;
 const attackers = w => w.enemies.filter(e => !e.boss && !e.dead && (e.st === 'telegraph' || e.st === 'active')).length;
 
 function setSt(e, st) { e.st = st; e.stT = 0; }
+
+function startAttack(w, e, d, dx, name) {
+  e.atk = name; e.face = Math.sign(dx) || e.face;
+  setSt(e, 'telegraph');
+  w.events.push({ type: 'telegraph', boss: e.boss, parryable: d.attacks[name].parryable, kind: e.kind, atk: name });
+}
 
 export function updateEnemy(w, e) {
   if (Math.abs(e.kvx) > 0.05) {          // 넉백: 벽에 막히면 멈춤
@@ -53,49 +101,96 @@ export function updateEnemy(w, e) {
 
   if (e.st === 'idle') {
     if (e.cd > 0) e.cd--;
-    if (e.kind === 'bellBoss') bellMove(w, e, dx);
+    if (e.boss) bossMove(w, e, dx);
     else if (d.fly) mothHover(w, e, dx);
+    else if (d.keepAway) keepDistance(w, e, dx, d.keepAway);
     else walkToward(w, e, dx);
-    const want = e.kind === 'bellBoss' ? bellWant(w, e, dx) : Math.abs(dx) < e.range && Math.abs(p.y - e.y) < 120;
+    if (d.blink && e.cd <= 0 && Math.abs(dx) > 90 && Math.abs(dx) < 400 && attackers(w) < CFG.enemy.maxAttackers && onScreen(w, e)) {
+      // 순간이동: 리라 등 뒤로. 예고는 새 위치에서 시작하므로 공정함
+      const nx = p.x + p.w / 2 - p.face * 56 - e.w / 2;
+      if (nx > 0 && nx + e.w < w.width) { e.x = nx; w.events.push({ type: 'blink', x: e.x + e.w / 2, y: e.y + e.h / 2 }); }
+    }
+    const want = e.boss ? bossWant(w, e, dx) : Math.abs(dx) < e.range && Math.abs(p.y - e.y) < 120;
     const tokenOk = e.boss || attackers(w) < CFG.enemy.maxAttackers;
     if (e.cd <= 0 && want && tokenOk && onScreen(w, e) && p.state !== 'dead') {
-      e.atk = e.kind === 'bellBoss' ? bellPick(w, e, dx) : Object.keys(d.attacks)[0];
-      e.face = Math.sign(dx) || e.face;
-      setSt(e, 'telegraph');
-      w.events.push({ type: 'telegraph', boss: e.boss, parryable: d.attacks[e.atk].parryable });
+      const names = Object.keys(d.attacks);
+      startAttack(w, e, d, (p.x + p.w / 2) - (e.x + e.w / 2), e.boss ? bossPick(w, e, dx) : names[(rng(w) * names.length) | 0]);
     }
   } else if (e.st === 'telegraph') {
     if (!d.fly) { e.vx = 0; physics(w, e); }
     if (e.stT >= telegraphOf(e, d.attacks[e.atk])) {
       setSt(e, 'active'); e.srcs = [];
-      if (e.atk === 'dash') { const l = Math.hypot(dx, (p.y + 28) - e.y) || 1; e.dashDx = dx / l; e.dashDy = ((p.y + 28) - e.y) / l; }
-      if (e.kind === 'bellBoss') bellActiveStart(w, e);
+      const a = d.attacks[e.atk];
+      if (a.dashSpeed) { const l = Math.hypot(dx, (p.y + 28) - e.y) || 1; e.dashDx = dx / l; e.dashDy = ((p.y + 28) - e.y) / l; }
+      if (a.charge) e.face = Math.sign(dx) || e.face;
+      if (a.wave) spawnWaves(w, e, a);
+      if (a.rain) spawnRain(w, e, a);
     }
   }
   if (e.st === 'active') {   // 예고가 끝난 그 틱부터 판정
     const a = d.attacks[e.atk], hits = a.hits || 1, gap = a.gapF || 0;
-    if (e.atk === 'dash') {
+    const hb = (k, x, y, w2, h2, dir) => {
+      if (!e.srcs[k]) e.srcs[k] = {};
+      w.hitboxes.push({ src: e.srcs[k], owner: e, x, y, w: w2, h: h2, dmg: a.dmg, parryable: a.parryable, dir });
+    };
+    if (a.dashSpeed) {
       e.vx = e.dashDx * a.dashSpeed; e.x += e.vx; e.y += e.dashDy * a.dashSpeed;
-      if (!e.srcs[0]) e.srcs[0] = {};
-      w.hitboxes.push({ src: e.srcs[0], owner: e, x: e.x, y: e.y, w: e.w, h: e.h, dmg: a.dmg, parryable: a.parryable, dir: Math.sign(e.vx) || e.face });
-    } else if (a.reach) {
+      hb(0, e.x, e.y, e.w, e.h, Math.sign(e.vx) || e.face);
+    } else if (a.charge) {
+      e.vx = e.face * a.charge; moveAndCollide(w, e);
+      hb(0, e.x - 4, e.y, e.w + 8, e.h, e.face);
+    } else {
       for (let k = 0; k < hits; k++) {
         const t0 = k * gap;
+        if (e.stT === t0 && a.bolt) spawnBolt(w, e, a);
         if (e.stT >= t0 && e.stT < t0 + a.activeF) {
-          if (!e.srcs[k]) e.srcs[k] = {};
-          const x = e.face > 0 ? e.x + e.w : e.x - a.reach;
-          w.hitboxes.push({ src: e.srcs[k], owner: e, x, y: e.y + e.h - (a.height || e.h), w: a.reach, h: a.height || e.h, dmg: a.dmg, parryable: a.parryable, dir: e.face });
+          if (a.reach) hb(k, e.face > 0 ? e.x + e.w : e.x - a.reach, e.y + e.h - (a.height || e.h), a.reach, a.height || e.h, e.face);
+          if (a.beam) hb(k, e.face > 0 ? e.x + e.w : e.x - a.beam.len, e.y + a.beam.y, a.beam.len, a.beam.h, e.face);
+          if (a.ring) hb(k, e.x - a.ring, e.y - 10, e.w + a.ring * 2, e.h + 10, Math.sign(-dx) || e.face);
         }
       }
     }
-    if (!d.fly) { e.vx = 0; physics(w, e); }
+    if (!d.fly && !a.charge) { e.vx = 0; physics(w, e); }
     if (e.stT >= (hits - 1) * gap + a.activeF) setSt(e, 'recover');
   } else if (e.st === 'recover') {
     if (!d.fly) { e.vx = 0; physics(w, e); }
     if (e.stT >= d.attacks[e.atk].recoverF) {
       setSt(e, 'idle');
-      const [lo, hi] = d.cooldown; e.cd = lo + Math.floor(rng(w) * (hi - lo));
+      const [lo, hi] = d.cooldown; e.cd = Math.round((lo + Math.floor(rng(w) * (hi - lo))) * e.cdMul);
     }
+  }
+}
+
+// 조준탄: 리라 가슴 높이를 향해
+function spawnBolt(w, e, a) {
+  const p = w.player, b = a.bolt;
+  const sx = e.face > 0 ? e.x + e.w : e.x - b.w, sy = e.y + 16;
+  const tx = p.x + p.w / 2, ty = p.y + 24, l = Math.hypot(tx - sx, ty - sy) || 1;
+  w.projectiles.push({ x: sx, y: sy, w: b.w, h: b.h, vx: (tx - sx) / l * b.speed, vy: (ty - sy) / l * b.speed,
+    dmg: a.dmg, parryable: a.parryable, owner: 'enemy', life: 160, src: e, bolt: e.kind });
+  w.events.push({ type: 'bolt', x: sx, y: sy });
+}
+
+// 바닥 충격파 양쪽 (패링 불가 → 점프·회피)
+export function spawnWaves(w, e, a) {
+  const floorY = e.y + e.h, cx = e.x + e.w / 2;
+  for (const dir of [-1, 1]) {
+    w.projectiles.push({
+      x: cx + dir * (e.w / 2) - (dir < 0 ? a.wave.w : 0), y: floorY - a.wave.h, w: a.wave.w, h: a.wave.h,
+      vx: dir * a.wave.speed, vy: 0, dmg: a.dmg, parryable: false, owner: 'enemy', life: a.wave.life, src: e, wave: true,
+    });
+  }
+  w.shake = 10;
+  w.events.push({ type: 'slam', kind: e.kind });
+}
+
+// 낙하 파편: 리라 위쪽에서 떨어짐 (예고 동안 표시는 렌더가 rainMark로)
+function spawnRain(w, e, a) {
+  const p = w.player;
+  for (let i = 0; i < a.rain.n; i++) {
+    const x = p.x + p.w / 2 + (i - (a.rain.n - 1) / 2) * a.rain.gap;
+    w.projectiles.push({ x: x - 7, y: -20 - i * 30, w: 14, h: 18, vx: 0, vy: a.rain.speed, dmg: a.dmg,
+      parryable: a.parryable, owner: 'enemy', life: 200, src: e, shard: true });
   }
 }
 
@@ -107,6 +202,19 @@ function physics(w, e) {
 function walkToward(w, e, dx) {
   e.face = Math.sign(dx) || e.face;
   e.vx = Math.abs(dx) > e.range * 0.6 && Math.abs(dx) < 560 ? e.face * e.speed : 0;
+  physics(w, e);
+}
+
+function keepDistance(w, e, dx, far) {
+  e.face = Math.sign(dx) || e.face;
+  const ad = Math.abs(dx);
+  e.vx = ad < far * 0.8 ? -e.face * e.speed : ad > e.range * 0.9 && ad < 560 ? e.face * e.speed : 0;
+  physics(w, e);
+}
+
+function bossMove(w, e, dx) {
+  e.face = Math.sign(dx) || e.face;
+  e.vx = Math.abs(dx) > ENEMY_DEFS[e.kind].range * 0.8 ? e.face * e.speed : 0;
   physics(w, e);
 }
 

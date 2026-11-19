@@ -1,7 +1,7 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
 import { CFG } from './config.js';
 import { createPlayer, updatePlayer, overlap } from './player.js';
-import { spawnEnemy, updateEnemy, ENEMY_DEFS } from './enemies.js';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite } from './enemies.js';
 import { resolveEnemyHit, resolvePlayerAttacks, resolveUlt, updatePoise, damageEnemy } from './combat.js';
 
 export const EMPTY_INPUT = Object.freeze({
@@ -30,7 +30,7 @@ const ROOMS = {
   },
 };
 
-export function createWorld({ room = 'arena', solids, spawn, width } = {}) {
+export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bellBoss', variant = null, hpMul = 1 } = {}) {
   const def = ROOMS[room] || { width: width || 2000, solids: [], spawn: { x: 100, y: 250 } };
   const sp = spawn || def.spawn;
   const w = {
@@ -40,10 +40,10 @@ export function createWorld({ room = 'arena', solids, spawn, width } = {}) {
     player: createPlayer(sp.x, sp.y),
     enemies: [], projectiles: [], hitboxes: [], fx: [], events: [],
     camX: 0, over: false, won: false, cleared: false, seed: 12345,
-    waves: [], waveDelay: 0,
+    waves: [], waveDelay: 0, hpMul,
   };
   if (room === 'arena') w.waves = [[['ghoul', 520], ['ghoul', 600], ['moth', 700]], [['ghoul', 900], ['moth', 1000]]];
-  if (room === 'boss') spawnEnemy(w, 'bellBoss', 480, 300 - ENEMY_DEFS.bellBoss.h - 2);   // 바닥 위에서 시작
+  if (room === 'boss') spawnEnemy(w, boss, 480, 300 - ENEMY_DEFS[boss].h - 2, { variant, hpMul });   // 바닥 위에서 시작
   updateCamera(w);
   return w;
 }
@@ -60,9 +60,9 @@ function updateWaves(w) {
   if (!w.waves.length) { w.cleared = true; w.events.push({ type: 'cleared' }); return; }
   if (++w.waveDelay < 60) return;
   w.waveDelay = 0;
-  for (const [kind, x, mod] of w.waves.shift()) {
-    const e = spawnEnemy(w, kind, x, kind === 'moth' ? 160 : 230);
-    if (mod === 'elite') { e.elite = true; e.hp = e.maxHp = Math.round(e.maxHp * 2.5); e.poiseMax = true; }
+  for (const [kind, x, mod, emod] of w.waves.shift()) {
+    const e = spawnEnemy(w, kind, x, kind === 'moth' ? 160 : 300 - ENEMY_DEFS[kind].h - 2, { hpMul: w.hpMul });
+    if (mod === 'elite') makeElite(e, emod || 'iron');
   }
 }
 
@@ -95,6 +95,8 @@ export function tick(w, inp) {
 
   resolvePlayerAttacks(w);
   for (const hb of w.hitboxes) resolveEnemyHit(w, hb);
+  for (const e of w.enemies) if (e.dead && e.mods && e.mods.includes('split'))   // 분열: 나방 둘
+    for (const k of [-1, 1]) spawnEnemy(w, 'moth', e.x + k * 20, e.y - 10, { hpMul: w.hpMul });
   w.enemies = w.enemies.filter(e => !e.dead);
   updateWaves(w);
   updateCamera(w);

@@ -81,6 +81,7 @@ export function updatePlayer(w, inp) {
   if (p.iframes > 0) p.iframes--;
   if (p.recoverWait > 0) p.recoverWait--;
   if (p.dropT > 0) p.dropT--;
+  if (p.blueT > 0) p.blueT--;
   if (p.comboT > 0) p.comboT--;
 
   // 새 입력 → 버퍼 (마지막 입력 우선)
@@ -92,7 +93,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'parry' && (p.parryOk ? t >= PR.normalF : t >= PR.normalF + PR.whiffF)) setState(p, 'idle');
   if (p.state === 'roll' && t >= RO.totalF + RO.endLagF) setState(p, 'idle');
   if (p.state === 'hurt' && t >= P.hurtStunF) setState(p, 'idle');
-  if (p.state === 'flask' && t >= CFG.flask.useF) { p.flasks--; p.hp = Math.min(p.maxHp, p.hp + CFG.flask.heal); setState(p, 'idle'); }
+  if (p.state === 'flask' && t >= CFG.flask.useF) { p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + CFG.flask.heal); setState(p, 'idle'); }
   if (p.state === 'ult' && t >= CFG.ult.castF) setState(p, 'idle');
 
   // 버퍼 소비

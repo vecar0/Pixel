@@ -1,0 +1,148 @@
+{
+ "schema": "generate2dsprite.pixel_look.v2",
+ "tool": "pixel_look",
+ "kind": "master",
+ "name": "shadow",
+ "size": [
+  92,
+  99
+ ],
+ "cells": 5210,
+ "colours": 48,
+ "palette": [
+  "#000000",
+  "#010000",
+  "#020101",
+  "#060406",
+  "#0c0210",
+  "#0f0c12",
+  "#14021c",
+  "#17141a",
+  "#1e1a23",
+  "#220c2c",
+  "#29232f",
+  "#330a44",
+  "#372540",
+  "#38323c",
+  "#3e3641",
+  "#440758",
+  "#473f49",
+  "#4a3156",
+  "#534753",
+  "#56106f",
+  "#5c366c",
+  "#665762",
+  "#6c188a",
+  "#6e3884",
+  "#7c6c74",
+  "#7e3999",
+  "#831aaa",
+  "#9422c1",
+  "#943eb7",
+  "#976585",
+  "#9771a5",
+  "#97838a",
+  "#996b58",
+  "#a831d7",
+  "#b19e9e",
+  "#bb3cec",
+  "#c48c82",
+  "#c69edc",
+  "#c6b4b0",
+  "#cb50f7",
+  "#d27cd6",
+  "#d49c90",
+  "#dc74f9",
+  "#e4b2a9",
+  "#efb4fc",
+  "#fbddce",
+  "#fce4d6",
+  "#fcedf9"
+ ],
+ "feet": {
+  "middle": 34.0,
+  "row": 98
+ },
+ "anchor": [
+  34.5,
+  99
+ ],
+ "key": "green",
+ "howZoom": 9,
+ "read": {
+  "method": "walk",
+  "cellPx": [
+   9.667,
+   10.0
+  ],
+  "purity": {
+   "walk": 0.9542
+  },
+  "key": [
+   4,
+   249,
+   3
+  ],
+  "edge": {
+   "keyMixed": {
+    "removed": 0,
+    "darkened": 1
+   },
+   "keyTinted": 1,
+   "keyNear": 0,
+   "keyHoles": 0,
+   "keyInked": 0,
+   "keySpill": {
+    "removed": 0,
+    "recoloured": 1
+   },
+   "islandCells": 0
+  },
+  "outline": {
+   "line": [
+    0,
+    0,
+    0
+   ],
+   "specks": 47,
+   "bareCells": 4,
+   "lineCellsAdded": 5,
+   "closed": true,
+   "offset": [
+    0,
+    0
+   ],
+   "mode": "rule"
+  },
+  "proportions": {
+   "mode": "picture",
+   "blockPx": [
+    9.6,
+    9.99
+   ],
+   "blocksTallerBy": 1.0405,
+   "sizeInBlocks": [
+    92,
+    95
+   ],
+   "rowsDoubled": [
+    8,
+    36,
+    70,
+    87
+   ],
+   "columnsDoubled": []
+  }
+ },
+ "source": {
+  "image": "shadow.png",
+  "sha256": "a296ad3b6e989bd5c10e60c3a1673359ae2331a19b81a82a88bf20c3302ded0e"
+ },
+ "files": {
+  "sprite": "shadow.png",
+  "how": "shadow-how.png",
+  "review": "shadow-review.png",
+  "grounds": "shadow-grounds.png"
+ },
+ "note": "The sprite's size comes from the picture: one pixel a block, and where the picture's blocks are not square, rows or columns doubled so that the figure keeps its proportions (read.proportions). Look at the review picture, and at the sprite's edge on every ground, before anything is made from it."
+}

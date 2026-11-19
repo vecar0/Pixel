@@ -122,7 +122,7 @@ export function updateEnemy(w, e) {
     if (e.stT >= telegraphOf(e, d.attacks[e.atk])) {
       setSt(e, 'active'); e.srcs = [];
       const a = d.attacks[e.atk];
-      w.events.push({ type: 'enemyStrike', kind: e.kind, atk: e.atk, x: e.face > 0 ? e.x + e.w : e.x, y: e.y + e.h, face: e.face, reach: a.reach || 0 });
+      w.events.push({ type: 'enemyStrike', kind: e.kind, atk: e.atk, x: e.x + e.w / 2 - e.face * 14, y: e.y + e.h, face: e.face, reach: a.reach || 0 });
       if (a.dashSpeed) { const l = Math.hypot(dx, (p.y + 28) - e.y) || 1; e.dashDx = dx / l; e.dashDy = ((p.y + 28) - e.y) / l; }
       if (a.charge) e.face = Math.sign(dx) || e.face;
       if (a.wave) spawnWaves(w, e, a);

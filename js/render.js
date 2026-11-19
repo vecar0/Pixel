@@ -65,9 +65,9 @@ export class Renderer {
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
     const p = w.player, feet = p.y + p.h;
-    if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {      // 리라 베기 궤적: 1타 내려베기 · 2타 올려베기 · 3타 회전베기
-      const c = p.combo, id = ['melee/sword-slash', 'melee/uppercut', 'melee/spin-slash'][c] || 'melee/sword-slash';
-      this.fx.spawn(id, p.x + p.w / 2 - p.face * 4, feet, { flip: p.face < 0, palette: AMBER7, sparks: SPARK4, life: 40 });
+    if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {      // 리라 베기 궤적: 1타 내려베기 · 2타 올려베기 · 3타 내리찍기 (모두 몸 앞쪽)
+      const c = p.combo, id = ['melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave'][c] || 'melee/sword-slash';
+      this.fx.spawn(id, p.x + p.w / 2 + p.face * 16, feet, { flip: p.face < 0, palette: AMBER7, sparks: SPARK4, life: 40, light: 0.35 });   // 궤적은 칼끝 쪽(몸 앞)으로
     }
     this.dir.events(w); this.dir.tick(w);
     for (const ev of w.events) {
@@ -185,6 +185,7 @@ export class Renderer {
     g.globalAlpha = 1;
     this.drawLira(g, w, p);
     for (const b of w.projectiles) {
+      if (b._fx) continue;
       g.fillStyle = b.owner === 'player' ? C.amberHi : b.parryable ? C.white : C.red;
       g.fillRect(Math.round(b.x), Math.round(b.y), b.w, b.h);
       if (!b.parryable && b.owner === 'enemy') { g.strokeStyle = C.white; g.strokeRect(Math.round(b.x) + 0.5, Math.round(b.y) + 0.5, b.w - 1, b.h - 1); }
@@ -370,7 +371,8 @@ export class Renderer {
   drawEnemySprite(g, w, e, d, f, k) {
     const a = e.atk && d && d.attacks[e.atk];
     let img = f.img;
-    if (e.flash > 3) img = this.tinted('#ffffff', img);
+    const hitFlash = e.flash > 3;
+    if (hitFlash) { /* 아래에서 원래 그림 위에 반투명 흰색을 덧칠 */ }
     else if (e.st === 'telegraph' && a && ((w.t >> (telegraphOf(e, a) - e.stT < 10 ? 1 : 2)) & 1)) img = this.tinted(a.parryable ? '#ffffff' : '#ff4f5e', img);
     else if (e.staggerT > 0 && (w.t >> 2) & 1) img = this.tinted('#9aa0ad', img);
     const cx = Math.round(e.x + e.w / 2), base = e.kind === 'moth' ? Math.round(e.y + e.h / 2) : Math.round(e.y + e.h);
@@ -394,6 +396,7 @@ export class Renderer {
     }
     g.save(); g.translate(cx + Math.round(ox), base + Math.round(oy)); g.rotate(rot); g.scale((e.face > 0 ? -1 : 1) * (1 + k * 0.15), (1 - k * 0.1) * sy);
     g.drawImage(img, -f.ax, -f.ay);
+    if (hitFlash) { g.globalAlpha = e.flash > 5 ? 0.55 : 0.3; g.drawImage(this.tinted('#ffffff', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }
     g.restore();
   }
 

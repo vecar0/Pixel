@@ -34,8 +34,8 @@ const BOLT = { priest: ['water/water-orb', { radius: 7 }], saint: ['ice/ice-lanc
 export const ALL_IDS = [...new Set([
   ...Object.values(AMBIENT).flatMap(a => [...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]),
   ...Object.values(SPAWN), ...Object.values(STRIKE).map(x => x[0]), ...Object.values(DEATH).map(x => x[0]), ...Object.values(BOLT).map(x => x[0]),
-  'melee/sword-slash', 'melee/uppercut', 'melee/spin-slash', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'impacts/impact-frame', 'impacts/blunt-hit',
-  'impacts/shield-block', 'impacts/heavy-landing', 'impacts/ground-slam', 'nature/quake', 'ui/damage-number', 'ui/crit-number', 'ui/heart-lost', 'ui/combo-counter',
+  'melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'impacts/impact-frame', 'impacts/blunt-hit',
+  'impacts/shield-block', 'impacts/heavy-landing', 'impacts/ground-slam', 'nature/quake', 'ui/damage-quiet', 'ui/crit-number', 'ui/heart-lost', 'ui/combo-counter',
   'ui/quest-complete', 'ui/achievement', 'nature/healing-bloom', 'fire/fire-ring', 'holy/sunburst', 'holy/feather-burst', 'shadow/dark-explosion', 'spawn/soul-rise',
   'projectiles/energy-disc', 'ice/ice-crystal', 'water/wave-crash', 'ice/snowflake-burst', 'lightning/spark-arc', 'lightning/lightning-strike', 'status/stunned',
   'status/burning', 'status/rage', 'arcane/rune-circle', 'arcane/blink-out', 'pickups/collect-burst', 'explosions/big-explosion', 'explosions/plasma-explosion',
@@ -47,7 +47,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['melee/sword-slash', 'melee/uppercut', 'melee/spin-slash', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-number', 'transitions/iris', 'transitions/slash-wipe', 'transitions/pixel-dissolve']);
+    preload(['melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/iris', 'transitions/slash-wipe', 'transitions/pixel-dissolve']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -64,16 +64,18 @@ export class FxDirector {
     for (const ev of w.events) switch (ev.type) {
       case 'parry':
         if (ev.perfect) {
-          F.spawn('impacts/parry', ev.x, feet); R.trans.spawn('impacts/impact-frame', 0, 0, { light: 0.5 });
+          F.spawn('impacts/parry', ev.x + p.face * 28, feet, { flip: p.face < 0, light: 0.35 });   // 몸 앞 랜턴 쪽에서 터지게
           this.streak++; if (this.streak >= 3) F.spawn('ui/combo-counter', p.x + p.w / 2, p.y - 20, { count: this.streak, label: 'PARRY', palette: ['#2a1204', '#5a2a08', '#8c4a10', '#d07a1e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], key: 'combo' + this.streak });
-        } else F.spawn('impacts/hit-spark', ev.x, feet, { height: feet - ev.y, flip: p.face > 0, palette: GOLD });
+        } else F.spawn('impacts/hit-spark', ev.x + p.face * 10, feet, { height: feet - ev.y, flip: p.face > 0, palette: GOLD, light: 0.3 });
         break;
       case 'attackHit':
-        F.spawn(ev.combo === 2 ? 'impacts/crit-hit' : 'impacts/hit-spark', ev.x, ev.y + 20, { height: 20, flip: ev.face < 0 });
-        if (ev.crit) F.spawn('ui/crit-number', ev.x, ev.y - 10, { text: String(ev.dmg), label: 'CRIT' });
-        else F.spawn('ui/damage-number', ev.x + (Math.random() * 10 - 5), ev.y - 6, { text: String(ev.dmg), palette: ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] });
+        // 타격 불꽃은 하나만, 빛 번짐은 약하게. 숫자는 별·불꽃 없는 조용한 버전 (적 머리 위로 비켜서)
+        F.spawn('impacts/hit-spark', ev.x, ev.y + 20, { height: 20, flip: ev.face < 0, light: 0.3, ...(ev.combo === 2 ? { palette: AMBER } : {}) });
+        F.spawn('ui/damage-quiet', ev.x + ev.face * 6 + (Math.random() * 8 - 4), ev.y - 22, { text: String(ev.dmg), palette: ev.crit
+          ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
+          : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] });
         break;
-      case 'execute': F.spawn('impacts/crit-hit', ev.x, ev.y + 30); F.spawn('explosions/implosion', ev.x, ev.y + 20, { palette: AMBER, life: 60 }); R.trans.spawn('impacts/impact-frame', 0, 0, {}); break;
+      case 'execute': F.spawn('impacts/crit-hit', ev.x, ev.y + 30, { light: 0.5 }); F.spawn('explosions/implosion', ev.x, ev.y + 20, { palette: AMBER, life: 60, light: 0.4 }); break;
       case 'hurt': F.spawn('impacts/blunt-hit', ev.x, ev.y + 20, { palette: ['#3a0810', '#7a1020', '#c02030', '#ff4a50', '#ff9a90', '#ffe0dc', '#ffffff'] }); F.spawn('ui/heart-lost', p.x + p.w / 2, p.y - 8); this.streak = 0; break;
       case 'kill': {
         const d = DEATH[ev.kind];
@@ -84,7 +86,7 @@ export class FxDirector {
         break;
       }
       case 'spawn':
-        if (ev.boss) { F.spawn('lightning/lightning-strike', ev.x, ev.y, { life: 90 }); R.trans.spawn('impacts/impact-frame', 0, 0, {}); }
+        if (ev.boss) { F.spawn('lightning/lightning-strike', ev.x, ev.y, { life: 90 }); }
         else if (SPAWN[ev.kind]) F.spawn(SPAWN[ev.kind], ev.x, ev.y, { life: 70 });
         break;
       case 'enemyStrike': {
@@ -117,6 +119,7 @@ export class FxDirector {
     const R = this.R, F = R.fx, p = w.player;
     for (const b of w.projectiles) {
       if (this.seen.has(b)) continue; this.seen.add(b);
+      b._fx = !!(b.echo || b.wave || b.shard || (b.bolt && BOLT[b.bolt]));   // 이펙트가 붙은 탄은 임시 사각형을 안 그림
       if (b.echo) F.spawn('projectiles/energy-disc', 0, 0, { follow: b, palette: AMBER, flip: b.vx < 0 });
       else if (b.wave) F.spawn(b.src?.kind === 'saint' ? 'water/wave-crash' : 'impacts/ground-slam', 0, 0, { follow: b, dy: 6, palette: b.src?.kind === 'saint' ? undefined : DUST, light: 0.5 });
       else if (b.shard) F.spawn('ice/ice-crystal', 0, 0, { follow: b, palette: LILAC });

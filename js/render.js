@@ -253,7 +253,7 @@ export class Renderer {
       else if (p.state === 'hurt') lean = -0.18;
       else if (p.state === 'run') lean = 0.06;
       const bob = p.state === 'run' ? Math.abs(Math.sin(w.t * 0.45)) * 2 : p.state === 'idle' ? Math.sin(w.t * 0.08) * 0.6 : 0;
-      g.save(); g.translate(cx + push * f, feet - bob); g.rotate(lean * f); g.scale(1, 1 - crouch); g.rotate(lean * f); g.scale(sx * f, sy);
+      g.save(); g.translate(cx, feet - bob); g.rotate(lean * f); g.scale(sx * f, sy);
       const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50') : this.liraImg;
       g.drawImage(img, -43, -85);
       g.restore();

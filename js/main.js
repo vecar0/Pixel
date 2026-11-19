@@ -248,6 +248,10 @@ function step() {
 }
 
 function frame(now) {
+  try { frameBody(now); } catch (e) { console.error(e); }   // 한 프레임의 에러가 게임 전체를 멈추지 않게
+  requestAnimationFrame(frame);
+}
+function frameBody(now) {
   const dt = now - last; last = now;
   if (mode === 'title' && input.take('confirm')) town();
   if (mode === 'play') {
@@ -261,8 +265,7 @@ function frame(now) {
   } else if (mode === 'pause' && input.take('pause')) resume();
   else if (mode !== 'play' && mode !== 'title' && input.take('confirm')) document.querySelector('#ui .btn, #ui .pick')?.dispatchEvent(new PointerEvent('pointerup'));
   R.draw(world);
-  requestAnimationFrame(frame);
-}
+  }
 
 $('#b-pause').addEventListener('pointerup', () => mode === 'play' && overlay('pause'));
 addEventListener('resize', () => R.resize());

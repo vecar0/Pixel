@@ -194,3 +194,7 @@ button { font-family: inherit; color: inherit; }
 details.statsd { width: 100%; font-size: 11px; color: var(--ash); }
 details.statsd summary { cursor: pointer; padding: 4px; list-style: none; }
 details.statsd summary::before { content: '▸ '; } details.statsd[open] summary::before { content: '▾ '; }
+
+.runbar .spells { display: flex; gap: 2px; padding: 0 4px; box-shadow: inset 0 0 0 1px var(--rivet); }
+.runbar .spells .ico { width: 18px; height: 18px; }
+.pick small { color: var(--ash); font-size: 10px; }

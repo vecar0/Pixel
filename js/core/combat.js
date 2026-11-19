@@ -12,7 +12,7 @@ export function resolveEnemyHit(w, hb) {
   const front = hb.dir === -p.face;
   const lag = p.lagTicks || 0;                                   // 설정의 타이밍 보정 (터치 지연만큼 판정창을 늘림)
   if (p.state === 'parry' && p.stateT < PR.normalF + lag && hb.parryable && front) {
-    const perfect = p.stateT < PR.perfectF + lag + (p.mods.perfectExtra || 0) || p.blueT > 0 || p.mods.allPerfect;   // 결계·의지 10: 모든 패링이 완벽
+    const perfect = p.stateT < Math.min(PR.normalF, Math.max(2, PR.perfectF + (p.mods.perfectExtra || 0))) + lag || p.blueT > 0 || p.mods.allPerfect;   // 의지: 점마다 ±1프레임   // 결계·의지 10: 모든 패링이 완벽
     hb.src.done = true;
     p.parryOk = true; p.recoverWait = PR.successRecoverF;
     p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal) * p.mods.lightMul);
@@ -25,7 +25,7 @@ export function resolveEnemyHit(w, hb) {
     const o = hb.owner;
     if (o && o.poiseMax) addPoise(w, o, (perfect ? PO.perfect : PO.normal) * (p.mods.poiseMul || 1));
     if (o && perfect && !o.boss && o.st) {   // 완벽 패링: 일반 적은 공격이 끊기고 튕겨나며 잠깐 무방비
-      o.st = 'idle'; o.stT = 0; o.atk = null; o.srcs = []; o.staggerT = PR.staggerF;
+      o.st = 'idle'; o.stT = 0; o.atk = null; o.srcs = []; o.staggerT = Math.round(PR.staggerF * (p.mods.staggerMul || 1));
       o.kvx = Math.sign((o.x + o.w / 2) - (p.x + p.w / 2) || p.face) * PR.staggerPush;
     }
     w.events.push({ type: 'parry', perfect, x: p.face > 0 ? p.x + p.w : p.x, y: p.y + 14 });
@@ -121,6 +121,11 @@ export function resolveSkill(w, ev) {
     const n = p.mods.lmp7 ? 2 : 1;                                   // 등불 7: 두 발
     for (let i = 0; i < n; i++) w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 16, y: p.y + 18 + (n > 1 ? (i ? 8 : -8) : 0), w: 16, h: 12,
       vx: p.face * S.speed, vy: n > 1 ? (i ? 0.25 : -0.25) : 0, pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player', life: 70, bolt: 'lamp', src: {} });
+  } else if (ev.spell === 'lash') {
+    for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.reach + e.w / 2 && e.y < p.y + p.h && e.y + e.h > p.y) hit(e, Math.round(S.dmg * M), S.poise * (p.mods.poiseMul || 1));
+  } else if (ev.spell === 'flare') {
+    for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.range) hit(e, Math.round(S.dmg * M), S.poise * (p.mods.poiseMul || 1));
+    w.shake = Math.max(w.shake, 4);
   } else if (ev.spell === 'ring') {
     for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.radius && Math.abs(e.y + e.h / 2 - (p.y + p.h / 2)) < 120) hit(e, Math.round(S.dmg * M), 0.2);
     w.projectiles = w.projectiles.filter(b => b.owner !== 'enemy');

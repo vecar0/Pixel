@@ -3,6 +3,7 @@ import { CFG } from './config.js';
 import { createWorld } from './world.js';
 import { ELITE_MODS, ENEMY_DEFS } from './enemies.js';
 import { STATS, startStats, statMods, train, STAT_MAX, STAT_MIN } from './stats.js';
+import { SPELLS, OIL_SPELL } from './spells.js';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -53,7 +54,7 @@ export function newRun(seed = (Math.random() * 1e9) | 0, opts = {}) {
   const r = { seed, rng: seed >>> 0 || 1, region: 1, roomIdx: 0, length: 6, relics: [], oath: null,
     embers: 0, hp: null, flasks: null, room: 'combat', perfect: 0, executes: 0, kills: 0, t: 0,
     dark: opts.dark || 0, pool: opts.pool || Object.keys(RELICS), oil: opts.oil || 'refined', daily: !!opts.daily,
-    stats: startStats(), shortcut: !!opts.shortcut, noHitBoss: false, noFlaskRegion: false, regionFlasksUsed: 0, shards: 0, done: [] };
+    stats: startStats(), spells: ['bolt', OIL_SPELL[opts.oil || 'refined'] || 'ring'], shortcut: !!opts.shortcut, noHitBoss: false, noFlaskRegion: false, regionFlasksUsed: 0, shards: 0, done: [] };
   r.variants = REGIONS.map(() => null);
   for (const g of REGIONS) { const v = ENEMY_DEFS[g.boss].variants; r.variants[g.id - 1] = v[(rand(r) * v.length) | 0]; }
   r.challenge = CHALLENGES[(rand(r) * CHALLENGES.length) | 0].id;
@@ -96,12 +97,23 @@ export function trainOffer(r, n = 2) {
   return out;
 }
 export function takeTrain(r, up, down) { train(r.stats, up, down); }
+// 주문서: 아직 없는 마법 n개
+export function spellOffer(r, n = 1) {
+  const pool = Object.keys(SPELLS).filter(k => !r.spells.includes(k)), out = [];
+  while (out.length < n && pool.length) out.push(pool.splice((rand(r) * pool.length) | 0, 1)[0]);
+  return out;
+}
+// 빈 칸이 있으면 채우고, 없으면 slot(0/1)을 교체
+export function takeSpell(r, id, slot) {
+  const i = slot ?? r.spells.findIndex(s => !s);
+  if (i >= 0) r.spells[i] = id;
+}
 // 스탯 보정 적용 (각인 보정 뒤에 합침)
 export function applyStats(p, stats) {
   const m = statMods(stats);
   p.stats = { ...stats };
   p.mods = { ...p.mods, ...m, lightMul: p.mods.lightMul * m.lightStat, rollMul: p.mods.rollMul * m.rollStat, iExtra: p.mods.iExtra + m.rollI };
-  p.maxHp = Math.max(1, p.maxHp + m.hpBonus);
+  p.maxHp = Math.max(1, p.maxHp + m.hpBonus); p.maxFlasks += m.flaskCount;
 }
 
 export function relicOffer(r, n = 3) {
@@ -206,6 +218,7 @@ export function buildRoomWorld(r) {
   const p = w.player;
   applyRelics(p, r.relics);
   applyStats(p, r.stats || startStats());
+  p.spells = [...(r.spells || ['bolt', 'ring'])];
   p.oil = r.oil;
   if (r.dark >= 5) p.maxFlasks = Math.max(1, p.maxFlasks - 1);   // 어둠 5+: 기름병 -1
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);

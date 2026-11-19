@@ -6,11 +6,11 @@ export const UNLOCKS = [
   { id: 'relic:afterglow', kind: 'relic', relic: 'afterglow', name: '각인: 잔광', cost: 4 },
   { id: 'relic:wings', kind: 'relic', relic: 'wings', name: '각인: 두 번째 날개', cost: 6 },
   { id: 'relic:flame', kind: 'relic', relic: 'flame', name: '각인: 화염 칼날', cost: 6 },
-  { id: 'oil:blue', kind: 'oil', oil: 'blue', name: '랜턴 기름: 청유', cost: 8, desc: '큰 마법이 푸른 결계로: 냉기 + 5초간 모든 패링 완벽' },
-  { id: 'oil:black', kind: 'oil', oil: 'black', name: '랜턴 기름: 흑유', cost: 8, desc: '큰 마법이 흑염 창으로: 앞으로 관통하는 광선' },
+  { id: 'oil:blue', kind: 'oil', oil: 'blue', name: '랜턴 기름: 청유', cost: 8, desc: '두 번째 마법을 푸른 결계로 시작' },
+  { id: 'oil:black', kind: 'oil', oil: 'black', name: '랜턴 기름: 흑유', cost: 8, desc: '두 번째 마법을 흑염 창으로 시작' },
   { id: 'practice', kind: 'practice', name: '연습장', cost: 3, desc: '쓰러뜨린 보스와 다시 싸워 패턴을 익힌다' },
 ];
-export const OILS = { refined: { name: '정제유', desc: '큰 마법: 불꽃 고리 (주변 폭발, 적 탄 소거)' }, blue: { name: '청유', desc: '큰 마법: 푸른 결계 (냉기 + 5초간 모든 패링 완벽)' }, black: { name: '흑유', desc: '큰 마법: 흑염 창 (앞으로 관통 광선)' } };
+export const OILS = { refined: { name: '정제유', desc: '시작 마법: 불꽃 고리 (주변 폭발, 적 탄 소거)' }, blue: { name: '청유', desc: '시작 마법: 푸른 결계 (냉기 + 5초간 모든 패링 완벽)' }, black: { name: '흑유', desc: '시작 마법: 흑염 창 (앞으로 관통 광선)' } };
 export const DARK_RULES = [
   '', '적 체력 +8%', '적 체력 +16%', '전투방에 엘리트 등장', '전투방 웨이브 +1', '기름병 -1',
   '적 체력 +48%', '적 체력 +56%', '적 체력 +64%', '적 체력 +72%', '적 체력 +80% · 최후의 어둠',

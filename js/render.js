@@ -5,7 +5,7 @@ import { ENEMY_DEFS, telegraphOf, EMERGE_F } from './core/enemies.js';
 import { FxLayer, ScreenFx, actorFromImage } from './fx.js';
 import { FxDirector } from './fxmap.js';
 import { iconCanvas } from './icons.js';
-import { BIG_SPELL } from './core/player.js';
+import { bodyShade } from './shade.js';
 const AMBER7 = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], SPARK4 = ['#fff6c8', '#ffd86b', '#ff9a2a', '#e8561d'];
 
 const C = {
@@ -546,10 +546,12 @@ export class Renderer {
     const I = self ? 0.55 : Math.max(0, 1 - dist / (this.lampR * 1.6));          // 등불에서 멀수록 약하게
     const toRight = self ? true : (dx > 0) !== flip;                              // 등불이 그림 기준 어느 쪽인가
     const prevA = g.globalAlpha;
+    const B = bodyShade(im, toRight);                                             // 몸 전체 명암 (등불 쪽 밝게, 반대쪽 그늘)
+    if (B) { g.globalAlpha = prevA * (self ? 0.9 : 0.35 + 0.6 * I); g.drawImage(B, -ax, -ay); g.globalAlpha = prevA; }
     if (!self && I < 0.85) { g.globalAlpha = prevA * 0.3 * (1 - I); g.drawImage(this.tinted('#0a0612', im), -ax, -ay); }   // 먼 적은 어둠에 잠김
-    g.globalAlpha = prevA * 0.5; g.drawImage(toRight ? M.shL : M.shR, -ax, -ay);                                          // 등불 반대쪽 그림자
+    g.globalAlpha = prevA * 0.3; g.drawImage(toRight ? M.shL : M.shR, -ax, -ay);                                          // 등불 반대쪽 그림자
     if (I > 0.02) {
-      g.globalAlpha = prevA * 0.85 * I; g.drawImage(toRight ? M.rimR : M.rimL, -ax, -ay);                                 // 등불 쪽 림라이트
+      g.globalAlpha = prevA * 0.6 * I; g.drawImage(toRight ? M.rimR : M.rimL, -ax, -ay);                                 // 등불 쪽 림라이트
       if (dy < -10) { g.globalAlpha = prevA * 0.4 * I; g.drawImage(M.rimT, -ax, -ay); }
     }
     g.globalAlpha = prevA;
@@ -637,21 +639,27 @@ export class Renderer {
     const hs = this.vw < 760 ? 1.5 : 1.25;                     // 폰에서 읽히도록 HUD만 크게 (보스 바 제외)
     g.save(); g.scale(hs, hs); this.vw /= hs;
     const plate = (x, y, ww, hh) => { g.fillStyle = 'rgba(13,10,17,.55)'; g.fillRect(x, y, ww, hh); };
-    plate(4, 4, Math.max(p.maxHp * 13, 112) + 8, 40);
-    for (let i = 0; i < p.maxHp; i++) {                      // 체력: 픽셀 하트
-      g.globalAlpha = i < p.hp ? 1 : 0.28;
-      g.drawImage(I('heart', i < p.hp ? 'red' : 'bone'), 8 + i * 13, 8);
-    }
-    g.globalAlpha = 1;
+    // 체력 바: 최대 체력 1당 11px (생명 스탯을 올리면 바가 길어짐), 칸 구분선, 깎인 만큼 잠깐 흰 잔상
+    const hw = p.maxHp * 11, hx = 22, hy = 9;
+    plate(4, 4, Math.max(hx + hw, 112) + 8, 40);
+    g.drawImage(I('heart', 'red'), 7, 6);
+    this.hpShadow = Math.max(p.hp, Math.min(p.maxHp, (this.hpShadow ?? p.hp) - 0.04));
+    g.fillStyle = '#120e16'; g.fillRect(hx - 1, hy - 1, hw + 2, 9);
+    g.fillStyle = '#3a1820'; g.fillRect(hx, hy, hw, 7);
+    g.fillStyle = '#ffd0d6'; g.fillRect(hx, hy, Math.round(hw * this.hpShadow / p.maxHp), 7);
+    const low = p.hp <= Math.max(1, p.maxHp * 0.25) && (w.t >> 3) & 1;
+    g.fillStyle = low ? '#ff6a78' : '#d33a4a'; g.fillRect(hx, hy, Math.round(hw * p.hp / p.maxHp), 7);
+    g.fillStyle = '#ff8a94'; g.fillRect(hx, hy, Math.round(hw * p.hp / p.maxHp), 2);
+    g.fillStyle = '#120e16'; for (let i = 1; i < p.maxHp; i++) g.fillRect(hx + i * 11, hy, 1, 7);
     // 빛 게이지: 랜턴 + 4칸 눈금. 가득 차면 깜빡임
     const full = p.light >= CFG.light.max, k = Math.min(1, p.light / CFG.light.max), gx = 22, gy = 25, gw = 64;
     g.drawImage(I('parry', 'amber'), 7, 21);
     g.fillStyle = '#120e16'; g.fillRect(gx - 1, gy - 1, gw + 2, 7); g.fillStyle = '#2e2537'; g.fillRect(gx, gy, gw, 5);
     // 빛 = 마법 기름. 눈금은 등불 탄·큰 마법 비용 자리, 쓸 수 있는 만큼 밝게
-    const c1 = Math.round(CFG.skill.bolt.cost * (p.mods.costMul || 1)), c2 = Math.round(CFG.skill[BIG_SPELL[p.oil] || 'ring'].cost * (p.mods.costMul || 1));
+    const costs = (p.spells || []).filter(Boolean).map(s => Math.round(CFG.skill[s].cost * (p.mods.costMul || 1))), c1 = Math.min(...costs, 999), c2 = Math.max(...costs, 0);
     g.fillStyle = p.light >= c2 ? ((w.t >> 3) & 1 ? '#fff0c8' : '#ffb347') : p.light >= c1 ? '#e08a2a' : '#8c4a14'; g.fillRect(gx, gy, Math.round(gw * k), 5);
     g.fillStyle = '#ffd27a'; g.fillRect(gx, gy, Math.round(gw * k), 1);
-    for (const c of [c1, c2]) { const mx = gx + Math.round(gw * c / CFG.light.max); g.fillStyle = p.light >= c ? '#fff0c8' : '#4a3e57'; g.fillRect(mx, gy - 2, 1, 9); }
+    for (const c of costs) { const mx = gx + Math.round(gw * c / CFG.light.max); g.fillStyle = p.light >= c ? '#fff0c8' : '#4a3e57'; g.fillRect(mx, gy - 2, 1, 9); }
     for (let i = 0; i < Math.max(p.maxFlasks, p.flasks); i++) { g.globalAlpha = i < p.flasks ? 1 : 0.25; g.drawImage(I('flask', 'heal'), gx + gw + 3 + i * 9, gy - 4, 9, 9); }
     g.globalAlpha = 1;
     // 완벽 패링 수: 늘어나는 순간 잠깐 밝게

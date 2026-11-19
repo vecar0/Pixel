@@ -17,7 +17,12 @@ export function resolveEnemyHit(w, hb) {
     p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal));
     w.hitstop = Math.max(w.hitstop, perfect ? PR.hitstopPerfect : PR.hitstopNormal);
     if (perfect) { p.perfectParries++; w.shake = 8; }
-    if (hb.owner && hb.owner.poiseMax) addPoise(w, hb.owner, perfect ? PO.perfect : PO.normal);
+    const o = hb.owner;
+    if (o && o.poiseMax) addPoise(w, o, perfect ? PO.perfect : PO.normal);
+    if (o && perfect && !o.boss && o.st) {   // 완벽 패링: 일반 적은 공격이 끊기고 튕겨나며 잠깐 무방비
+      o.st = 'idle'; o.stT = 0; o.atk = null; o.srcs = []; o.staggerT = PR.staggerF;
+      o.kvx = Math.sign((o.x + o.w / 2) - (p.x + p.w / 2) || p.face) * PR.staggerPush;
+    }
     w.events.push({ type: 'parry', perfect, x: p.face > 0 ? p.x + p.w : p.x, y: p.y + 14 });
     return perfect ? 'perfect' : 'normal';
   }
@@ -71,8 +76,10 @@ export function resolvePlayerAttacks(w) {
       w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2 });
     } else {
       damageEnemy(w, e, CFG.attack.dmg[p.combo], PO.hit);
-      w.hitstop = Math.max(w.hitstop, 2);
-      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2 });
+      w.hitstop = Math.max(w.hitstop, CFG.attack.hitstop[p.combo]);
+      e.kvx = p.face * CFG.attack.push[p.combo] * (e.boss ? 0.15 : 1);
+      if (p.combo === 2) w.shake = Math.max(w.shake, 6);
+      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: p.combo, face: p.face });
     }
   }
 }

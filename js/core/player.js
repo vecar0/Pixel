@@ -113,6 +113,8 @@ export function updatePlayer(w, inp) {
       const d = P.speed / P.decelF;
       p.vx = Math.abs(p.vx) <= d ? 0 : p.vx - Math.sign(p.vx) * d;
     }
+  } else if (p.state === 'attack' && p.onGround && t < A.startupF + A.activeF) {
+    p.vx = p.face * A.lunge;   // 휘두를 때 앞으로 살짝 내딛기
   } else if (p.onGround) {
     p.vx = 0;  // 공격·패링·피격 중 지상은 멈춤
   }
@@ -121,9 +123,11 @@ export function updatePlayer(w, inp) {
   if (p.vy < 0 && !inp.jumpHeld && !p.jumpCut) { p.vy *= 0.5; p.jumpCut = true; }
 
   // 중력 + 충돌
-  p.vy = Math.min(CFG.MAX_FALL, p.vy + CFG.GRAV);
+  p.vy = Math.min(CFG.MAX_FALL, p.vy + CFG.GRAV * (p.vy > 0 ? CFG.FALL_MULT : 1));
+  const wasAir = !p.onGround, fallV = p.vy;
   moveAndCollide(w, p, inp);
 
+  if (p.onGround && wasAir) w.events.push({ type: 'land', x: p.x + p.w / 2, y: p.y + p.h, v: fallV });
   if (p.onGround) { p.coyote = P.coyoteF; p.airAttacked = false; }
   else if (p.coyote > 0) p.coyote--;
 

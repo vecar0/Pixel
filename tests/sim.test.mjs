@@ -313,4 +313,43 @@ test('review: 일방향 발판에서 아래+점프 → 올라가지 않고 내�
   ok(minY >= y0 - 1, 'rose ' + (y0 - minY)); eq(w.player.y + w.player.h, 300);
 });
 
+/* ── 손맛 패스 ── */
+test('juice: 2틱 만에 최고 속도', () => {
+  const w = W(); settle(w); tick(w, I({ right: true })); tick(w, I({ right: true }));
+  eq(w.player.vx, CFG.player.speed);
+});
+test('juice: 떨어지는 게 올라가는 것보다 빠름', () => {
+  const w = W(); settle(w); tick(w, I({ jump: true, jumpHeld: true }));
+  let up = 1, down = 0;
+  while (w.player.vy < 0) { tick(w, I({ jumpHeld: true })); up++; }
+  while (!w.player.onGround) { tick(w, I({ jumpHeld: true })); down++; }
+  ok(down < up * 0.85, `up ${up} down ${down}`);
+});
+function hitWith(combo) {
+  const w = W(); settle(w);
+  const d = makeDummy(w, { hp: 500 }); d.x = w.player.x + w.player.w + 4;
+  let stop = 0, x0 = d.x;
+  for (let k = 0; k <= combo; k++) {
+    tick(w, I({ attack: true }));
+    for (let i = 0; i < 12; i++) { tick(w, I()); if (w.events.some(e => e.type === 'attackHit')) stop = w.hitstop; }
+    if (k < combo) d.x = w.player.x + w.player.w + 4, x0 = d.x;
+  }
+  return { stop, push: d.x - x0, w, d };
+}
+test('juice: 타격 히트스톱 1·2타 4, 3타 7', () => { eq(hitWith(0).stop, 4); eq(hitWith(2).stop, 7); });
+test('juice: 맞은 일반 적은 뒤로 밀림', () => { ok(hitWith(0).push > 3, hitWith(0).push); });
+test('juice: 완벽 패링당한 일반 적은 30틱 동안 공격 못 하고 밀려남', () => {
+  const w = W(); settle(w); w.player.hp = 99;
+  const e = spawnEnemy(w, 'ghoul', w.player.x + 30, w.player.y);
+  let parried = -1, x0 = 0, teleAfter = -1, pushed = 0;
+  for (let i = 0; i < 300; i++) {
+    const inp = {};
+    if (parried < 0 && oracleHurtWithin(w, 2)) inp.parry = true;
+    tick(w, I(inp));
+    if (parried < 0 && w.events.some(ev => ev.type === 'parry' && ev.perfect)) { parried = w.t; x0 = e.x; steps(w, 12); pushed = e.x - x0; }
+    if (parried >= 0 && teleAfter < 0 && w.events.some(ev => ev.type === 'telegraph')) teleAfter = w.t;
+  }
+  ok(parried > 0, 'no perfect'); ok(Math.abs(pushed) > 6, 'not pushed ' + pushed); ok(teleAfter - parried >= 30 + CFG.parry.hitstopPerfect, teleAfter - parried);
+});
+
 run();

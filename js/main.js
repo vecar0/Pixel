@@ -23,13 +23,13 @@ const TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in windo
 const showTouch = () => touch.classList.toggle('hidden', !TOUCH);
 input.onAny = () => sfx.unlock();
 // 터치 버튼: 픽셀 아이콘 + 작은 이름. 마법은 비용만큼 빛이 차오르면 켜지고, 기름병은 남은 개수
-const TB = { attack: ['sword', 'bone', '공격'], parry: ['parry', 'amber', '패링'], roll: ['roll', 'moon', '회피'], jump: ['jump', 'moon', '점프'], skill1: ['ember', 'amber', '탄'], skill2: ['ult', 'amber', '마법'], flask: ['flask', 'heal', ''], pause: ['pause', 'bone', ''] };
+const TB = { attack: ['sword', 'bone', '공격'], parry: ['parry', 'amber', '패링'], roll: ['roll', 'moon', '회피'], jump: ['jump', 'moon', '점프'], skill: ['ember', 'amber', '마법'], flask: ['flask', 'heal', ''], pause: ['pause', 'bone', ''] };
 for (const [k, [ic, t, name]] of Object.entries(TB)) { const b = $('#b-' + k); b.setAttribute('aria-label', b.textContent); b.innerHTML = icon(ic, t) + (name ? `<small>${name}</small>` : '') + (k === 'flask' ? '<b>3</b>' : ''); }
 let hudKey = '';
 function syncTouch() {
   const p = world.player, key = (p.light | 0) + '/' + p.flasks + '/' + (p.spells || []).join();
   if (key === hudKey) return; hudKey = key;
-  ['skill1', 'skill2'].forEach((id, i) => {                    // 마법 버튼: 끼운 마법 그림, 비용만큼 차오르면 사용 가능
+  ['skill'].forEach((id, i) => {                               // 마법 버튼: 끼운 마법 그림, 비용만큼 차오르면 사용 가능
     const sp = (p.spells || [])[i], b = $('#b-' + id);
     if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + `<small>${SPELLS[sp].name.replace('등불 ', '')}</small>` : '<small>빈 칸</small>'; }
     if (!sp) { b.style.setProperty('--fill', '0%'); b.classList.remove('ready'); return; }
@@ -97,14 +97,15 @@ function trainCard(o) {
 // 주문서 카드 (마법)
 const spellCard = (id, extra = '') => { const S = SPELLS[id], C = CFG.skill[id];
   return `<button class="pick t-${S.tone === 'bone' ? '' : S.tone} scroll" data-id="spell:${id}"><span class="tag">주문서</span><div class="niche">${icon(S.icon, S.tone)}</div><b>${S.name}</b><span>${S.desc}<br>빛 ${C.cost}</span>${extra}</button>`; };
-// 마법 얻기: 빈 칸이 있으면 바로, 없으면 어느 칸과 바꿀지 고른다
+// 마법 얻기: 마법은 1칸 → 지금 마법과 바꿀지 고른다
 function getSpell(id, after) {
-  if (run.spells.some(s => !s)) { takeSpell(run, id); return after(); }
+  const cur = run.spells[0];
+  if (!cur) { takeSpell(run, id); return after(); }
   mode = 'spellslot';
-  screen(`<div class="card"><h2>${SPELLS[id].name}을(를) 어느 칸에?</h2><div class="line">바뀌는 마법은 이번 판에서 사라진다</div><div class="picks">
-    ${run.spells.map((s, i) => `<button class="pick door t-${SPELLS[s].tone === 'bone' ? '' : SPELLS[s].tone}" data-id="${i}"><div class="niche">${icon(SPELLS[s].icon, SPELLS[s].tone)}</div><b>${i + 1}칸: ${SPELLS[s].name}</b><span>→ ${SPELLS[id].name}</span></button>`).join('')}
-    <button class="pick door" data-id="keep"><div class="niche">${icon('lock', 'bone')}</div><b>그대로 둔다</b></button></div></div>`);
-  bindPicks(v => { if (v !== 'keep') takeSpell(run, id, +v); after(); });
+  const card = (k, did, title) => `<button class="pick door t-${SPELLS[k].tone === 'bone' ? '' : SPELLS[k].tone}" data-id="${did}"><div class="niche">${icon(SPELLS[k].icon, SPELLS[k].tone)}</div><b>${title}</b><span>${SPELLS[k].name} · 빛 ${CFG.skill[k].cost}<br>${SPELLS[k].desc}</span></button>`;
+  screen(`<div class="card"><h2>마법을 바꿀까</h2><div class="line">마법은 하나만 지닐 수 있다</div><div class="picks">
+    ${card(id, 'take', '새 마법으로')}${card(cur, 'keep', '지금 마법 유지')}</div></div>`);
+  bindPicks(v => { if (v === 'take') takeSpell(run, id); after(); });
 }
 // 보상 카드 공통 처리
 function takeReward(id, after) {
@@ -131,7 +132,7 @@ function title() {
     <img class="sigil" alt="" src="${icon('parry', 'amber').match(/src="([^"]+)"/)[1]}">
     <h1>등불지기</h1><div class="sub">꺼져 가는 지하 왕국, 마지막 등불을 든 순례자</div>
     <button class="btn" id="go">등대 마을로</button>
-    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 등불 탄 U · 큰 마법 I · 기름병 Q</div></div>`);
+    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 마법 I · 기름병 Q</div></div>`);
   bind('go', town);
 }
 // 등대 마을: 왼쪽은 리라와 기록, 오른쪽은 출발 · 조정 · 메뉴

@@ -1,6 +1,7 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
 import { preload } from './fx.js';
+import { groundAt } from './core/world.js';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -10,7 +11,8 @@ const VIOLET = ['#1a0a2a', '#3a1660', '#6a2aa0', '#9a4ae0', '#c890ff', '#f0e0ff'
 const GREY = ['#1a1820', '#3a3640', '#5e5866', '#8a8494', '#b8b2c2', '#e4e0ea', '#ffffff'];
 const LILAC = ['#1e1430', '#3c2a5c', '#6a4e96', '#9a7ccc', '#c8b0f0', '#ece2ff', '#ffffff'];
 const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', '#ffffff'];
-const CFG_INV = { ring: 1, ward: 1, spear: 1 };   // 큰 마법만 시전 예고 빛
+const CFG_INV = { ring: 1, ward: 1, spear: 1, meteor: 1 };   // 큰 마법만 시전 예고 빛
+const HIT = ['#1a0e06', '#3a2410', '#6a4420', '#9a6a34', '#c4955a', '#e0bc88', '#f0dcb8'];   // 기본 타격: 흰빛 없는 톤
 const ICE = ['#081a2a', '#10345a', '#1e5a8c', '#3a8cc8', '#7ac0f0', '#c0e8ff', '#ffffff'];
 const DUST = ['#1c1610', '#33281c', '#4f3f2c', '#6e5a40', '#927a58', '#b89f78', '#dcc8a2'];
 
@@ -33,7 +35,7 @@ const SPAWN = { ghoul: 'spawn/summon-rise', moth: 'spawn/poof', spearman: 'water
 const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['melee/claw-swipe', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['melee/hammer-smash', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
   bellBoss: ['melee/heavy-cleave', DUST], spider: ['melee/claw-swipe', LILAC], shadow: ['melee/sword-slash', VIOLET], saint: ['melee/spear-sweep', CYAN] };
 const DEATH = { ghoul: ['spawn/poof', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/splash'], priest: ['water/wave-crash'], shellguard: ['ice/ice-shatter', LILAC], assassin: ['explosions/implosion', VIOLET] };
-const BOLT = { lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', {}], shadow: ['shadow/void-orb', {}] };
+const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', {}], shadow: ['shadow/void-orb', {}] };
 
 export const ALL_IDS = [...new Set([
   ...Object.values(AMBIENT).flatMap(a => [...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]),
@@ -51,7 +53,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['melee/spin-slash', 'fire/fireball', 'arcane/arcane-beam', 'ice/frost-nova', 'melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -89,7 +91,7 @@ export class FxDirector {
         break;
       case 'attackHit':
         if (big) break;                                                   // 처형·완벽 패링 순간엔 그 연출만
-        P('impacts/hit-spark', ev.x, ev.y + 20, { height: 20, flip: ev.face < 0, light: 0.25, ...(ev.combo === 2 ? { palette: AMBER } : {}) }, 1);
+        if (!ev.spell) P('impacts/hit-spark', ev.x, ev.y + 20, { height: 14, flip: ev.face < 0, light: 0, palette: HIT }, 1);   // 기본 공격: 작고 어두운 불꽃만 (마법은 마법 이펙트가 대신)
         P('ui/damage-quiet', ev.x + ev.face * 6, ev.y - 22, { text: String(ev.dmg), palette: ev.crit
           ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
@@ -116,13 +118,17 @@ export class FxDirector {
       case 'enemyParry': P('impacts/parry', ev.x, ev.y + 40, { palette: VIOLET, light: 0.3 }, 3); break;
       case 'flask': P('nature/healing-bloom', ev.x, ev.y, { light: 0.3 }, 2); break;
       case 'castStart': if (CFG_INV[ev.spell]) P('holy/sunburst', 0, 0, { follow: p, dy: -10, life: 26, light: 0.3, palette: ev.spell === 'ward' ? ICE : ev.spell === 'spear' ? VIOLET : AMBER }, 3); break;
-      case 'skill':                                                        // 등불 마법: 마법마다 한 가지 연출
-        if (ev.spell === 'ring') P('fire/fire-ring', ev.x, feet, { life: 80, light: 0.4 }, 3);
-        else if (ev.spell === 'ward') { P('ice/frost-nova', ev.x, feet, { life: 70, light: 0.35 }, 3); P('holy/sunburst', 0, 0, { follow: p, dy: -10, life: 300, key: 'blue', light: 0.2, palette: ICE }, 3); }
-        else if (ev.spell === 'lash') { P('melee/spin-slash', ev.x, feet, { life: 40, light: 0.35, palette: AMBER }, 3); }
-        else if (ev.spell === 'flare') P('holy/sunburst', ev.x, feet - 30, { life: 30, light: 0.5, palette: AMBER }, 3);
+      case 'skill': {                                                      // 등불 마법: 마법마다 pixelfx 이펙트 하나 (착탄형은 표적 자리에)
+        const gy = ev.tx != null ? groundAt(w, ev.tx - 10, 20) : feet;
+        if (ev.spell === 'pillar') P('fire/flame-pillar', ev.tx, gy, { life: 110, light: 0.4 }, 3);
+        else if (ev.spell === 'thunder') P('lightning/lightning-strike', ev.tx, gy, { life: 110, light: 0.4 }, 3);
+        else if (ev.spell === 'meteor') P('fire/meteor', ev.tx, gy, { life: 150, light: 0.45, flip: ev.face < 0 }, 3);
+        else if (ev.spell === 'stars') P('arcane/star-fall', ev.tx, gy, { life: 100, light: 0.4 }, 3);
+        else if (ev.spell === 'ring') P('fire/fire-ring', ev.x, feet, { life: 80, light: 0.4 }, 3);
+        else if (ev.spell === 'ward') { P('ice/frost-nova', ev.x, feet, { life: 60, light: 0.3 }, 3); P('holy/divine-shield', 0, 0, { follow: p, dy: p.h / 2, life: 300, key: 'blue', light: 0.25, palette: ICE }, 3); }
         else if (ev.spell === 'spear') P('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: ev.face < 0, life: 40, light: 0.4, palette: VIOLET }, 3);
         break;
+      }
       case 'land': if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;
       case 'dead': P('spawn/soul-rise', ev.x, ev.y, { actor: R.actorOf(w.player), flip: w.player.face < 0 }, 3); R.trans.spawn('transitions/burn-away', 0, 0, {}); break;
       case 'afterglow': P('lightning/spark-arc', ev.x, ev.y + 20, { palette: AMBER, life: 30, light: 0.3 }, 2); break;

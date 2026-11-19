@@ -152,7 +152,7 @@ test('흑염의 순례자: 리라의 공격을 패링하고 반격 예고', () =
 });
 test('청유: 푸른 결계 후 5초간 늦은 패링도 완벽', () => {
   const w = createWorld({ room: 'test', solids: [{ x: -1000, y: 300, w: 4000, h: 40 }] }); steps(w, 30);
-  w.player.spells = ['bolt', 'ward']; w.player.light = 100; tick(w, I({ skill2: true })); steps(w, 31);
+  w.player.spells = ['ward']; w.player.light = 100; tick(w, I({ skill: true })); steps(w, 31);
   ok(w.player.blueT > 0);
 });
 test('영구 진행: 조각으로 해금, 해금 각인이 풀에 들어감, 클리어 시 어둠 단계 해금', () => {
@@ -218,11 +218,11 @@ test('스탯은 한 점마다 체감: 힘 1점 = 피해 +12%, 생명 1점 = 최�
   eq(mk({ vit: 6 }).player.maxHp, 6); eq(mk({ vit: 9 }).player.maxHp, 9); eq(mk({ vit: 2 }).player.maxHp, 2);
   ok(Math.abs(mk({ str: 6 }).player.mods.atkMul - 1.12) < 1e-9); eq(mk({ wil: 6 }).player.mods.perfectExtra, 1); eq(mk({ wil: 3 }).player.mods.perfectExtra, -2);
 });
-test('주문서: 시작 마법은 등불 탄 + 기름 마법, 없는 마법만 제안, 빈 칸 채우기/교체', () => {
-  const r = newRun(5, { oil: 'blue' }); eq(r.spells.join(), 'bolt,ward');
+test('주문서: 시작 마법은 기름 마법 1칸, 없는 마법만 제안, 바꾸면 교체', () => {
+  const r = newRun(5, { oil: 'blue' }); eq(r.spells.join(), 'ward');
+  eq(newRun(5).spells.join(), 'bolt');
   const o = spellOffer(r, 3); eq(o.length, 3); ok(o.every(k => !r.spells.includes(k)));
-  takeSpell(r, 'lash', 0); eq(r.spells.join(), 'lash,ward');
-  r.spells[1] = null; takeSpell(r, 'flare'); eq(r.spells.join(), 'lash,flare');
+  takeSpell(r, 'meteor'); eq(r.spells.join(), 'meteor');
 });
 test('스탯 구간 능력: 생명 7 체력+1, 생명 3 체력-1, 의지 10 모든 패링 완벽, 힘 7 3타 검기', () => {
   const mk = st => { const r = newRun(1); chooseOath(r, 'parry'); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };

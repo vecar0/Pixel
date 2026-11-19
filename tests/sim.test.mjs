@@ -147,34 +147,36 @@ test('poise: 완벽 패링 4번 → 그로기 180, 처형 = 최대체력 15%', (
   tick(w, I({ attack: true })); steps(w, 8);
   eq(hp0 - d.hp, 30);
 });
-test('스킬2 불꽃 고리: 빛 60 소모, 반경 안 적 36 피해, 시전 중 피해 없음', () => {
-  const w = W(); settle(w); w.player.light = 100; w.player.oil = 'refined';
+const cast = (w, spell, light = 100) => { w.player.spells = [spell]; w.player.light = light; tick(w, I({ skill: true })); };
+test('마법 1칸: 불꽃 고리 빛 55 소모, 반경 안 적 36 피해, 시전 중 피해 없음', () => {
+  const w = W(); settle(w);
   const d = makeDummy(w, { hp: 100, hits: [w.t + 5] });
-  tick(w, I({ skill2: true })); steps(w, 30);
-  eq(d.hp, 64); eq(w.player.light, 40); eq(w.player.hp, 5);
+  cast(w, 'ring'); steps(w, 30);
+  eq(d.hp, 64); eq(w.player.light, 45); eq(w.player.hp, 5);
 });
-test('스킬1 등불 탄: 빛 25 소모, 앞으로 날아가 14 피해 / 빛 부족하면 시전 안 됨', () => {
-  const w = W(); settle(w); w.player.light = 30; w.player.face = 1;
+test('등불 탄: 빛 20, 앞으로 날아가 14 피해 / 빛 부족하면 시전 안 됨', () => {
+  const w = W(); settle(w); w.player.face = 1;
   const d = makeDummy(w, { hp: 100 }); d.x = w.player.x + 120;
-  tick(w, I({ skill1: true })); steps(w, 40);
+  cast(w, 'bolt', 25); steps(w, 40);
   eq(d.hp, 86); eq(w.player.light, 5);
-  tick(w, I({ skill1: true })); ok(w.player.state !== 'cast');
+  tick(w, I({ skill: true })); ok(w.player.state !== 'cast');
 });
-test('스킬2 흑염 창: 앞쪽 일직선 적 관통 40 피해, 뒤쪽은 안 맞음', () => {
-  const w = W(); settle(w); w.player.light = 60; w.player.spells = ['bolt', 'spear']; w.player.face = 1;
+test('얼음 창은 여러 적을 꿰뚫고, 흑염 창은 앞쪽 일직선만', () => {
+  const w = W(); settle(w); w.player.face = 1;
   const a = makeDummy(w, { hp: 100 }); a.x = w.player.x + 100;
-  const b = makeDummy(w, { hp: 100 }); b.x = w.player.x + 250;
+  const b = makeDummy(w, { hp: 100 }); b.x = w.player.x + 200;
   const c = makeDummy(w, { hp: 100, behind: true });
-  tick(w, I({ skill2: true })); steps(w, 30);
-  eq(a.hp, 60); eq(b.hp, 60); eq(c.hp, 100);
+  cast(w, 'lance'); steps(w, 50); eq(a.hp, 82); eq(b.hp, 82);
+  cast(w, 'spear'); steps(w, 30); eq(a.hp, 42); eq(b.hp, 42); eq(c.hp, 100);
 });
-test('주문서 마법: 등불 채찍은 좌우 모두, 섬광은 화면 안 적 자세를 깎는다, 빈 칸은 시전 안 됨', () => {
-  const w = W(); settle(w); w.player.light = 100; w.player.spells = ['lash', null];
-  const a = makeDummy(w, { hp: 100 }), b = makeDummy(w, { hp: 100, behind: true });
-  tick(w, I({ skill1: true })); steps(w, 20); eq(a.hp, 78); eq(b.hp, 78);
-  const l = w.player.light; tick(w, I({ skill2: true })); eq(w.player.light, l); ok(w.player.state !== 'cast');
-  w.player.spells = ['flare', null]; w.player.light = 100; a.poiseMax = true; a.poise = 0;
-  steps(w, 5); tick(w, I({ skill1: true })); steps(w, 20); ok(a.poise >= 0.3 || a.stunT > 0, 'poise ' + a.poise);
+test('착탄형(운석·낙뢰·화염 기둥·별똥비): 이펙트가 떨어지는 순간에 피해, 그 전엔 없음', () => {
+  for (const sp of ['meteor', 'thunder', 'pillar', 'stars']) {
+    const w = W(); settle(w); w.player.face = 1;
+    const d = makeDummy(w, { hp: 200 }); d.x = w.player.x + 140;
+    cast(w, sp); const S = CFG.skill[sp];
+    steps(w, S.fireF + S.delay - 2); eq(d.hp, 200, sp + ' early');
+    steps(w, 4); eq(d.hp, 200 - S.dmg, sp + ' land');
+  }
 });
 test('flask: 40틱 뒤 hp +2, 기름병 -1 / 0개면 무시', () => {
   const w = W(); settle(w); w.player.hp = 2;

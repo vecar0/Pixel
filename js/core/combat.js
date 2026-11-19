@@ -113,31 +113,50 @@ export function resolvePlayerAttacks(w) {
 }
 
 // 등불 마법 (스킬). 등장 중인 적은 맞지 않는다
+const liveOf = w => w.enemies.filter(e => !e.dead && !(e.spawnT > 0));
+function spellHit(w, e, dmg, poise, spell) {
+  damageEnemy(w, e, dmg, poise);
+  w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 1, face: w.player.face, dmg, crit: false, spell });
+}
+// 가까운 적 (앞쪽 우선). 없으면 null
+function nearestTarget(w, range) {
+  const p = w.player, cx = p.x + p.w / 2;
+  const list = liveOf(w).map(e => ({ e, dx: e.x + e.w / 2 - cx })).filter(o => Math.abs(o.dx) <= range);
+  list.sort((a, b) => ((Math.sign(a.dx) === p.face ? 0 : 1000) + Math.abs(a.dx)) - ((Math.sign(b.dx) === p.face ? 0 : 1000) + Math.abs(b.dx)));
+  return list[0] ? list[0].e : null;
+}
 export function resolveSkill(w, ev) {
-  const p = w.player, S = CFG.skill[ev.spell], M = p.mods.spellMul || 1, cx = p.x + p.w / 2;
-  const live = w.enemies.filter(e => !e.dead && !(e.spawnT > 0));
-  const hit = (e, dmg, poise = 0) => { damageEnemy(w, e, dmg, poise); w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 1, face: p.face, dmg, crit: false, spell: ev.spell }); };
-  if (ev.spell === 'bolt') {
-    const n = p.mods.lmp7 ? 2 : 1;                                   // 등불 7: 두 발
+  const p = w.player, S = CFG.skill[ev.spell], M = p.mods.spellMul || 1, cx = p.x + p.w / 2, PM = p.mods.poiseMul || 1;
+  const live = liveOf(w);
+  if (ev.spell === 'bolt' || ev.spell === 'lance') {
+    const n = ev.spell === 'bolt' && p.mods.lmp7 ? 2 : 1;            // 등불 7: 등불 탄 두 발
     for (let i = 0; i < n; i++) w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 16, y: p.y + 18 + (n > 1 ? (i ? 8 : -8) : 0), w: 16, h: 12,
-      vx: p.face * S.speed, vy: n > 1 ? (i ? 0.25 : -0.25) : 0, pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player', life: 70, bolt: 'lamp', src: {} });
-  } else if (ev.spell === 'lash') {
-    for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.reach + e.w / 2 && e.y < p.y + p.h && e.y + e.h > p.y) hit(e, Math.round(S.dmg * M), S.poise * (p.mods.poiseMul || 1));
-  } else if (ev.spell === 'flare') {
-    for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.range) hit(e, Math.round(S.dmg * M), S.poise * (p.mods.poiseMul || 1));
-    w.shake = Math.max(w.shake, 4);
+      vx: p.face * S.speed, vy: n > 1 ? (i ? 0.25 : -0.25) : 0, pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player', life: 70,
+      bolt: ev.spell === 'bolt' ? 'lamp' : 'lance', pierce: ev.spell === 'lance', hits: [], src: {} });
+  } else if (S.delay) {                                                // 착탄형: 표적 자리에 이펙트를 먼저 띄우고, 떨어지는 순간 피해
+    let tx;
+    if (ev.spell === 'stars') tx = cx + p.face * S.ahead;
+    else { const t = nearestTarget(w, S.range); tx = t ? t.x + t.w / 2 : cx + p.face * 120; }
+    ev.tx = tx; ev.ty = 300;
+    w.pending.push({ t: S.delay, spell: ev.spell, x: tx, dmg: Math.round(S.dmg * M), poise: S.poise * PM, r: S.radius });
   } else if (ev.spell === 'ring') {
-    for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.radius && Math.abs(e.y + e.h / 2 - (p.y + p.h / 2)) < 120) hit(e, Math.round(S.dmg * M), 0.2);
+    for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.radius && Math.abs(e.y + e.h / 2 - (p.y + p.h / 2)) < 120) spellHit(w, e, Math.round(S.dmg * M), 0.2 * PM, 'ring');
     w.projectiles = w.projectiles.filter(b => b.owner !== 'enemy');
     w.shake = Math.max(w.shake, 8);
   } else if (ev.spell === 'ward') {
     p.blueT = S.blueF;
-    for (const e of live) if (Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - (p.y + p.h / 2)) <= S.radius + e.w / 2) hit(e, Math.round(S.dmg * M), 0.2);
+    for (const e of live) if (Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - (p.y + p.h / 2)) <= S.radius + e.w / 2) spellHit(w, e, Math.round(S.dmg * M), 0.2 * PM, 'ward');
   } else if (ev.spell === 'spear') {
     const x0 = p.face > 0 ? p.x + p.w : p.x - S.len, x1 = x0 + S.len;
-    for (const e of live) if (e.x + e.w > x0 && e.x < x1 && e.y < p.y + p.h && e.y + e.h > p.y) hit(e, Math.round(S.dmg * M), S.poise);
+    for (const e of live) if (e.x + e.w > x0 && e.x < x1 && e.y < p.y + p.h && e.y + e.h > p.y) spellHit(w, e, Math.round(S.dmg * M), S.poise * PM, 'spear');
     w.shake = Math.max(w.shake, 6);
   }
+}
+// 지연 마법 착탄: 그 자리 반경 안의 적
+export function landSkill(w, d) {
+  for (const e of liveOf(w)) if (Math.abs(e.x + e.w / 2 - d.x) <= d.r + e.w / 2) spellHit(w, e, d.dmg, d.poise, d.spell);
+  w.shake = Math.max(w.shake, d.spell === 'meteor' ? 10 : 5);
+  if (d.spell === 'meteor' || d.spell === 'thunder') w.hitstop = Math.max(w.hitstop, 4);
 }
 
 // 적 자세 게이지 회복·그로기 시간

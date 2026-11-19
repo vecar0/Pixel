@@ -3,14 +3,14 @@ import { CFG } from './config.js';
 import { statMods, startStats } from './stats.js';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll;
-export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill1', 'skill2', 'flask'];
+export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
 
 
 export function createPlayer(x, y) {
   return {
     x, y, w: P.w, h: P.h, vx: 0, vy: 0, face: 1,
     onGround: false, coyote: 0, jumpCut: false, airAttacked: false,
-    hp: P.hp, maxHp: P.hp, spells: ['bolt', 'ring'], light: 0, flasks: CFG.flask.charges, maxFlasks: CFG.flask.charges,
+    hp: P.hp, maxHp: P.hp, spells: ['bolt'], light: 0, flasks: CFG.flask.charges, maxFlasks: CFG.flask.charges,
     relics: new Set(), mods: { rollMul: 1, iExtra: 0, airJumps: 0, execMul: 1, lightMul: 1, ...statMods(startStats()) }, airLeft: 0, chainN: 0, crit: false,
     state: 'idle', stateT: 0, combo: 0, comboT: 0,
     iframes: 0, buffer: null,
@@ -69,8 +69,8 @@ function start(w, p, action, inp) {
     case 'flask':
       if (p.flasks <= 0 || p.hp >= p.maxHp) return false;
       setState(p, 'flask'); return true;
-    case 'skill1': case 'skill2': {                 // 등불 마법: 빛을 소모해 시전
-      const spell = (p.spells || [])[action === 'skill1' ? 0 : 1];
+    case 'skill': {                                 // 등불 마법 (1칸): 빛을 소모해 시전
+      const spell = (p.spells || [])[0];
       if (!spell) return false;
       const cost = Math.round(CFG.skill[spell].cost * (p.mods.costMul || 1));
       if (p.light < cost) return false;

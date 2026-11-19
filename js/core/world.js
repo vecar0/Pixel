@@ -2,12 +2,12 @@
 import { CFG } from './config.js';
 import { createPlayer, updatePlayer, overlap } from './player.js';
 import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite } from './enemies.js';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, updatePoise, damageEnemy } from './combat.js';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy } from './combat.js';
 import { ACTIONS } from './player.js';
 
 export const EMPTY_INPUT = Object.freeze({
   left: false, right: false, down: false, jumpHeld: false,
-  jump: false, attack: false, parry: false, roll: false, skill1: false, skill2: false, flask: false,
+  jump: false, attack: false, parry: false, roll: false, skill: false, flask: false,
 });
 
 const ROOMS = {
@@ -41,7 +41,7 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
     player: createPlayer(sp.x, sp.y),
     enemies: [], projectiles: [], hitboxes: [], fx: [], events: [],
     camX: 0, over: false, won: false, cleared: false, seed: 12345,
-    waves: [], waveDelay: 0, hpMul,
+    waves: [], waveDelay: 0, hpMul, pending: [],
   };
   if (room === 'arena') w.waves = [[['ghoul', 520], ['ghoul', 600], ['moth', 700]], [['ghoul', 900], ['moth', 1000]]];
   if (room === 'boss') spawnEnemy(w, boss, 480, 300 - ENEMY_DEFS[boss].h - 2, { variant, hpMul });   // 바닥 위에서 시작
@@ -94,6 +94,8 @@ export function tick(w, inp) {
 
   updatePlayer(w, inp);
   for (const ev of [...w.events]) if (ev.type === 'skill') resolveSkill(w, ev);
+  for (const d of w.pending) if (--d.t <= 0) landSkill(w, d);             // 지연 마법: 이펙트가 떨어지는 순간 피해
+  w.pending = w.pending.filter(d => d.t > 0);
 
   for (const e of w.enemies) {
     if (e.dead) continue;
@@ -124,10 +126,11 @@ function updateProjectiles(w) {
       if (r === 'perfect') { b.vx *= -1.5; b.owner = 'player'; b.done = false; b.life = 90; }
       else if (r !== 'ignored') b.dead = true;
     } else {
-      const e = w.enemies.find(e => !e.dead && !(e.spawnT > 0) && overlap(b, e));
+      const e = w.enemies.find(e => !e.dead && !(e.spawnT > 0) && overlap(b, e) && !(b.hits && b.hits.includes(e)));
       if (e) {
         const dmg = b.pdmg ?? b.dmg * 15;                                   // 반사탄은 dmg×15, 마법·검기는 pdmg
-        damageEnemy(w, e, dmg, (b.poise ?? CFG.poise.normal) * (w.player.mods.poiseMul || 1)); b.dead = true;
+        damageEnemy(w, e, dmg, (b.poise ?? CFG.poise.normal) * (w.player.mods.poiseMul || 1));
+        if (b.pierce) b.hits.push(e); else b.dead = true;                  // 얼음 창: 관통
         w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 0, face: Math.sign(b.vx) || 1, dmg, crit: false });
       }
     }

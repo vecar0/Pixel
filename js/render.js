@@ -66,14 +66,11 @@ export class Renderer {
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
     const p = w.player, feet = p.y + p.h;
-    if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {      // 리라 베기 궤적: 1타 내려베기 · 2타 올려베기 · 3타 내리찍기 (모두 몸 앞쪽)
-      const c = p.combo, id = ['melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave'][c] || 'melee/sword-slash';
-      this.fx.spawn(id, p.x + p.w / 2 + p.face * 16, feet, { flip: p.face < 0, palette: AMBER7, sparks: SPARK4, life: 40, light: 0.35 });   // 궤적은 칼끝 쪽(몸 앞)으로
-    }
+    // 기본 공격 궤적은 스프라이트 프레임에 그려져 있어 따로 이펙트를 얹지 않는다 (겹치면 과함)
     this.dir.events(w); this.dir.tick(w);
     for (const ev of w.events) {
       if (ev.type === 'parry' && ev.perfect) { this.flash = 1; this.zoom = 1; this.texts.push({ x: p.x + p.w / 2, y: p.y - 26, t: 0, s: '완벽!' }); }
-      else if (ev.type === 'attackHit') this.burst(ev.x, ev.y, 4, ['#ffffff', C.amberHi], 2);
+      else if (ev.type === 'attackHit' && !ev.spell) this.burst(ev.x, ev.y, 2, ['#b07a3a', '#6a4a2a'], 1.5);
       else if (ev.type === 'execute') { this.flash = 0.7; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!' }); }
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });

@@ -166,7 +166,8 @@ export class Renderer {
     d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, vw, H);
     d.fillStyle = 'rgba(4,2,8,0.5)'; d.fillRect(0, 0, vw, H);
     d.globalCompositeOperation = 'destination-out';
-    const lx = p.x + p.w / 2 + ox + p.face * 8, ly = p.y + 18 + oy, lr = 110 + p.light * 0.9;
+    this.lampX = p.x + p.w / 2 + p.face * 30; this.lampY = p.y + p.h - 32; this.lampR = 110 + p.light * 0.9;   // 리라 손의 등불 = 이 세계의 광원
+    const lx = this.lampX + ox, ly = this.lampY + oy, lr = this.lampR;
     const lg = d.createRadialGradient(lx, ly, 10, lx, ly, lr); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
     d.fillStyle = lg; d.fillRect(0, 0, vw, H);
     g.drawImage(this.dark, 0, 0);
@@ -420,6 +421,7 @@ export class Renderer {
     }
     g.save(); g.translate(cx + Math.round(ox), base + Math.round(oy)); g.rotate(rot); g.scale((e.face > 0 ? -1 : 1) * (1 + k * 0.15), (1 - k * 0.1) * sy);
     g.drawImage(img, -f.ax, -f.ay);
+    this.applyLight(g, f.img, f.ax, f.ay, e.x + e.w / 2, e.y + e.h / 2, e.face > 0);
     if (hitFlash) { g.globalAlpha = e.flash > 5 ? 0.55 : 0.3; g.drawImage(this.tinted('#ffffff', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }
     else if (over) { g.globalAlpha = over === '#ffffff' ? 0.4 : 0.5; g.drawImage(this.tinted(over, f.img), -f.ax, -f.ay); g.globalAlpha = 1; }
     g.restore();
@@ -458,6 +460,7 @@ export class Renderer {
     const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50', fr.img) : fr.img;
     g.save(); g.translate(cx, feet); g.scale(sx * f, sy);
     g.drawImage(img, -fr.ax, -fr.ay);
+    if (p.state !== 'ghost') this.applyLight(g, fr.img, fr.ax, fr.ay, cx, feet - 40, false, true);   // 손에 든 등불: 앞쪽 림, 등쪽 그림자
     g.restore();
     this.drawParryArc(g, p, cx, feet, f);
   }
@@ -511,6 +514,45 @@ export class Renderer {
   }
 
   // 리라 그림의 단색 실루엣 (피격 번쩍임용), 한 번 만들어 재사용
+  // 빛 명암 마스크 (이미지당 1회): 왼/오른/위 가장자리 2px 띠. 등불 쪽은 호박색 림라이트, 반대쪽은 그림자
+  shadeMasks(im) {
+    this.masks = this.masks || new WeakMap();
+    let M = this.masks.get(im); if (M) return M;
+    const W = im.naturalWidth, H = im.naturalHeight; if (!W) return null;
+    const c0 = document.createElement('canvas'); c0.width = W; c0.height = H; const x0 = c0.getContext('2d'); x0.drawImage(im, 0, 0);
+    const A = x0.getImageData(0, 0, W, H).data, op = (x, y) => x >= 0 && y >= 0 && x < W && y < H && A[(y * W + x) * 4 + 3] > 96;
+    const make = (col, dx, dy) => {
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'), d = x.createImageData(W, H);
+      for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) {
+        if (!op(xx, yy)) continue;
+        const open = (x, y) => !op(x, y) && !op(x + dx, y + dy) && !op(x + 2 * dx, y + 2 * dy);   // 바깥으로 3px 이상 트인 외곽만 (몸 안 작은 틈 제외)
+        const a = open(xx + dx, yy + dy) ? 1 : op(xx + dx, yy + dy) && open(xx + 2 * dx, yy + 2 * dy) ? 0.45 : 0;
+        // 빛 받는 쪽 절반에 몰리게: 오른쪽 띠는 그림 오른쪽일수록, 왼쪽 띠는 왼쪽일수록 진하게 (위 띠는 균일)
+        const u = xx / (W - 1), ramp = dx > 0 ? Math.min(1, Math.max(0, (u - 0.3) / 0.5)) : dx < 0 ? Math.min(1, Math.max(0, (0.7 - u) / 0.5)) : 1;
+        if (!a || !ramp) continue; const i = (yy * W + xx) * 4; d.data[i] = col[0]; d.data[i + 1] = col[1]; d.data[i + 2] = col[2]; d.data[i + 3] = 255 * a * ramp;
+      }
+      x.putImageData(d, 0, 0); return c;
+    };
+    const RIM = [255, 196, 120], SH = [10, 6, 18];
+    M = { rimL: make(RIM, -1, 0), rimR: make(RIM, 1, 0), rimT: make(RIM, 0, -1), shL: make(SH, -1, 0), shR: make(SH, 1, 0) };
+    this.masks.set(im, M); return M;
+  }
+  // 현재 변환(뒤집기 포함) 안에서 그린 스프라이트 위에 명암을 덧칠. flip: 화면에서 좌우가 뒤집혀 그려지는가
+  applyLight(g, im, ax, ay, cx, cy, flip, self = false) {
+    const M = this.shadeMasks(im); if (!M) return;
+    const dx = this.lampX - cx, dy = this.lampY - cy, dist = Math.hypot(dx, dy);
+    const I = self ? 0.55 : Math.max(0, 1 - dist / (this.lampR * 1.6));          // 등불에서 멀수록 약하게
+    const toRight = self ? true : (dx > 0) !== flip;                              // 등불이 그림 기준 어느 쪽인가
+    const prevA = g.globalAlpha;
+    if (!self && I < 0.85) { g.globalAlpha = prevA * 0.3 * (1 - I); g.drawImage(this.tinted('#0a0612', im), -ax, -ay); }   // 먼 적은 어둠에 잠김
+    g.globalAlpha = prevA * 0.5; g.drawImage(toRight ? M.shL : M.shR, -ax, -ay);                                          // 등불 반대쪽 그림자
+    if (I > 0.02) {
+      g.globalAlpha = prevA * 0.85 * I; g.drawImage(toRight ? M.rimR : M.rimL, -ax, -ay);                                 // 등불 쪽 림라이트
+      if (dy < -10) { g.globalAlpha = prevA * 0.4 * I; g.drawImage(M.rimT, -ax, -ay); }
+    }
+    g.globalAlpha = prevA;
+  }
+
   tinted(col, im = this.liraImg) {
     this.tints = this.tints || new Map();
     const key = col + im.src;

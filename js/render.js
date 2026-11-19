@@ -29,6 +29,11 @@ export class Renderer {
     this.liraImg = new Image(); this.liraImg.src = 'assets/lira.png';
     // 동작 포즈 (Higgsfield 포즈 생성 → 기준 리라 격자로 읽음). 모두 132x111, 발 기준점 (69, 111)
     this.bgs = {}; this.region = 1;   // 지역별 배경은 처음 쓸 때 불러온다
+    // 리라 8프레임 애니메이션 (Higgsfield GIF 생성 → 게임 크기·팔레트로 변환). 프레임마다 발 기준점(ax, ay)
+    fetch('assets/anims.json').then(r => r.json()).then(J => {
+      for (const n in J.lira) for (const f of J.lira[n]) { const im = new Image(); im.src = f.src; f.img = im; }
+      this.anims = J.lira;
+    }).catch(() => {});
     this.pose = {};
     fetch('assets/enemies.json').then(r => r.json()).then(J => {
       for (const kind in J) for (const n in J[kind]) { const im = new Image(); im.src = J[kind][n].src; J[kind][n].img = im; }
@@ -226,6 +231,8 @@ export class Renderer {
   drawLira(g, w, p) {
     if (p.state !== 'ghost' && p.iframes > 0 && (w.t >> 2) % 2 && p.state !== 'hurt') return;
     const f = p.face, cx = Math.round(p.x + p.w / 2), feet = Math.round(p.y + p.h);
+    const fr = this.pickAnim(w, p);
+    if (fr) { this.drawAnim(g, w, p, fr, cx, feet, f); return; }
     const poseImg = this.pickPose(w, p);
     if (poseImg) { this.drawPose(g, w, p, poseImg, cx, feet, f); return; }
     if (p.state === 'roll' || p.state === 'ghost') {     // 웅크린 구르기
@@ -377,6 +384,43 @@ export class Renderer {
     g.save(); g.translate(cx + Math.round(ox), base + Math.round(oy)); g.rotate(rot); g.scale((e.face > 0 ? -1 : 1) * (1 + k * 0.15), (1 - k * 0.1) * sy);
     g.drawImage(img, -f.ax, -f.ay);
     g.restore();
+  }
+
+  // 상태 → 애니메이션 프레임. 공격은 칼이 앞으로 나가는 프레임(3)이 판정 시작과 맞물리게
+  pickAnim(w, p) {
+    const A = this.anims; if (!A) return null;
+    const C2 = CFG.attack, t = p.stateT;
+    const span = (lo, hi, k) => Math.min(hi, lo + Math.floor(k * (hi - lo + 1)));   // k∈[0,1) → lo..hi
+    let n = 'idle', i = ((w.t / 7) | 0) % 8;
+    switch (p.state) {
+      case 'run': n = 'run'; i = ((w.t / 5) | 0) % 8; break;
+      case 'jump': n = 'jump'; i = p.vy < -2.5 ? 3 : p.vy < 1.5 ? 5 : 7; break;
+      case 'attack': {
+        n = ['atk1', 'atk2', 'atk3'][p.combo] || 'atk1';
+        const s0 = C2.startupF, s1 = s0 + C2.activeF, end = s1 + C2.recoveryF;
+        i = t < s0 ? span(0, 2, t / s0) : t < s1 ? span(3, 4, (t - s0) / C2.activeF) : span(5, 7, (t - s1) / (end - s1));
+        break;
+      }
+      case 'parry': {
+        n = 'parry'; const W = CFG.parry.normalF;
+        i = t < 2 ? 2 : t < W ? (t < W / 2 ? 3 : 4) : span(5, 7, (t - W) / CFG.parry.whiffF);
+        break;
+      }
+      case 'roll': case 'ghost': n = 'roll'; i = span(0, 7, (p.stateT || 0) / (CFG.roll.totalF + CFG.roll.endLagF)); break;
+      case 'hurt': n = 'hurt'; i = span(0, 5, t / CFG.player.hurtStunF); break;
+      case 'dead': n = 'hurt'; i = 1; break;
+    }
+    const f = A[n] && A[n][i];
+    return f && f.img.complete && f.img.naturalWidth ? f : (A.idle && A.idle[0].img.complete ? A.idle[0] : null);
+  }
+
+  drawAnim(g, w, p, fr, cx, feet, f) {
+    const sq = this.squash, sy = 1 - sq * 0.15, sx = 1 + sq * 0.12;
+    const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50', fr.img) : fr.img;
+    g.save(); g.translate(cx, feet); g.scale(sx * f, sy);
+    g.drawImage(img, -fr.ax, -fr.ay);
+    g.restore();
+    this.drawParryArc(g, p, cx, feet, f);
   }
 
   // 상태 → 포즈 그림

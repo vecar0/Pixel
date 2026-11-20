@@ -9,6 +9,7 @@ import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, buy, relicPool, oilsO
 import { ENEMY_DEFS } from './core/enemies.js';
 import { icon, RELIC_TONE } from './icons.js';
 import { installPixelUI, roundBtn } from './pixelui.js';
+import { startTitleScene } from './titlescene.js';
 installPixelUI();
 import { CFG } from './core/config.js';
 import { SPELLS, STAT_SPELL, spellFor } from './core/spells.js';
@@ -126,17 +127,20 @@ function takeReward(id, after) { takeRelic(run, id); after(); }
 // ‹ 값 › 스테퍼 (셀렉트 박스 대신, 엄지로 누르기 쉽게)
 const chip = (id, label, sub, canPrev, canNext) => `<div class="chip"><button id="${id}-p" ${canPrev ? '' : 'disabled'} aria-label="이전">‹</button><div>${label}<small>${sub}</small></div><button id="${id}-n" ${canNext ? '' : 'disabled'} aria-label="다음">›</button></div>`;
 
+// 타이틀: 왼쪽은 등불을 든 리라 장면(캔버스), 오른쪽은 제목. 화면 어디를 눌러도 시작
+let stopTitle = null;
 function title() {
   mode = 'title'; touch.classList.add('hidden'); sfx.musicFor(0);
-  screen(`<div class="title">
-    <img class="sigil" alt="" src="${icon('parry', 'amber').match(/src="([^"]+)"/)[1]}">
-    <h1>등불지기</h1><div class="sub">꺼져 가는 지하 왕국, 마지막 등불을 든 순례자</div>
-    <button class="btn" id="go">등대 마을로</button>
-    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 마법 I · 기름병 Q</div></div>`);
+  screen(`<div class="titlescene" id="go"><canvas id="tcv" width="240" height="135"></canvas>
+    <div class="tlogo"><div class="tl-pre">꺼져 가는 지하 왕국에서</div><h1>등불지기</h1><div class="tl-rule"></div>
+      <div class="tl-sub">마지막 등불을 든 순례자, 리라</div><div class="tl-start">화면을 눌러 시작</div>
+      <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 마법 I · 기름병 Q · Enter 시작</div></div></div>`);
+  stopTitle && stopTitle(); stopTitle = startTitleScene($('#tcv'));
   bind('go', town);
 }
 // 등대 마을: 왼쪽은 리라와 기록, 오른쪽은 출발 · 조정 · 메뉴
 function town() {
+  if (stopTitle) { stopTitle(); stopTitle = null; }
   mode = 'town'; touch.classList.add('hidden'); sfx.musicFor(0);
   const d = dailySeed(), dailyDone = save.daily[d.key], oils = oilsOwned(save), oi = Math.max(0, oils.indexOf(save.oil)), r = save.records;
   const has = id => save.unlocked.includes(id);

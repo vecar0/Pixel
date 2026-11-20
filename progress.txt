@@ -154,3 +154,4 @@
 - 폰에서 고친 게 안 보이고(옛 버튼) 리라가 안 뜨던 것: 브라우저가 옛 파일과 새 파일을 섞어 씀(GitHub Pages 캐시). tools/bust.mjs로 모든 모듈 import·css·main.js에 ?v=버전, 그림·json도 window.__V로 ?v= → 배포 전에 node tools/bust.mjs
 - 마을 시작 x 60 → 180 (왼쪽 노치·스틱 뒤에 가리지 않게)
 - (제단) 제단 불을 그림 속 그릇 위치(왼쪽 10px, 위)에 맞춤
+- (화면 맞춤) 폰에서 회전·주소창 접힘 뒤 resize가 늦거나 빠져 검은 띠가 남던 것: 매 프레임 창 크기 확인 + visualViewport·orientationchange. 최대 화면 폭 780→900. 시작 위치 x 160 (스틱 뒤에 가리지 않게)

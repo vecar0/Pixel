@@ -1,11 +1,11 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
-import { CFG } from './config.js?v=mwp8gn8l';
-import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwp8gn8l';
-import { updateLevel, dropPickups } from './level.js?v=mwp8gn8l';
-import { createPlayer, updatePlayer, overlap } from './player.js?v=mwp8gn8l';
-import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwp8gn8l';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js?v=mwp8gn8l';
-import { ACTIONS } from './player.js?v=mwp8gn8l';
+import { CFG } from './config.js?v=mwp8lfv5';
+import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwp8lfv5';
+import { updateLevel, dropPickups } from './level.js?v=mwp8lfv5';
+import { createPlayer, updatePlayer, overlap } from './player.js?v=mwp8lfv5';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwp8lfv5';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js?v=mwp8lfv5';
+import { ACTIONS } from './player.js?v=mwp8lfv5';
 
 // 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판
 const walls = W => [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }];
@@ -14,8 +14,8 @@ const hill = (x, w, h) => ({ x, y: 300 - h, w, h });
 export const BOSS_ARENAS = {
   bellBoss: { width: 1600, solids: [...walls(1600), hill(80, 200, 34), hill(1320, 200, 34), plat(330, 194), plat(1150, 194)], spawn: { x: 320, y: 230 } },   // 묘지 예배당: 양쪽 무덤 언덕 (가운데 위는 대종)
   saint:    { width: 1600, solids: [...walls(1600), hill(200, 260, 44), hill(1140, 260, 44), plat(560, 192), plat(920, 192), plat(740, 120, 120)], spawn: { x: 520, y: 230 } },    // 침수 성당: 양쪽 제단 (물이 차면 피난처)
-  spider:   { width: 1600, solids: [...walls(1600), hill(660, 280, 26), plat(220, 196), plat(420, 140), plat(1060, 140), plat(1260, 196), plat(740, 100, 120)], spawn: { x: 120, y: 230 } },   // 유리 광산: 가운데 바위 둔덕, 계단식 발판
-  shadow:   { width: 1600, solids: [...walls(1600), plat(420, 194), plat(620, 140), plat(860, 140), plat(1060, 194)], spawn: { x: 120, y: 230 } },   // 무너진 성소: 가운데 높은 발판 둘
+  spider:   { width: 1600, solids: [...walls(1600), hill(660, 280, 26), plat(220, 196), plat(420, 140), plat(1060, 140), plat(1260, 196), plat(740, 100, 120)], spawn: { x: 160, y: 230 } },   // 유리 광산: 가운데 바위 둔덕, 계단식 발판
+  shadow:   { width: 1600, solids: [...walls(1600), plat(420, 194), plat(620, 140), plat(860, 140), plat(1060, 194)], spawn: { x: 160, y: 230 } },   // 무너진 성소: 가운데 높은 발판 둘
 };
 export const EMPTY_INPUT = Object.freeze({
   left: false, right: false, down: false, jumpHeld: false,
@@ -31,7 +31,7 @@ const ROOMS = {
       { x: 340, y: 210, w: 150, h: 8, oneWay: true },
       { x: 820, y: 210, w: 150, h: 8, oneWay: true },
     ],
-    spawn: { x: 80, y: 230 },
+    spawn: { x: 160, y: 230 },   // 왼쪽 아래 스틱 뒤에 가리지 않게
   },
   boss: {                                                          // 기본 보스방 (BOSS_ARENAS가 없을 때)
     width: 1120,
@@ -40,13 +40,13 @@ const ROOMS = {
       { x: -40, y: 300, w: 1200, h: 60 },
       { x: 170, y: 218, w: 120, h: 8, oneWay: true }, { x: 500, y: 196, w: 120, h: 8, oneWay: true }, { x: 830, y: 218, w: 120, h: 8, oneWay: true },
     ],
-    spawn: { x: 80, y: 230 },
+    spawn: { x: 160, y: 230 },
   },
 };
 
 export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bellBoss', variant = null, hpMul = 1 } = {}) {
   const def = (room === 'boss' && BOSS_ARENAS[boss]) || ROOMS[room] || { width: width || 2000, solids: [], spawn: { x: 100, y: 250 } };
-  const sp = spawn || def.spawn || { x: 80, y: 230 };
+  const sp = spawn || def.spawn || { x: 160, y: 230 };
   const w = {
     room, t: 0, hitstop: 0, shake: 0,
     width: width || def.width,

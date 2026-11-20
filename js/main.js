@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick } from './core/world.js?v=mwp8gn8l';
-import { Renderer } from './render.js?v=mwp8gn8l';
-import { Input } from './input.js?v=mwp8gn8l';
-import { Sfx } from './sfx.js?v=mwp8gn8l';
-import { stepLoop } from './loop.js?v=mwp8gn8l';
-import { spawnEnemy } from './core/enemies.js?v=mwp8gn8l';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwp8gn8l';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwp8gn8l';
-import { icon, RELIC_TONE } from './icons.js?v=mwp8gn8l';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwp8gn8l';
-import { startTitleScene } from './titlescene.js?v=mwp8gn8l';
+import { createWorld, tick } from './core/world.js?v=mwp8lfv5';
+import { Renderer } from './render.js?v=mwp8lfv5';
+import { Input } from './input.js?v=mwp8lfv5';
+import { Sfx } from './sfx.js?v=mwp8lfv5';
+import { stepLoop } from './loop.js?v=mwp8lfv5';
+import { spawnEnemy } from './core/enemies.js?v=mwp8lfv5';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwp8lfv5';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwp8lfv5';
+import { icon, RELIC_TONE } from './icons.js?v=mwp8lfv5';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwp8lfv5';
+import { startTitleScene } from './titlescene.js?v=mwp8lfv5';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwp8gn8l';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwp8gn8l';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwp8gn8l';
-import { takeTrain, runSpell } from './core/run.js?v=mwp8gn8l';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwp8gn8l';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwp8gn8l';
+import { CFG } from './core/config.js?v=mwp8lfv5';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwp8lfv5';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwp8lfv5';
+import { takeTrain, runSpell } from './core/run.js?v=mwp8lfv5';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwp8lfv5';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwp8lfv5';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -564,6 +564,7 @@ function step() {
 }
 
 function frame(now) {
+  checkViewport();
   try { frameBody(now); } catch (e) { console.error(e); }   // 한 프레임의 에러가 게임 전체를 멈추지 않게
   requestAnimationFrame(frame);
 }
@@ -601,6 +602,11 @@ function frameBody(now) {
 
 $('#b-pause').addEventListener('pointerup', () => mode === 'play' ? overlay('pause') : mode === 'town' && campMenu());
 addEventListener('resize', () => R.resize());
+// 폰: 회전·주소창 접힘 뒤에 resize가 늦거나 빠지는 경우가 있어 화면 크기가 바뀌면 매 프레임 다시 맞춤 (검은 띠·찌그러짐 방지)
+if (window.visualViewport) visualViewport.addEventListener('resize', () => R.resize());
+addEventListener('orientationchange', () => setTimeout(() => R.resize(), 250));
+let lastVP = '';
+function checkViewport() { const k = innerWidth + 'x' + innerHeight; if (k !== lastVP) { lastVP = k; R.resize(); } }
 // 전투 중 세로로 돌리면 일시정지 (안내 화면 뒤에서 싸움이 계속되지 않게)
 const portrait = matchMedia('(orientation: portrait) and (pointer: coarse)');
 portrait.addEventListener('change', () => { if (portrait.matches && mode === 'play') overlay('pause'); });

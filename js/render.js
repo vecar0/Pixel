@@ -114,7 +114,6 @@ export class Renderer {
       }
     }
     if (p.state === 'run' && w.t % 9 === 0) this.dust(p.x + p.w / 2 - p.face * 5, feet, -p.face, 2);   // 달리기 먼지
-    if (p.state === 'roll' && p.stateT < CFG.roll.totalF && p.stateT % 3 === 0) this.ghosts.push({ x: p.x, y: p.y, face: p.face, life: 12 });   // 회피 잔상
   }
 
   dust(x, y, dir, n) {
@@ -238,7 +237,6 @@ export class Renderer {
     for (const e of w.enemies) if (e.barrier > 0 && !e.dead) this.drawBarrier(g, w, e);   // 강적 수호 방패
     if (w.props) this.drawGimmickFront(g, w);                             // 대종은 보스 위에 (가둠)
     this.drawWarnings(g, w);
-    for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
     g.globalAlpha = 1;
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);   // 베기는 적 위·리라 뒤: 리라 몸을 덮지 않음
     if (!hideChars) this.drawLira(g, w, p.state === 'spin' && p.stateT < CFG.spin.hitF + CFG.spin.activeF + 4 ? { ...p, face: (p.stateT >> 2) & 1 ? -p.face : p.face } : p);   // 회전 베기: 좌우로 빠르게 돌아봄
@@ -743,6 +741,10 @@ export class Renderer {
       const kk = 1 - Math.min(1, e.stT / recoverOf(a)); ox = e.face * 7 * big * kk * kk; rot = e.face * 0.07 * big * kk * kk;
     }
     g.save(); g.translate(cx + Math.round(ox), base + Math.round(oy)); g.rotate(rot); g.scale((e.face > 0 ? -1 : 1) * (1 + k * 0.15), (1 - k * 0.1) * sy);
+    if (e.elite && !e.decoy) {                                              // 강적: 실제 프레임을 따라가는 1px 붉은 테두리 (몸 위에 겹친 그림 없이)
+      const t = this.tinted(e.mods && e.mods.includes('mirage') ? '#c890ff' : '#ff5a4a', f.img), a = 0.75 + 0.25 * Math.sin(w.t * 0.12);
+      g.globalAlpha = a; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) g.drawImage(t, -f.ax + dx, -f.ay + dy); g.globalAlpha = 1;
+    }
     g.drawImage(img, -f.ax, -f.ay);
     this.applyLight(g, f.img, f.ax, f.ay, e.x + e.w / 2, e.y + e.h / 2, e.face > 0);
     if (hitFlash) { g.globalAlpha = e.flash > 5 ? 0.55 : 0.3; g.drawImage(this.tinted('#ffffff', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }

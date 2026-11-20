@@ -234,13 +234,12 @@ export class FxDirector {
     // 적 몸에 감기는 상태 이펙트는 한 번에 하나만: 기절 > 화상 > 엘리트 (겹쳐 감기면 몸이 안 보임)
     for (const e of w.enemies) {
       e._fxid = e._fxid || ++R.fxid;
-      const want = e.dead || e.spawnT > 0 ? null : e.stunT > 0 ? 'stun' : e.burnT > 0 ? 'burn' : e.elite ? 'elite' : null;
+      const want = e.dead || e.spawnT > 0 ? null : e.stunT > 0 ? 'stun' : e.burnT > 0 ? 'burn' : null;   // 강적 표시는 렌더러의 테두리 (pixelfx 몸 감싸기는 정지 실루엣이라 움직이는 몸과 겹쳐 보였음)
       if (want === (this.bodyFx.get(e) ?? null)) continue;
       F.stopKey('body' + e._fxid); this.bodyFx.set(e, want);
       const o = { follow: e, dy: e.h / 2, key: 'body' + e._fxid, actor: R.actorOf(e), flip: e.face > 0, light: 0.25 };
       if (want === 'stun') F.spawn('status/stunned', 0, 0, o);
       else if (want === 'burn') F.spawn('status/burning', 0, 0, o);
-      else if (want === 'elite') F.spawn('status/rage', 0, 0, o);
     }
   }
 }

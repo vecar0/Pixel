@@ -1,4 +1,5 @@
-// WebAudio 합성 효과음. 첫 터치/키 입력에서 unlock()
+// WebAudio: 합성 효과음 + 수노로 만든 배경음악(assets/bgm). 첫 터치/키 입력에서 unlock()
+const BGM_VOL = 0.55;   // 배경음악 크기 (효과음 대비)
 export class Sfx {
   constructor() { this.ac = null; this.on = true; }
   unlock() {
@@ -24,36 +25,38 @@ export class Sfx {
     s.connect(f).connect(g).connect(this.master); s.start(t);
   }
   // 배경음악: 지역마다 다른 음계의 느린 아르페지오 + 저음. 0 = 마을, 보스방은 빠르고 낮게
+  // 배경음악 (수노로 만든 곡). region 0 = 타이틀·마을, 1~4 = 지역, boss = 보스전.
+  // 곡 끝 3초와 다음 바퀴 시작을 겹쳐(크로스페이드) 끊김 없이 반복. 곡을 바꿀 때는 1초 페이드
   musicFor(region, boss = false) {
     this.want = [region, boss];
-    const key = region + (boss ? 'b' : '');
-    if (this.musicKey === key && this.musicTimer) return;
+    const key = boss ? 'boss' : region ? 'r' + Math.min(4, region) : 'town';
+    if (this.musicKey === key && this.musicGain) return;
     this.stopMusic(); this.musicKey = key;
     if (!this.ac || this.musicOn === false) return;
-    const SCALES = [[220, 261.6, 329.6, 392, 440], [196, 233.1, 293.7, 349.2, 392], [174.6, 207.7, 261.6, 311.1, 349.2],
-      [164.8, 196, 246.9, 293.7, 329.6], [146.8, 174.6, 220, 261.6, 277.2]];
-    const sc = SCALES[Math.min(region, 4)], step = boss ? 0.2 : 0.42;
-    let i = 0;
-    const g = this.ac.createGain(); g.gain.value = 0.16; g.connect(this.master); this.musicGain = g;
-    const note = (f, dur, type, vol, when) => {
-      const o = this.ac.createOscillator(), v = this.ac.createGain();
-      o.type = type; o.frequency.value = f; v.gain.setValueAtTime(0.0001, when);
-      v.gain.exponentialRampToValueAtTime(vol, when + 0.03); v.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-      o.connect(v).connect(g); o.start(when); o.stop(when + dur + 0.05);
-    };
-    const tickFn = () => {
-      if (!this.ac) return;
-      const t = this.ac.currentTime + 0.05;
-      const pat = boss ? [0, 2, 1, 3, 0, 4, 2, 1] : [0, 2, 4, 2, 1, 3, 2, 0];
-      note(sc[pat[i % 8]] * (i % 16 < 8 ? 1 : 2), step * 1.8, 'triangle', 0.5, t);
-      if (i % 4 === 0) note(sc[0] / 2, step * 4, boss ? 'sawtooth' : 'sine', boss ? 0.35 : 0.6, t);
-      i++;
-    };
-    this.musicTimer = setInterval(tickFn, step * 1000); tickFn();
+    const g = this.ac.createGain(); g.gain.value = 0; g.connect(this.master); this.musicGain = g;
+    g.gain.linearRampToValueAtTime(BGM_VOL, this.ac.currentTime + 1.2);
+    this.loadBgm(key).then(buf => { if (this.musicGain === g && buf) this.loopBgm(buf, g, this.ac.currentTime + 0.05); });
+  }
+  loadBgm(key) {
+    this.bgm = this.bgm || {};
+    if (!this.bgm[key]) this.bgm[key] = fetch(`assets/bgm/${key}.mp3`).then(r => r.ok ? r.arrayBuffer() : Promise.reject(r.status))
+      .then(b => new Promise((ok, no) => this.ac.decodeAudioData(b, ok, no))).catch(() => null);
+    return this.bgm[key];
+  }
+  loopBgm(buf, g, when) {
+    const XF = 3, src = this.ac.createBufferSource(); src.buffer = buf; src.connect(g); src.start(when);
+    this.musicSrcs = (this.musicSrcs || []).filter(s => s.g === g); this.musicSrcs.push({ src, g });
+    const next = when + Math.max(5, buf.duration - XF), wait = (next - this.ac.currentTime - 0.5) * 1000;
+    this.musicTimer = setTimeout(() => { if (this.musicGain === g) this.loopBgm(buf, g, next); }, Math.max(0, wait));
   }
   stopMusic() {
-    if (this.musicTimer) clearInterval(this.musicTimer); this.musicTimer = null;
-    if (this.musicGain) { try { this.musicGain.disconnect(); } catch (e) { } this.musicGain = null; }
+    if (this.musicTimer) clearTimeout(this.musicTimer); this.musicTimer = null;
+    const g = this.musicGain; this.musicGain = null;
+    if (g && this.ac) {                                                    // 1초에 걸쳐 줄이고 정리
+      const t = this.ac.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 1);
+      const srcs = (this.musicSrcs || []).filter(s => s.g === g);
+      setTimeout(() => { for (const s of srcs) { try { s.src.stop(); } catch (e) { } } try { g.disconnect(); } catch (e) { } }, 1100);
+    }
   }
   play(name) {
     if (!this.ac || !this.on) return;

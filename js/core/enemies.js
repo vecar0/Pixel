@@ -215,14 +215,14 @@ function physics(w, e) {
 
 function walkToward(w, e, dx) {
   e.face = Math.sign(dx) || e.face;
-  e.vx = Math.abs(dx) > e.range * 0.6 && Math.abs(dx) < 560 ? e.face * e.speed : 0;
+  e.vx = Math.abs(dx) > e.range * 0.6 && Math.abs(dx) < CFG.enemy.aggro ? e.face * e.speed : 0;
   physics(w, e);
 }
 
 function keepDistance(w, e, dx, far) {
   e.face = Math.sign(dx) || e.face;
   const ad = Math.abs(dx);
-  e.vx = ad < far * 0.8 ? -e.face * e.speed : ad > e.range * 0.9 && ad < 560 ? e.face * e.speed : 0;
+  e.vx = ad < far * 0.8 ? -e.face * e.speed : ad > e.range * 0.9 && ad < CFG.enemy.aggro ? e.face * e.speed : 0;
   physics(w, e);
 }
 

@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - name: Headless simulation tests
-        run: node tests/sim.test.mjs && node tests/run.test.mjs
+        run: node tests/sim.test.mjs && node tests/run.test.mjs && node tests/qa.test.mjs
   deploy:
     needs: test
     runs-on: ubuntu-latest

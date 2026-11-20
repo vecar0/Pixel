@@ -244,7 +244,7 @@ function startPilgrimage() { if (!run || run.relics.length || run.roomIdx) newPi
 function relicScreen(after) {
   mode = 'relic'; touch.classList.add('hidden');
   const offer = relicOffer(run, 3);
-  if (!offer.length) return after();
+  if (!offer.length) return PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b)) ? rewardScreen(after) : after();   // 각인이 바닥나면 단련 1점으로
   screen(`<div class="card"><h2>각인을 하나 고르세요</h2>${runStat()}<div class="picks">${offer.map(id => relicCard(id)).join('')}</div></div>`);
   bindPicks(id => takeReward(id, after));
 }

@@ -175,8 +175,9 @@ await check('review: 전투 중 세로로 돌리면 일시정지', PHONE, async 
 await check('review: 플레이 중 누른 Enter가 사망 화면을 건너뛰지 않음', PC, async p => {
   await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
   await p.keyboard.press('Enter'); await p.waitForTimeout(100);
-  await p.evaluate(() => { const w = window.__lk.world; w.over = true; });
-  await p.waitForTimeout(300);
+  await p.evaluate(() => { const w = window.__lk.world; w.over = true; w.player.state = 'dead'; });
+  await p.waitForTimeout(1500); ok(await p.evaluate(() => window.__lk.R.death > 0), 'death cinematic playing');   // 사망 연출 (약 3.8초)
+  await p.keyboard.press('Enter'); await p.waitForTimeout(2900);
   eq(await p.evaluate(() => window.__lk.mode), 'dead');
 });
 await check('review: 스틱 영역 두 번째 손가락을 떼도 첫 손가락 이동 유지', PHONE, async p => {

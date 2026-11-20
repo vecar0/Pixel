@@ -29,9 +29,6 @@ const MAX_PARTICLES = 400;
 const PROP_GRADE = { urn: 0.5, spikes: 0.45, vent: 0.45, lever: 0.4, gate: 0.5, chest: 0.4, 'chest-open': 0.35, mover: 0.5, bell: 0.45, chain: 0.5, post: 0.5,
   mirror: 0.2, beacon: 0.5, shrine: 0.45, rack: 0.4, lamp: 0.45, 'deco-barrels': 0.45, 'deco-cart': 0.45, 'deco-bench': 0.45, keeper: 0.25, board: 0.45, scarecrow: 0.4, merchant: 0.2 };   // 인물(등대지기·상인)은 약하게
 const DIM = 0.92;                                                       // 소품은 배경보다 아주 조금 어둡게 (어둠 속에 놓인 느낌)
-// 반격 연참 칼자국: assets/fx-flurry0~3.png (가로 8프레임). ax·ay = 그림 안 중심, dx·dy = 리라 발 기준 위치, f = 프레임당 틱
-const FLURRY_FX = [{ w: 87, h: 32, ax: 41, ay: 14, dx: 34, dy: -34, f: 2 }, { w: 82, h: 85, ax: 42, ay: 42, dx: 30, dy: -34, f: 2 },
-  { w: 88, h: 67, ax: 43, ay: 28, dx: 32, dy: -34, f: 2 }, { w: 112, h: 115, ax: 56, ay: 57, dx: 48, dy: -34, f: 3 }];
 const bellOf = w => (w.props || []).find(o => o.kind === 'bell') || {};
 const PHASE2_TITLE = { bellBoss: ['2막 · 무너지는 종탑', '천장에서 잔해가 떨어진다 · 대종이 더 빨리 다시 걸린다'], saint: ['2막 · 차오르는 물', '낮은 바닥에선 느려진다 · 양쪽 제단 위로'],
   spider: ['2막 · 깨어나는 광맥', '세 번째 거울이 자란다 · 천장 수정이 쏟아진다'], shadow: ['2막 · 개기일식', '더 어두워지고 등대가 짧게 탄다'] };
@@ -42,7 +39,6 @@ export class Renderer {
     this.fx = new FxLayer(); this.mfx = new FxLayer(1.5) /* 마법 이펙트: 1.5배 굵은 픽셀 (캐릭터 크기에 맞춤) */; this.bgfx = new FxLayer(); this.pfx = new FxLayer(); /* pfx: 리라 베기 (리라 뒤에 그림) */ this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
     this.parts = []; this.texts = [];
     this.ghosts = [];             // 회피 잔상
-    this.slashes = [];            // 반격 연참 칼자국 (스프라이트 애니메이션)
     this.tail = null;             // 포니테일 스프링
     this.lantern = { a: 0, v: 0 };
     this.squash = 0; this.flash = 0; this.zoom = 0; this.stunFx = new Map();
@@ -79,7 +75,7 @@ export class Renderer {
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.mfx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.slashes = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; }
+  reset() { this.fx.clear(); this.mfx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; this.death = 0; }
 
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
@@ -97,9 +93,9 @@ export class Renderer {
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
       else if (ev.type === 'flurryStart') { this.flash = Math.max(this.flash, 0.45); this.zoom = 0.6; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '반격!', life: 45 }); }
-      else if (ev.type === 'flurryHit') {                                   // 연참: 타마다 전용 칼자국 애니메이션 (GIF로 만든 8프레임 픽셀 그림)
-        this.slashes.push({ k: ev.k, x: ev.x + ev.face * FLURRY_FX[ev.k].dx, y: ev.y + FLURRY_FX[ev.k].dy, face: ev.face, t: 0 });
-        if (ev.k === 3) this.flash = Math.max(this.flash, 0.5);
+      else if (ev.type === 'flurryHit') {                                   // 연참: 캐릭터 동작이 주인공, 이펙트는 칼끝 작은 불꽃만
+        this.dir.put('impacts/hit-spark', ev.x + ev.face * 40, ev.y - 6, { height: 30, flip: ev.face > 0, palette: ev.k === 3 ? AMBER7 : STEEL, life: 20, light: 0.3 }, 2);
+        if (ev.k === 3) { this.flash = Math.max(this.flash, 0.5); }
       }
       else if (ev.type === 'execChain') { this.texts.push({ x: ev.x, y: ev.y - 60, t: 0, s: `연속 처형 ×${ev.n}`, life: 70 }); this.flash = Math.max(this.flash, 0.6); }
       else if (ev.type === 'barrierBreak') { this.texts.push({ x: ev.x, y: ev.y - 50, t: 0, s: '방패 깨짐!', life: 60 }); this.flash = Math.max(this.flash, 0.6); }
@@ -148,8 +144,6 @@ export class Renderer {
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
     this.parts = this.parts.filter(p => p.life > 0);
     const pl = w.player; if (pl.state === 'roll' && pl.stateT < CFG.roll.totalF && pl.stateT % 3 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 12 });   // 회피 잔상
-    if (!(w.hitstop > 0)) for (const sl of this.slashes) sl.t++;
-    this.slashes = this.slashes.filter(sl => sl.t < FLURRY_FX[sl.k].f * 8);
     for (const g of this.ghosts) g.life--;
     this.ghosts = this.ghosts.filter(g => g.life > 0);
     for (const t of this.texts) t.t++;
@@ -188,6 +182,8 @@ export class Renderer {
 
     g.save();
     // 완벽 패링 줌인: 리라를 중심으로 살짝 당김
+    const dz = this.death ? Math.min(1, this.death / 60) : 0;
+    if (dz > 0 && !still) { const z = 1 + dz * 0.3, cx = p.x + p.w / 2 + ox, cy = p.y + p.h - 20 + oy; g.translate(cx, cy); g.scale(z, z); g.translate(-cx, -cy); }   // 사망: 리라 쪽으로 천천히 확대
     const ex = p.state === 'execute' ? Math.min(1, p.stateT / 10) * (p.stateT > CFG.execute.totalF - 10 ? (CFG.execute.totalF - p.stateT) / 10 : 1) : 0;
     this.execK = ex;
     if (ex > 0.01 && !still) {                                            // 처형: 리라 쪽으로 22%까지 확대
@@ -222,7 +218,8 @@ export class Renderer {
       const bx = o.x + ox, by = 248 + oy, r = 150 * Math.min(1, o.litT / 40), bg = d.createRadialGradient(bx, by, 10, bx, by, r);
       bg.addColorStop(0, 'rgba(0,0,0,1)'); bg.addColorStop(0.7, 'rgba(0,0,0,0.85)'); bg.addColorStop(1, 'rgba(0,0,0,0)'); d.fillStyle = bg; d.fillRect(0, 0, vw, H);
     }
-    this.lampX = p.x + p.w / 2 + p.face * 30; this.lampY = p.y + p.h - 32; this.lampR = 110 + p.light * 0.9;   // 리라 손의 등불 = 이 세계의 광원
+    this.lampX = p.x + p.w / 2 + p.face * 30; this.lampY = p.y + p.h - 32; this.lampR = (110 + p.light * 0.9) * (this.death ? Math.max(0.12, 1 - Math.max(0, this.death - 70) / 90) : 1);   // 리라 손의 등불 = 이 세계의 광원 (죽으면 서서히 꺼짐)
+    if (this.death) { this.lampX = p.x + p.w / 2 + p.face * 34; this.lampY = p.y + p.h - 6; }   // 떨어진 등불 자리
     const lx = this.lampX + ox, ly = this.lampY + oy, lr = this.lampR;
     const lg = d.createRadialGradient(lx, ly, 10, lx, ly, lr); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
     d.fillStyle = lg; d.fillRect(0, 0, vw, H);
@@ -252,13 +249,6 @@ export class Renderer {
     this.drawWarnings(g, w);
     g.globalAlpha = 1;
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);
-    for (const sl of this.slashes) {                                      // 반격 연참 칼자국
-      const F = FLURRY_FX[sl.k], im = this.img('fx-flurry' + sl.k); if (!im) continue;
-      const fr = Math.min(7, Math.floor(sl.t / F.f));
-      g.save(); g.translate(Math.round(sl.x), Math.round(sl.y)); g.scale(sl.face, 1); g.globalCompositeOperation = 'lighter';
-      g.drawImage(im, fr * F.w, 0, F.w, F.h, -F.ax, -F.ay, F.w, F.h); g.globalAlpha = 0.5; g.drawImage(im, fr * F.w, 0, F.w, F.h, -F.ax, -F.ay, F.w, F.h);
-      g.restore();
-    }   // 베기는 적 위·리라 뒤: 리라 몸을 덮지 않음
     if (!hideChars) this.drawLira(g, w, p);
     if (p.state === 'flask' && !hideChars) {                             // 기름병 마시는 중: 머리 위 초록 원이 차오름
       const k = Math.min(1, p.stateT / (CFG.flask.useF * (p.mods.flaskSpeed || 1))), cx = p.x + p.w / 2, cy = p.y - 30;
@@ -303,8 +293,13 @@ export class Renderer {
 
     // 화면 번쩍: 완벽 패링은 흰색, 피격은 붉은색
     if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.22})`; g.fillRect(0, 0, vw, H); }   // 화면 섬광은 은은하게
+    if (this.death) {                                                     // 사망: 가장자리부터 어두워지고, 마지막에 글자
+      const d = this.death, k = Math.min(1, d / 160), vg = g.createRadialGradient(vw / 2, H * 0.62, H * (0.5 - 0.35 * k), vw / 2, H * 0.62, vw * 0.7);
+      vg.addColorStop(0, 'rgba(4,2,8,0)'); vg.addColorStop(1, `rgba(4,2,8,${0.5 + 0.45 * k})`); g.fillStyle = vg; g.fillRect(0, 0, vw, H);
+      if (d > 140) { const a = Math.min(1, (d - 140) / 40); g.globalAlpha = a; g.textAlign = 'center'; g.font = 'bold 22px Galmuri11, monospace'; g.fillStyle = '#000'; g.fillText('등불이 꺼졌다', vw / 2 + 1, H * 0.36 + 1); g.fillStyle = '#e8dcc0'; g.fillText('등불이 꺼졌다', vw / 2, H * 0.36); g.textAlign = 'left'; g.globalAlpha = 1; }
+    }
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
-    if (this.hud !== false && !(this.cine && this.cine.t < CINE.out2)) this.drawHud(g, w);   // 등장 연출 중엔 HUD 숨김
+    if (this.hud !== false && !this.death && !(this.cine && this.cine.t < CINE.out2)) this.drawHud(g, w);   // 등장 연출 중엔 HUD 숨김
     for (const [m, y] of [[this.banner, this.banner?.y ?? 96], [this.sayMsg, H - 70]]) {     // 스테이지 이름 배너 · 안내 한 줄
       if (!m || m.t <= 0) continue; m.t--;
       const a = Math.min(1, m.t / 30, (m.dur || 150) - m.t < 20 ? ((m.dur || 150) - m.t) / 20 : 1);
@@ -797,14 +792,14 @@ export class Renderer {
         i = t < X.hitF ? span(0, 2, t / X.hitF) : t < X.hitF + 5 ? (t < X.hitF + 2 ? 3 : 4) : span(5, 7, (t - X.hitF - 5) / (X.totalF - X.hitF - 5));
         break;
       }
-      case 'flurry': {                                                     // 반격 연참: 1·2·3타 그림을 빠르게 이어 붙이고, 마지막 타는 3타 자세로 크게
-        const H = CFG.flurry.hits, k = Math.max(0, H.findLastIndex(h => t >= h - 3)), s0 = H[k] - 3, s1 = k < H.length - 1 ? H[k + 1] - 3 : CFG.flurry.totalF;
-        n = ['atk1', 'atk2', 'atk1', 'atk3'][k]; i = t < s0 ? 2 : span(2, 7, (t - s0) / Math.max(1, s1 - s0)); break;
+      case 'flurry': {                                                     // 반격 연참: 전용 12프레임 (돌진 → 가로 베기 → 올려베기 → 두 번 베기 → 뛰어올라 내려치기 → 착지)
+        if (A.flurry) { n = 'flurry'; i = Math.min(11, Math.floor(t / CFG.flurry.totalF * 12)); break; }
+        n = 'atk3'; i = span(0, 7, t / CFG.flurry.totalF); break;
       }
       case 'cast': n = 'parry'; i = t < 3 ? 2 : t < CFG.skill[p.spell].castF - 4 ? 4 : 6; break;   // 등불을 앞으로 내밀어 시전
       case 'roll': case 'ghost': n = 'roll'; i = span(0, 7, (p.stateT || 0) / (CFG.roll.totalF + CFG.roll.endLagF)); break;
       case 'hurt': n = 'hurt'; i = span(0, 5, t / CFG.player.hurtStunF); break;
-      case 'dead': n = 'hurt'; i = 1; break;
+      case 'dead': if (A.death) { n = 'death'; i = Math.min(9, Math.floor(t / 9)); } else { n = 'hurt'; i = 1; } break;   // 쓰러짐 10프레임 → 마지막에 멈춤
     }
     const f = A[n] && A[n][i];
     return f && f.img.complete && f.img.naturalWidth ? f : (A.idle && A.idle[0].img.complete ? A.idle[0] : null);

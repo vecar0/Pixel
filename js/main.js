@@ -51,6 +51,8 @@ let save = loadSave();
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { } }
 let bossesKilled = [], practice = false;
 
+const DEATH_F = 230;   // 사망 연출 길이(틱): 쓰러짐 90 → 등불이 꺼짐 → 글자
+let deathT = 0;
 let run = null, mode = 'title', world = createWorld({ room: 'arena' }), acc = 0, last = performance.now(), slowT = 0;
 // 테스트·디버그용 훅
 const lk = window.__lk = { get tut() { return tut; }, get world() { return world; }, get mode() { return mode; }, get run() { return run; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y), gotoBoss: reg => { setRegion(run, reg); enterRoom(run, 'boss'); play(); } };
@@ -59,6 +61,7 @@ function screen(html) { input.clear(); R.hud = !html; ui.innerHTML = html ? `<di
 function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); sfx.play('click'); fn(); }); }
 
 function play() {
+  deathT = 0; R.death = 0;
   world = buildRoomWorld(run); R.runInfo = run; R.region = run.region;
   R.reset(); R.dir.preloadRegion(run.region); R.dir.enterRoom(world, run.region, run.room === 'boss');
   const ST = { combat: '전투', elite: '강적', shop: '떠돌이 상인', rest: '작은 등불', boss: ENEMY_DEFS[regionOf(run).boss].name };
@@ -575,7 +578,10 @@ function frameBody(now) {
         if (!world.enemies.length) townDummy(world); for (const e of world.enemies) { e.cd = 1e9; e.poiseRegenT = 0; } });
     } else R.stepFx(world);
   }
-  if (mode === 'play') {
+  if (mode === 'play' && deathT) {                                     // 사망 연출: 세계는 멈추고 리라 쓰러짐 → 등불이 꺼짐 → 결과
+    deathT += dt / (1000 / CFG.TICK); world.player.stateT = Math.floor(deathT); R.death = deathT; R.stepFx(world);
+    if (deathT > DEATH_F) { deathT = 0; R.death = 0; overlay('dead'); }
+  } else if (mode === 'play') {
     if (input.take('pause')) overlay('pause');
     else {
       if (R.irisBusy() || R.stepCine()) { R.stepFx(world); acc = 0; touch.classList.add('hidden'); world.wasCine = true; }   // 아이리스·보스 등장 연출 동안은 세계 정지, 버튼 숨김
@@ -584,7 +590,7 @@ function frameBody(now) {
         const rate = world.player.state === 'execute' && !world.hitstop ? CFG.execute.slow : slowT > 0 && !world.hitstop ? 0.45 : 1;   // 처형 중 슬로모션, 완벽 패링 직후 잠깐 슬로
         acc = stepLoop(acc, dt * rate, step); tutTick();
       }
-      if (world.over) overlay('dead');
+      if (world.over && !deathT) { deathT = 1; touch.classList.add('hidden'); sfx.stopMusic && sfx.stopMusic(); }   // 사망 연출 시작
       else if (world.won) overlay('won');
       else if (world.cleared && !world.rewarded) overlay('cleared');
     }

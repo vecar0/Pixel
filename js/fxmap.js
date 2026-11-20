@@ -205,7 +205,7 @@ export class FxDirector {
       case 'exposed': P('impacts/hit-spark', ev.x, ev.y + 30, { height: 20, palette: GOLD, life: 30, light: 0.4 }, 2); break;
       case 'land': if (w.water != null && w.water < 296 && ev.y > w.water) { this.spell('water/splash', ev.x, w.water + 6, { life: 45, light: 0.35 }); break; }   // 물에 착지 → 물보라
         if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;
-      case 'dead': P('spawn/soul-rise', ev.x, ev.y, { actor: R.actorOf(w.player), flip: w.player.face < 0 }, 3); R.trans.spawn('transitions/burn-away', 0, 0, {}); break;
+      case 'dead': P('impacts/hit-spark', ev.x, ev.y - 30, { height: 30, palette: ['#3a0a14', '#a01824', '#ff5a50', '#ffffff'], life: 25, light: 0.3 }, 3); break;   // 쓰러지는 동작은 리라 애니메이션이 보여 줌
       case 'afterglow': P('lightning/spark-arc', ev.x, ev.y + 20, { palette: AMBER, life: 30, light: 0.3 }, 2); break;
     }
   }

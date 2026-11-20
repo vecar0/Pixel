@@ -65,7 +65,8 @@ function start(w, p, action, inp) {
       if (p.state !== 'idle' && p.state !== 'run') setState(p, 'jump');
       return true;
     case 'attack': {
-      if (p.counterT > 0 && p.onGround) { p.counterT = 0; setState(p, 'flurry'); w.events.push({ type: 'flurryStart', x: p.x + p.w / 2, y: p.y + p.h, face: p.face }); return true; }   // 완벽 패링 직후 = 반격 연참
+      const stunNear = w.enemies.some(e => !e.dead && e.stunT > 0 && Math.abs((e.x + e.w / 2) - (p.x + p.w / 2)) < 90);   // 그로기 적이 가까우면 연참 대신 처형
+      if (p.counterT > 0 && p.onGround && !stunNear) { p.counterT = 0; setState(p, 'flurry'); w.events.push({ type: 'flurryStart', x: p.x + p.w / 2, y: p.y + p.h, face: p.face }); return true; }   // 완벽 패링 직후 = 반격 연참
       if (!p.onGround && p.airAttacked) return false;
       const chain = (p.state === 'attack') || p.comboT > 0;
       p.combo = chain ? (p.combo + 1) % 3 : 0;

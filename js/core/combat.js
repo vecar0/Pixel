@@ -131,6 +131,7 @@ function igniteBrazier(w, o) {
 const liveOf = w => w.enemies.filter(e => !e.dead && !(e.spawnT > 0));
 function spellHit(w, e, dmg, poise, spell) {
   damageEnemy(w, e, dmg, poise);
+  w.hitstop = Math.max(w.hitstop, 3);                                   // 마법도 맞는 순간 멈칫 (손맛)
   w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 1, face: w.player.face, dmg, crit: false, spell });
 }
 // 가까운 적 (앞쪽 우선). 없으면 null
@@ -142,12 +143,14 @@ function nearestTarget(w, range) {
 }
 export function resolveSkill(w, ev) {
   const p = w.player, S = CFG.skill[ev.spell], M = p.mods.spellMul || 1, cx = p.x + p.w / 2, PM = p.mods.poiseMul || 1;
+  const aim = nearestTarget(w, 520);                                    // 자동 조준: 가장 가까운 적(앞쪽 우선) 쪽으로 돌아서 쏜다
+  if (aim) { p.face = Math.sign(aim.x + aim.w / 2 - cx) || p.face; ev.face = p.face; }
   const live = liveOf(w);
   if (ev.spell === 'bolt' || ev.spell === 'lance') {
     const n = ev.spell === 'bolt' && p.mods.lmp7 ? 2 : 1;            // 등불 7: 등불 탄 두 발
     for (let i = 0; i < n; i++) w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 16, y: p.y + 18 + (n > 1 ? (i ? 8 : -8) : 0), w: 16, h: 12,
-      vx: p.face * S.speed, vy: n > 1 ? (i ? 0.25 : -0.25) : 0, pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player', life: 70,
-      bolt: ev.spell === 'bolt' ? 'lamp' : 'lance', pierce: ev.spell === 'lance', hits: [], src: {} });
+      vx: p.face * S.speed, vy: n > 1 ? (i ? 0.25 : -0.25) : 0, pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player',
+      bolt: ev.spell === 'bolt' ? 'lamp' : 'lance', pierce: ev.spell === 'lance', homing: !!S.homing, spd: S.speed, life: 110, hits: [], src: {} });
   } else if (S.delay) {                                                // 착탄형: 표적 자리에 이펙트를 먼저 띄우고, 떨어지는 순간 피해
     let tx;
     if (ev.spell === 'stars') tx = cx + p.face * S.ahead;

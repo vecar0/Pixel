@@ -148,13 +148,14 @@ export class Renderer {
     const g = this.ctx, H = CFG.VIEW_H, vw = this.vw, p = w.player;
     const boss = this.cine && this.cine.focusBoss && w.enemies.find(e => e.boss);
     const camX = Math.max(0, Math.min(w.width - vw, boss ? boss.x + boss.w / 2 - vw / 2 : p.x + p.w / 2 - vw * 0.4));   // 등장 연출 중엔 보스를 비춤
-    const sh = w.shake > 0 ? Math.min(5, w.shake / 2) : 0;
+    const still = this.hud === false;                                   // 메뉴 화면이 열려 있으면 뒤 배경은 멈춘 그림 (흔들림·확대 없음)
+    const sh = !still && w.shake > 0 ? Math.min(5, w.shake / 2) : 0;
     const sx = Math.round((Math.random() - 0.5) * 2 * sh), sy = Math.round((Math.random() - 0.5) * 2 * sh);
     const ox = Math.round(-camX) + sx, oy = sy;
 
     g.save();
     // 완벽 패링 줌인: 리라를 중심으로 살짝 당김
-    if (this.zoom > 0.02) {
+    if (this.zoom > 0.02 && !still) {
       const z = 1 + this.zoom * 0.07, cx = p.x + p.w / 2 + ox, cy = p.y + 20 + oy;
       g.translate(cx, cy); g.scale(z, z); g.translate(-cx, -cy);
     }

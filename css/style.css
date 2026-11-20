@@ -285,3 +285,33 @@ details.statsd summary::before { content: '▸ '; } details.statsd[open] summary
 .tlogo .help { margin-top: 10px; color: #5f5670; font-size: 10px; }
 @media (pointer: coarse) { .tlogo .help { display: none; } }
 .tlogo { left: 51vw; right: auto; width: min(44vw, 520px); }
+
+/* 마법 카드: 이름 · 빛 · 피해 · 특성 태그 · 설명 */
+.spellcard { --tone: var(--lantern); display: flex; gap: 10px; align-items: center; text-align: left; width: 100%; margin-top: 6px; padding: 8px 10px;
+  background: #120e16; box-shadow: inset 0 0 0 1px var(--rivet), inset 3px 0 0 var(--tone); }
+.spellcard.t-moon { --tone: var(--moon); } .spellcard.t-ember { --tone: var(--ember); } .spellcard.t-heal { --tone: var(--heal); } .spellcard.t-bone { --tone: var(--bone); }
+.spellcard .niche { width: 40px; height: 40px; flex: none; display: grid; place-items: center; background: radial-gradient(circle, color-mix(in srgb, var(--tone) 35%, transparent), transparent 70%); }
+.spellcard .niche .ico { width: 30px; height: 30px; }
+.sc-body { flex: 1; min-width: 0; }
+.sc-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sc-top small { color: var(--ash); font-size: 10px; } .sc-top b { color: var(--flame); font-size: 14px; }
+.sc-cost { color: var(--lantern); font-size: 11px; } .sc-dmg { color: #ff9a86; font-size: 11px; }
+.sc-tags { display: flex; gap: 4px; flex-wrap: wrap; margin: 3px 0; }
+.sc-tags i { font-style: normal; font-size: 10px; color: var(--tone); padding: 1px 5px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 55%, transparent); }
+.sc-desc { color: #cfc6dc; font-size: 11px; line-height: 1.45; }
+.sc-map { color: var(--ash); font-size: 10px; margin-top: 4px; line-height: 1.5; text-align: left; }
+.tprev .spellcard { margin-top: 6px; }
+
+/* 폰 높이에서 한 화면에: 일시정지·단련 화면 촘촘하게 */
+@media (max-height: 460px) {
+  .card.statup > .line { display: none; }
+  .card.statup .sside, .stats5 .sside { min-height: 30px; }
+  .card.statup .tprev small { display: none; }
+  .spellcard { padding: 5px 8px; margin-top: 4px; } .spellcard .niche { width: 32px; height: 32px; } .spellcard .niche .ico { width: 24px; height: 24px; }
+  .sc-map { display: none; }
+  .card { gap: 5px; padding: 10px 16px; }
+}
+@media (max-height: 460px) {
+  .card.statup { position: relative; } .card.statup > .btns { position: absolute; right: 14px; top: 8px; margin: 0; }
+  .card.statup > .btns .btn { min-height: 38px; padding: 0 10px; font-size: 14px; }
+}

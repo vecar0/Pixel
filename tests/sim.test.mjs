@@ -149,17 +149,17 @@ test('poise: 완벽 패링 4번 → 그로기 180, 처형 = 최대체력 15%', (
   eq(hp0 - d.hp, 30);
 });
 const cast = (w, spell, light = 100) => { w.player.spells = [spell]; w.player.light = light; tick(w, I({ skill: true })); };
-test('마법 1칸: 불꽃 고리 빛 55 소모, 반경 안 적 36 피해, 시전 중 피해 없음', () => {
+test('마법 1칸: 불꽃 고리 빛 55 소모, 반경 안 적 피해, 시전 중 피해 없음', () => {
   const w = W(); settle(w);
   const d = makeDummy(w, { hp: 100, hits: [w.t + 5] });
   cast(w, 'ring'); steps(w, 30);
-  eq(d.hp, 64); eq(w.player.light, 45); eq(w.player.hp, 5);
+  eq(d.hp, 100 - CFG.skill.ring.dmg); eq(w.player.light, 45); eq(w.player.hp, 5);
 });
-test('등불 탄: 빛 20, 앞으로 날아가 14 피해 / 빛 부족하면 시전 안 됨', () => {
+test('등불 탄: 빛 20, 날아가 맞힘 / 빛 부족하면 시전 안 됨', () => {
   const w = W(); settle(w); w.player.face = 1;
   const d = makeDummy(w, { hp: 100 }); d.x = w.player.x + 120;
   cast(w, 'bolt', 25); steps(w, 40);
-  eq(d.hp, 86); eq(w.player.light, 5);
+  eq(d.hp, 100 - CFG.skill.bolt.dmg); eq(w.player.light, 5);
   tick(w, I({ skill: true })); ok(w.player.state !== 'cast');
 });
 test('얼음 창은 여러 적을 꿰뚫고, 흑염 창은 앞쪽 일직선만', () => {
@@ -167,21 +167,29 @@ test('얼음 창은 여러 적을 꿰뚫고, 흑염 창은 앞쪽 일직선만',
   const a = makeDummy(w, { hp: 100 }); a.x = w.player.x + 100;
   const b = makeDummy(w, { hp: 100 }); b.x = w.player.x + 200;
   const c = makeDummy(w, { hp: 100, behind: true });
-  cast(w, 'lance'); steps(w, 50); eq(a.hp, 82); eq(b.hp, 82);
-  cast(w, 'spear'); steps(w, 30); eq(a.hp, 42); eq(b.hp, 42); eq(c.hp, 100);
+  cast(w, 'lance'); steps(w, 60); const L = CFG.skill.lance.dmg; eq(a.hp, 100 - L); eq(b.hp, 100 - L);
+  cast(w, 'spear'); steps(w, 30); const SP = CFG.skill.spear.dmg; eq(a.hp, 100 - L - SP); eq(b.hp, 100 - L - SP); eq(c.hp, 100);
 });
 test('치유의 빛은 체력 2, 성광 기둥은 주변 피해 + 체력 1', () => {
   const w = W(); settle(w); w.player.hp = 2;
   const d = makeDummy(w, { hp: 100 });
   cast(w, 'heal'); steps(w, 30); eq(w.player.hp, 4);
-  cast(w, 'sanctum'); steps(w, 30); eq(w.player.hp, 5); eq(d.hp, 72);
+  cast(w, 'sanctum'); steps(w, 30); eq(w.player.hp, 5); eq(d.hp, 100 - CFG.skill.sanctum.dmg);
+});
+test('유도: 등불 탄은 위쪽에 떠 있는 적도 쫓아가 맞히고, 뒤쪽 적만 있으면 돌아서 쏜다', () => {
+  const w = W(); settle(w); w.player.face = 1;
+  const up = makeDummy(w, { hp: 100 }); up.x = w.player.x + 160; up.y = w.player.y - 70;
+  cast(w, 'bolt'); steps(w, 60); eq(up.hp, 100 - CFG.skill.bolt.dmg);
+  const w2 = W(); settle(w2); w2.player.face = 1;
+  const back = makeDummy(w2, { hp: 100, behind: true }); back.x = w2.player.x - 150;
+  cast(w2, 'bolt'); steps(w2, 60); eq(w2.player.face, -1); eq(back.hp, 100 - CFG.skill.bolt.dmg);
 });
 test('연쇄 번개는 앞쪽 적 셋까지만, 뒤쪽은 안 맞음', () => {
   const w = W(); settle(w); w.player.face = 1;
   const ds = [60, 110, 160, 210].map(dx => { const d = makeDummy(w, { hp: 100 }); d.x = w.player.x + dx; return d; });
   const back = makeDummy(w, { hp: 100, behind: true });
   cast(w, 'chain'); steps(w, 20);
-  eq(ds.filter(d => d.hp === 80).length, 3); eq(back.hp, 100);
+  eq(ds.filter(d => d.hp === 100 - CFG.skill.chain.dmg).length, 3); eq(back.hp, 100);
 });
 test('착탄형(운석·낙뢰·화염 기둥·별똥비): 이펙트가 떨어지는 순간에 피해, 그 전엔 없음', () => {
   for (const sp of ['meteor', 'thunder', 'pillar', 'stars', 'blast']) {

@@ -11,6 +11,8 @@ const VIOLET = ['#1a0a2a', '#3a1660', '#6a2aa0', '#9a4ae0', '#c890ff', '#f0e0ff'
 const GREY = ['#1a1820', '#3a3640', '#5e5866', '#8a8494', '#b8b2c2', '#e4e0ea', '#ffffff'];
 const LILAC = ['#1e1430', '#3c2a5c', '#6a4e96', '#9a7ccc', '#c8b0f0', '#ece2ff', '#ffffff'];
 const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', '#ffffff'];
+// 마법별 색 (마법진·모이는 빛). 함수라서 아래쪽 팔레트 상수를 써도 됨
+const palOf = sp => ({ bolt: AMBER, pillar: AMBER, meteor: AMBER, ring: AMBER, lance: ICE, ward: ICE, thunder: CYAN, chain: CYAN, stars: LILAC, spear: VIOLET, blast: VIOLET, heal: GOLD, sanctum: GOLD })[sp] || AMBER;
 const CFG_INV = { ring: 1, ward: 1, spear: 1, meteor: 1, sanctum: 1 };   // 큰 마법만 시전 예고 빛
 const HIT = ['#1a0e06', '#3a2410', '#6a4420', '#9a6a34', '#c4955a', '#e0bc88', '#f0dcb8'];   // 기본 타격: 흰빛 없는 톤
 const ICE = ['#081a2a', '#10345a', '#1e5a8c', '#3a8cc8', '#7ac0f0', '#c0e8ff', '#ffffff'];
@@ -53,7 +55,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['arcane/magic-circle-cast', 'arcane/spell-charge', 'arcane/mana-burst', 'ice/ice-shatter', 'fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -97,7 +99,9 @@ export class FxDirector {
         break;
       case 'attackHit':
         if (big) break;                                                   // 처형·완벽 패링 순간엔 그 연출만
-        // 기본 공격은 베기 이펙트 하나로 끝 (타격 불꽃을 따로 얹지 않음), 마법은 마법 이펙트가 대신
+        // 기본 공격은 베기 이펙트 하나로 끝 (타격 불꽃을 따로 얹지 않음). 유도탄은 맞은 자리에서 터짐
+        if (ev.spell === 'bolt') P('arcane/mana-burst', ev.x, ev.y + 20, { palette: AMBER, life: 50, light: 0.45 }, 2);
+        else if (ev.spell === 'lance') P('ice/ice-shatter', ev.x, ev.y + 20, { flip: ev.face < 0, life: 50, light: 0.4 }, 2);
         P('ui/damage-quiet', ev.x + ev.face * 6, ev.y - 22, { text: String(ev.dmg), palette: ev.crit
           ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
@@ -123,7 +127,12 @@ export class FxDirector {
       case 'blink': P('arcane/blink-out', ev.x, ev.y + 26, { palette: VIOLET, light: 0.3 }, 2); break;
       case 'enemyParry': P('impacts/parry', ev.x, ev.y + 40, { palette: VIOLET, light: 0.3 }, 3); break;
       case 'heal': P('holy/heal', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: p.face < 0, life: 110, light: 0.4 }, 3); break;   // 몸을 타고 오르는 회복 빛
-      case 'castStart': if (CFG_INV[ev.spell]) P('holy/sunburst', 0, 0, { follow: p, dy: -10, life: 26, light: 0.3, palette: ev.spell === 'ward' ? ICE : ev.spell === 'spear' ? VIOLET : AMBER }, 3); break;
+      case 'castStart': {                                                  // 시전: 발밑에 마법진(모든 마법), 큰 마법은 몸에 빛이 모임
+        const pal = palOf(ev.spell);
+        P('arcane/magic-circle-cast', p.x + p.w / 2, feet, { life: 40, light: 0.45, palette: pal }, 3);
+        if (CFG_INV[ev.spell]) { P('arcane/spell-charge', p.x + p.w / 2 + p.face * 6, feet, { actor: R.actorOf(p), flip: p.face < 0, life: 26, light: 0.4, palette: pal }, 3); R.flash = Math.max(R.flash, 0.35); }
+        break;
+      }
       case 'skill': {                                                      // 등불 마법: 마법마다 pixelfx 이펙트 하나 (착탄형은 표적 자리에)
         const gy = ev.tx != null ? groundAt(w, ev.tx - 10, 20) : feet;
         if (ev.spell === 'pillar') P('fire/flame-pillar', ev.tx, gy, { life: 110, light: 0.4 }, 3);

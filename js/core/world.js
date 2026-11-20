@@ -138,9 +138,25 @@ export function tick(w, inp) {
   updateCamera(w);
 }
 
+// 유도: 남은 적 중 가장 가까운 쪽으로 한 틱에 최대 0.14라디안 회전 (관통탄은 이미 맞은 적 제외)
+function steer(w, b) {
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  let best = null, bd = 420;
+  for (const e of w.enemies) {
+    if (e.dead || e.spawnT > 0 || (b.hits && b.hits.includes(e))) continue;
+    const d = Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy); if (d < bd) { bd = d; best = e; }
+  }
+  if (!best) return;
+  const want = Math.atan2(best.y + best.h / 2 - cy, best.x + best.w / 2 - cx), cur = Math.atan2(b.vy, b.vx);
+  let da = want - cur; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+  const a = cur + Math.max(-0.14, Math.min(0.14, da)), sp = b.spd || Math.hypot(b.vx, b.vy);
+  b.vx = Math.cos(a) * sp; b.vy = Math.sin(a) * sp;
+}
+
 // 탄: 이동, 지형/수명 소멸. 적 탄은 리라 판정, 반사된 탄은 적 판정
 function updateProjectiles(w) {
   for (const b of w.projectiles) {
+    if (b.homing) steer(w, b);                                          // 유도탄: 가까운 적 쪽으로 방향을 틀며 날아감
     b.x += b.vx; b.y += b.vy; b.life--;
     if (b.life <= 0 || w.solids.some(s => !s.oneWay && overlap(b, s))) { b.dead = true; continue; }
     if (b.owner === 'enemy') {
@@ -153,7 +169,8 @@ function updateProjectiles(w) {
         const dmg = b.pdmg ?? b.dmg * 15;                                   // 반사탄은 dmg×15, 마법·검기는 pdmg
         damageEnemy(w, e, dmg, (b.poise ?? CFG.poise.normal) * (w.player.mods.poiseMul || 1));
         if (b.pierce) b.hits.push(e); else b.dead = true;                  // 얼음 창: 관통
-        w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 0, face: Math.sign(b.vx) || 1, dmg, crit: false });
+        w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 0, face: Math.sign(b.vx) || 1, dmg, crit: false, spell: b.bolt === 'lamp' ? 'bolt' : b.bolt === 'lance' ? 'lance' : undefined });
+        if (b.homing) w.hitstop = Math.max(w.hitstop, 3);
       }
     }
   }

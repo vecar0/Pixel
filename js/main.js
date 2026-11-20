@@ -12,7 +12,7 @@ import { installPixelUI, roundBtn } from './pixelui.js';
 import { startTitleScene } from './titlescene.js';
 installPixelUI();
 import { CFG } from './core/config.js';
-import { SPELLS, STAT_SPELL, spellFor } from './core/spells.js';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js';
 import { STATS, STAT_BY_ID, tierOf, PAIRS, OPP, canTrain } from './core/stats.js';
 import { takeTrain, runSpell } from './core/run.js';
 import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js';
@@ -96,10 +96,21 @@ function pairRow(a, b, sel, st = run.stats) {
   return `<div class="spair">${side(A, a, 'L')}<div class="scale t-${A.tone}-${B.tone}">${cells}</div>${side(B, b, 'R')}
     ${sel === undefined ? `<small class="sl">${tierLine(A)}</small><small class="sr">${tierLine(B)}</small>` : ''}</div>`;   // 설명 줄은 일시정지 표에서만 (단련 화면은 아래 미리 보기가 대신)
 }
+// 마법 카드: 이름 · 빛 소모 · 실제 피해(지금 스탯 반영) · 특성 · 설명 · 착탄까지 걸리는 시간
+function spellCard(id, label = '지금 마법') {
+  const S = SPELLS[id], C = CFG.skill[id], p = world && world.player, mul = p ? (p.mods.spellMul || 1) : 1, cm = p ? (p.mods.costMul || 1) : 1;
+  const dmg = C.dmg ? Math.round(C.dmg * mul) : 0, n = id === 'bolt' && p && p.mods.lmp7 ? ' ×2발' : id === 'chain' ? ' ×3명' : '';
+  const delay = C.delay ? ` · ${(C.delay / 60).toFixed(1)}초 뒤 착탄` : '';
+  return `<div class="spellcard t-${S.tone}"><div class="niche">${icon(S.icon, S.tone)}</div><div class="sc-body">
+    <div class="sc-top"><small>${label}</small><b>${S.name}</b><span class="sc-cost">빛 ${Math.round(C.cost * cm)}</span>${dmg ? `<span class="sc-dmg">피해 ${dmg}${n}</span>` : ''}</div>
+    <div class="sc-tags">${(SPELL_TAGS[id] || []).map(t => `<i>${t}</i>`).join('')}</div>
+    <div class="sc-desc">${S.desc}${delay}</div></div></div>`;
+}
 function statBlock() {
   const sp = SPELLS[runSpell(run)];
-  return `<div class="stats5">${PAIRS.map(([a, b]) => pairRow(a, b, undefined)).join('')}
-    <div class="srow cur">${icon(sp.icon, sp.tone)}<b>마법</b><span>${sp.name} — 가장 높은 스탯(7 이상)이 마법을 정한다</span></div></div>`;
+  return `<div class="stats5">${PAIRS.map(([a, b]) => pairRow(a, b, null)).join('')}
+    ${spellCard(runSpell(run))}
+    <div class="sc-map">가장 높은 스탯이 7 이상이면 그 스탯의 마법 (10이면 상위): ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name} ${SPELLS[STAT_SPELL[k][0]].name}/${SPELLS[STAT_SPELL[k][1]].name}`).join(' · ')}</div></div>`;
 }
 // 단련 미리 보기: 무엇이 오르고 내리는지, 구간이 바뀌면 생기고 잃는 능력, 마법 변화
 function trainPreview(up) {
@@ -108,8 +119,8 @@ function trainPreview(up) {
   if (tierOf(u1) !== tierOf(u0)) notes.push(tierOf(u1) === 'mid' ? `${U.name} 약점 해소` : `<b>${U.name} ${TIER_TXT[tierOf(u1)]}</b>: ${U[tierOf(u1)]}`);
   if (tierOf(d1) !== tierOf(d0)) notes.push(tierOf(d1) === 'low' ? `<b class="bad">${D.name} 약점</b>: ${D.low}` : `${D.name} ${TIER_TXT[tierOf(d0)]} 능력 잃음`);
   const s0 = runSpell(run), s1 = spellFor({ ...run.stats, [up]: u1, [down]: d1 }, run.baseSpell, up);
-  if (s1 !== s0) notes.push(`${icon(SPELLS[s1].icon, SPELLS[s1].tone)}<b>마법</b>: ${SPELLS[s0].name} → ${SPELLS[s1].name}`);
-  return `<div class="tprev"><div>${U.name} ${u0} → <strong>${u1}</strong> · ${D.name} ${d0} → ${d1}</div><small>${U.per}</small>${notes.map(n => `<div class="note">${n}</div>`).join('')}</div>`;
+  return `<div class="tprev"><div>${U.name} ${u0} → <strong>${u1}</strong> · ${D.name} ${d0} → ${d1}</div><small>${U.per}</small>${notes.map(n => `<div class="note">${n}</div>`).join('')}
+    ${s1 !== s0 ? spellCard(s1, `마법이 바뀐다 (${SPELLS[s0].name} →)`) : ''}</div>`;
 }
 // 전투방 보상: 스탯 1점 찍기 (반대 스탯이 1 내려감). 엘리트·보스는 각인 3택1
 function rewardScreen(after, sel = null) {
@@ -242,9 +253,10 @@ function goNext() { nextStage(run); play(); }
 // 보상을 고른 뒤 방으로 돌아옴: 고른 각인·단련을 바로 적용, 출구가 열렸다고 알림
 function backToRoom() {
   const p = world.player, hp = p.hp, fl = p.flasks;
-  applyRelics(p, run.relics); applyStats(p, run.stats); p.spells = [runSpell(run)];
+  applyRelics(p, run.relics); applyStats(p, run.stats);
   p.hp = Math.min(p.maxHp, hp); p.flasks = Math.min(Math.max(p.maxFlasks, fl), fl);
-  resume(); R.say('출구가 열렸다 — 오른쪽 끝으로');
+  const prev = p.spells[0]; p.spells = [runSpell(run)];
+  resume(); R.say(p.spells[0] !== prev ? `새 마법 「${SPELLS[p.spells[0]].name}」 — ${SPELLS[p.spells[0]].desc}` : '출구가 열렸다 — 오른쪽 끝으로');
 }
 // 출구로 나갈 때: 아이리스가 리라 쪽으로 닫힌 뒤 다음 스테이지
 function leaveRoom() {

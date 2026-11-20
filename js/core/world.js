@@ -21,12 +21,12 @@ const ROOMS = {
     ],
     spawn: { x: 80, y: 230 },
   },
-  boss: {
-    width: 720,
+  boss: {                                                          // 넓은 보스방 (등장 연출 뒤 전체를 씀)
+    width: 1120,
     solids: [
-      { x: -40, y: 0, w: 40, h: 360 }, { x: 720, y: 0, w: 40, h: 360 },
-      { x: -40, y: 300, w: 800, h: 60 },
-      { x: 110, y: 218, w: 110, h: 8, oneWay: true }, { x: 500, y: 218, w: 110, h: 8, oneWay: true },   // 양쪽 발판: 충격파·광선 피하기
+      { x: -40, y: 0, w: 40, h: 360 }, { x: 1120, y: 0, w: 40, h: 360 },
+      { x: -40, y: 300, w: 1200, h: 60 },
+      { x: 170, y: 218, w: 120, h: 8, oneWay: true }, { x: 500, y: 196, w: 120, h: 8, oneWay: true }, { x: 830, y: 218, w: 120, h: 8, oneWay: true },   // 발판 셋: 충격파·광선 피하기
     ],
     spawn: { x: 80, y: 230 },
   },
@@ -46,8 +46,8 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
   };
   if (room === 'arena') w.waves = [[['ghoul', 520], ['ghoul', 600], ['moth', 700]], [['ghoul', 900], ['moth', 1000]]];
   if (room === 'boss') {
-    spawnEnemy(w, boss, 480, 300 - ENEMY_DEFS[boss].h - 2, { variant, hpMul });   // 바닥 위에서 시작
-    w.props = [{ kind: 'brazier', x: 46, cd: 0 }, { kind: 'brazier', x: 674, cd: 0 }];   // 기믹: 등불 화로
+    spawnEnemy(w, boss, 820, 300 - ENEMY_DEFS[boss].h - 2, { variant, hpMul });   // 바닥 위에서 시작
+    w.props = [{ kind: 'brazier', x: 46, cd: 0 }, { kind: 'brazier', x: 1074, cd: 0 }];   // 기믹: 등불 화로
   }
   updateCamera(w);
   return w;

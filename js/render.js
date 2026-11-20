@@ -8,6 +8,8 @@ import { FxDirector } from './fxmap.js';
 import { iconCanvas } from './icons.js';
 import { bodyShade } from './shade.js';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
+const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
+const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
 const SLASH = [['melee/sword-slash', 22, 0], ['melee/uppercut', 20, 0], ['melee/spear-sweep', 64, -26]];
 const STEEL = ['#14121c', '#2a2838', '#4a4860', '#7a7890', '#b0aec4', '#dcdae8', '#ffffff'];   // 은빛 칼 (색 과하지 않게)
 const AMBER7 = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], SPARK4 = ['#fff6c8', '#ffd86b', '#ff9a2a', '#e8561d'];
@@ -65,7 +67,7 @@ export class Renderer {
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; }
+  reset() { this.fx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; }
 
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
@@ -110,6 +112,7 @@ export class Renderer {
     if (!frozen) { this.fx.update(1 / CFG.TICK); this.pfx.update(1 / CFG.TICK); }
     this.bgfx.update(1 / CFG.TICK);
     this.weather.update(1 / CFG.TICK); this.trans.update(1 / CFG.TICK);
+    if (this.irisMode) { this.irisClock += IRIS_SPEED / CFG.TICK; if (this.irisMode === 'open' && this.irisClock >= 2.2) this.irisMode = null; }
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
     this.parts = this.parts.filter(p => p.life > 0);
     for (const g of this.ghosts) g.life--;
@@ -140,7 +143,8 @@ export class Renderer {
 
   draw(w) {
     const g = this.ctx, H = CFG.VIEW_H, vw = this.vw, p = w.player;
-    const camX = Math.max(0, Math.min(w.width - vw, p.x + p.w / 2 - vw * 0.4));
+    const boss = this.cine && this.cine.focusBoss && w.enemies.find(e => e.boss);
+    const camX = Math.max(0, Math.min(w.width - vw, boss ? boss.x + boss.w / 2 - vw / 2 : p.x + p.w / 2 - vw * 0.4));   // 등장 연출 중엔 보스를 비춤
     const sh = w.shake > 0 ? Math.min(5, w.shake / 2) : 0;
     const sx = Math.round((Math.random() - 0.5) * 2 * sh), sy = Math.round((Math.random() - 0.5) * 2 * sh);
     const ox = Math.round(-camX) + sx, oy = sy;
@@ -184,12 +188,13 @@ export class Renderer {
     g.save(); g.translate(ox, oy);
     if (bd) this.drawPlatforms(g, w);                                     // 발판: 어둠 위에 선명하게 (밟을 수 있는 면)
     if (w.props) this.drawProps(g, w);                                    // 쉼터 오브젝트 (상인 등)
-    for (const e of w.enemies) this.drawEnemy(g, w, e);
+    const hideChars = this.irisBusy() || (this.cine && this.cine.hideLira);
+    if (!this.irisBusy()) for (const e of w.enemies) this.drawEnemy(g, w, e);
     this.drawWarnings(g, w);
     for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
     g.globalAlpha = 1;
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);   // 베기는 적 위·리라 뒤: 리라 몸을 덮지 않음
-    this.drawLira(g, w, p);
+    if (!hideChars) this.drawLira(g, w, p);
     for (const b of w.projectiles) {
       if (b._fx) continue;
       const bx = b.x + b.w / 2, by = b.y + b.h / 2, r = Math.max(3, Math.min(b.w, b.h) / 2);     // 이펙트 없는 탄: 사각형 대신 빛나는 구슬
@@ -220,7 +225,7 @@ export class Renderer {
     // 화면 번쩍: 완벽 패링은 흰색, 피격은 붉은색
     if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.22})`; g.fillRect(0, 0, vw, H); }   // 화면 섬광은 은은하게
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
-    if (this.hud !== false) this.drawHud(g, w);
+    if (this.hud !== false && !(this.cine && this.cine.t < CINE.out2)) this.drawHud(g, w);   // 등장 연출 중엔 HUD 숨김
     for (const [m, y] of [[this.banner, 96], [this.sayMsg, H - 70]]) {     // 스테이지 이름 배너 · 안내 한 줄
       if (!m || m.t <= 0) continue; m.t--;
       const a = Math.min(1, m.t / 30, (m.dur || 150) - m.t < 20 ? ((m.dur || 150) - m.t) / 20 : 1);
@@ -229,6 +234,7 @@ export class Renderer {
       g.font = (m === this.banner ? '20px' : '11px') + ' Galmuri11, monospace'; g.fillStyle = '#ffe2a8'; g.shadowColor = 'rgba(255,170,70,.6)'; g.shadowBlur = 8;
       g.fillText(m.s, vw / 2, y); g.restore();
     }
+    if (this.cine) this.drawCine(g, vw, H);
     this.trans.draw(g, vw, H);                                              // 장면 전환 · 임팩트 프레임 (맨 위)
   }
 
@@ -374,14 +380,41 @@ export class Renderer {
     }
   }
   say(s) { this.sayMsg = { s, t: 150 }; }
+  // 보스 등장 연출: 보스를 비추며 페이드인 → 이름 → 페이드아웃 → 넓은 방 전체로 페이드인
+  startCine(name, sub) { this.cine = { t: 0, name, sub, focusBoss: true, hideLira: true }; }
+  stepCine() {
+    const c = this.cine; if (!c) return false;
+    c.t++; c.focusBoss = c.hideLira = c.t < CINE.out2;
+    if (c.t >= CINE.end) { this.cine = null; return false; }
+    return true;
+  }
+  drawCine(g, vw, H) {
+    const c = this.cine, t = c.t, C2 = CINE;
+    let black = t < C2.in ? 1 - t / C2.in : t < C2.out ? 0 : t < C2.out2 ? (t - C2.out) / (C2.out2 - C2.out) : 1 - (t - C2.out2) / (C2.end - C2.out2);
+    if (t < C2.out2) {                                                   // 시네마 띠 + 이름
+      const bar = Math.round(34 * Math.min(1, t / 20));
+      g.fillStyle = '#05030a'; g.fillRect(0, 0, vw, bar); g.fillRect(0, H - bar, vw, bar);
+      const a = Math.max(0, Math.min(1, (t - C2.in * 0.6) / 25)) * (t > C2.out ? 1 - (t - C2.out) / (C2.out2 - C2.out) : 1);
+      if (a > 0) {
+        g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.font = '10px Galmuri9, monospace'; g.fillStyle = '#b89a6a'; g.fillText(c.sub, vw / 2, H - 92);
+        g.font = 'bold 28px Galmuri11, monospace'; g.fillStyle = '#ffe2a8'; g.shadowColor = 'rgba(255,120,60,.7)'; g.shadowBlur = 12; g.fillText(c.name, vw / 2, H - 68);
+        g.shadowBlur = 0; g.fillStyle = '#ff6a3d'; g.fillRect(vw / 2 - 70, H - 50, 140, 1); g.restore();
+      }
+    }
+    if (black > 0) { g.fillStyle = `rgba(5,3,10,${Math.min(1, black)})`; g.fillRect(0, 0, vw, H); }
+  }
   // 스테이지 전환 아이리스 (pixelfx transitions/iris, 320x180 화면 좌표). 중심 = 리라
   // 'open': 닫힌 상태(0.45)에서 시작해 열림 / 'close': 처음부터 → 약 1초에 완전히 닫힘
   iris(w, mode) {
     const p = w.player, vw = this.vw || CFG.VIEW_W, camX = Math.max(0, Math.min(w.width - vw, p.x + p.w / 2 - vw * 0.4));
     const focus = [Math.round((p.x + p.w / 2 - camX) / vw * 320), Math.round((p.y + 30) / CFG.VIEW_H * 180)];
     this.trans.clear();
-    this.trans.spawn('transitions/iris', 0, 0, { focus, color: '#05030a', ...(mode === 'open' ? { skip: 0.45 } : {}) });
+    this.trans.spawn('transitions/iris', 0, 0, { focus, color: '#05030a', speed: IRIS_SPEED, ...(mode === 'open' ? { skip: 0.45 } : {}) });
+    this.irisMode = mode; this.irisClock = mode === 'open' ? 0.45 * 2.2 : 0;    // 이펙트 시간(초): 1.0 = 완전히 닫힘, 1.6 = 거의 다 열림
   }
+  // 아이리스가 진행 중이면 캐릭터를 숨기고 세계를 멈춘다
+  irisBusy() { return this.irisMode === 'close' || (this.irisMode === 'open' && this.irisClock < 1.6); }
 
   // 발판: 바닥 타일 윗부분을 잘라 쓰되, 아래 그림자 + 윗면 밝은 테두리 + 양 끝 받침으로 '밟을 수 있는 것'임을 보여 줌
   drawPlatforms(g, w) {

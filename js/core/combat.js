@@ -68,6 +68,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0) {
   if (e.hp <= 0) {
     e.hp = 0; e.dead = true;
     w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill * w.player.mods.lightMul + (w.player.mods.lmp10 ? 15 : 0));   // 등불 10: 처치마다 빛 +15
+    if (w.player.mods.killCrit) w.player.crit = true;                   // 투지 7: 처치하면 다음 공격 치명타
     w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
   }
 }
@@ -98,12 +99,13 @@ export function resolvePlayerAttacks(w) {
     }
     if (e.stunT > 0) {                      // 그로기 → 처형
       e.stunT = 0; e.poise = 0; p.executes = (p.executes || 0) + 1;
-      damageEnemy(w, e, Math.round(e.maxHp * PO.executeFrac * p.mods.execMul));
+      damageEnemy(w, e, Math.round(e.maxHp * PO.executeFrac * p.mods.execMul * (p.mods.furyExec || 1)));
       w.hitstop = Math.max(w.hitstop, 10); w.shake = 10;
       if (p.mods.str10) for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 320) addPoise(w, o, 0.4);   // 힘 10
       w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2 });
     } else {
-      const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? 2 : 1) * (p.mods.atkMul || 1);
+      if (!p.crit && p.mods.critChance) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < p.mods.critChance) p.crit = true; }   // 투지: 치명타 확률
+      const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? (p.mods.critMul || 2) : 1) * (p.mods.atkMul || 1);
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
       damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit * (p.mods.poiseMul || 1));
       if (p.combo === 2 && p.mods.flame) e.burnT = 180;                       // 화염 칼날
@@ -159,6 +161,9 @@ export function resolveSkill(w, ev) {
   } else if (ev.spell === 'ward') {
     p.blueT = S.blueF;
     for (const e of live) if (Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - (p.y + p.h / 2)) <= S.radius + e.w / 2) spellHit(w, e, Math.round(S.dmg * M), 0.2 * PM, 'ward');
+  } else if (ev.spell === 'chain') {                                  // 앞쪽 가까운 적부터 n명
+    live.filter(e => Math.sign(e.x + e.w / 2 - cx) === p.face && Math.abs(e.x + e.w / 2 - cx) <= S.range)
+      .sort((a, b) => Math.abs(a.x - cx) - Math.abs(b.x - cx)).slice(0, S.n).forEach(e => spellHit(w, e, Math.round(S.dmg * M), S.poise * PM, 'chain'));
   } else if (ev.spell === 'heal') {
     p.hp = Math.min(p.maxHp, p.hp + S.heal);
   } else if (ev.spell === 'sanctum') {

@@ -207,3 +207,29 @@ details.statsd summary::before { content: '▸ '; } details.statsd[open] summary
 
 .runbar .path b { display: inline-flex; opacity: .55; } .runbar .path b.done { opacity: .25; } .runbar .path b.now { opacity: 1; box-shadow: 0 2px 0 var(--lantern); }
 .runbar .path b .ico { width: 16px; height: 16px; }
+
+/* 스탯 찍기: 반대 스탯 저울 (왼쪽 ▸ 10칸 ◂ 오른쪽). 칸이 왼쪽 색이면 왼쪽 스탯 점수 */
+.spair { display: grid; grid-template-columns: 96px 1fr 96px; grid-template-rows: auto auto; gap: 2px 8px; align-items: center; margin: 4px 0; }
+.sside { display: flex; align-items: center; gap: 5px; border: 0; background: var(--iron); color: var(--bone); padding: 6px 8px; min-height: 40px; cursor: pointer;
+  clip-path: var(--chamfer); --cut: 5px; box-shadow: inset 0 0 0 1px var(--rivet); font-family: inherit; }
+.sside.R { flex-direction: row-reverse; }
+.sside .ico { width: 20px; height: 20px; }
+.sside b { font-size: 12px; color: var(--flame); } .sside em { font-style: normal; font-size: 15px; margin-left: auto; } .sside.R em { margin-left: 0; margin-right: auto; }
+.sside.on { background: var(--iron2); box-shadow: inset 0 0 0 2px var(--lantern), 0 0 10px rgba(255,179,71,.35); }
+.sside:disabled { opacity: .35; }
+.scale { display: flex; gap: 2px; height: 14px; }
+.scale i { flex: 1; background: #3a3046; }
+.scale i.l { background: #e07a4a; } .scale i.r { background: #6aa8e0; }
+.scale i.mid { box-shadow: 2px 0 0 #120e16; }
+.spair .sl { grid-column: 1 / 3; color: var(--ash); font-size: 10px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spair .sr { grid-column: 2 / 4; color: var(--ash); font-size: 10px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tprev { margin-top: 6px; padding: 8px 12px; background: #120e16; box-shadow: inset 0 0 0 1px var(--rivet); font-size: 12px; text-align: left; width: 100%; }
+.tprev strong { color: var(--flame); } .tprev small { color: var(--ash); font-size: 10px; display: block; margin: 2px 0; }
+.tprev .note { color: var(--flame); font-size: 11px; display: flex; gap: 4px; align-items: center; } .tprev .note .ico { width: 16px; height: 16px; } .tprev .bad { color: #ff6a78; }
+.tprev.empty { color: var(--ash); text-align: center; }
+.card.statup { width: min(94vw, 620px); }
+.btn:disabled { opacity: .45; }
+
+.card.statup { padding: 12px 18px; gap: 6px; } .card.statup h2 { font-size: 19px; }
+.card.statup .spair { margin: 1px 0; } .card.statup .sside { min-height: 34px; padding: 4px 8px; }
+.card.statup .tprev { margin-top: 2px; padding: 6px 10px; }

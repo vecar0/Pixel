@@ -25,34 +25,34 @@ const log = p => p.evaluate(() => window.__log);
 const PC = { viewport: { width: 1280, height: 720 } };
 const PHONE = { ...devices['iPhone 13 landscape'] };
 
-await check('PC: 타이틀 → Enter(마을) → Enter(출발) → 서약 → 지역 입장 → 플레이', PC, async p => {
+await check('PC: 타이틀 → Enter(마을) → Enter(출발) → 지역 입장(서약 없음) → 플레이', PC, async p => {
   eq(await p.evaluate(() => window.__lk.mode), 'title');
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'town');
   await p.screenshot({ path: path.join(out, 'town.png') });
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
-  eq(await p.evaluate(() => window.__lk.mode), 'oath');
-  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'intro');
-  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'play');
 });
 await check('런: 클리어 → 보상 → 방으로 복귀 → 열린 출구 → 정해진 다음 방 → 휴식 방 모닥불·출구', PC, async p => {
   await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
-  const exitNow = async () => { await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(1500); };
+  const exitNow = async () => { await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(3200); };   // 아이리스 닫힘 ~1.7초 + 열림 ~1초
   ok(await p.evaluate(() => window.__lk.world.props.find(o => o.kind === 'exit').locked), 'locked');
   await p.evaluate(() => { const w = window.__lk.world; w.enemies.length = 0; w.waves = []; });
   await p.waitForTimeout(300);
   eq(await p.evaluate(() => window.__lk.mode), 'relic');
-  eq(await p.locator('.pick').count(), 3);
+  eq(await p.locator('[data-up]').count(), 6);                          // 반대 스탯 3쌍
+  await p.locator('[data-up=str]').dispatchEvent('pointerup'); await p.waitForTimeout(150);
   await p.screenshot({ path: path.join(out, 'relic.png') });
-  await p.locator('.pick').first().dispatchEvent('pointerup'); await p.waitForTimeout(300);
+  await p.locator('#train').dispatchEvent('pointerup'); await p.waitForTimeout(300);
+  eq(await p.evaluate(() => window.__lk.run.stats.str + ',' + window.__lk.run.stats.agi), '6,4');
   eq(await p.evaluate(() => window.__lk.mode), 'play');                 // 방으로 돌아옴 (출구 열림)
   eq(await p.evaluate(() => window.__lk.run.roomIdx), 1);
   await exitNow(); eq(await p.evaluate(() => window.__lk.run.room), 'combat');
   await p.evaluate(() => { const w = window.__lk.world; w.enemies.length = 0; w.waves = []; }); await p.waitForTimeout(300);
-  await p.locator('.pick').first().dispatchEvent('pointerup'); await p.waitForTimeout(300);
+  await p.locator('[data-up=fury]').dispatchEvent('pointerup'); await p.waitForTimeout(100);
+  await p.locator('#train').dispatchEvent('pointerup'); await p.waitForTimeout(300);
   await exitNow(); eq(await p.evaluate(() => window.__lk.run.room), 'rest');
   await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props[0].x - 11; }); await p.waitForTimeout(200);
   await p.keyboard.press('j'); await p.waitForTimeout(200);
@@ -114,9 +114,8 @@ await check('review: 4:3 창에서 화면이 잘리지 않음', { viewport: { wi
 const kev = (p, type, key, code) => p.evaluate(([t, k, c]) => dispatchEvent(new KeyboardEvent(t, { key: k, code: c, bubbles: true })), [type, key, code]);
 await check('review: 한글 입력 상태에서도 키 조작 (ㅏ=K)', PC, async p => {
   await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250);
-  await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250);   // 서약 화면 → 첫 서약
-  for (let i = 0; i < 2; i++) { await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250); }   // 마을 → 출발, 지역 입장
-  eq(await p.evaluate(() => window.__lk.mode), 'play'); await watch(p);
+  for (let i = 0; i < 2; i++) { await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250); }   // 마을 → 출발(지역 입장) → 들어간다
+  eq(await p.evaluate(() => window.__lk.mode), 'play'); await p.waitForTimeout(1300); await watch(p);   // 아이리스가 열릴 때까지
   await kev(p, 'keydown', 'ㅏ', 'KeyK'); await kev(p, 'keyup', 'ㅏ', 'KeyK'); await p.waitForTimeout(150);
   ok((await log(p)).some(l => l.s === 'parry'));
 });

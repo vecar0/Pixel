@@ -68,7 +68,7 @@ export class FxDirector {
         if (o.kind === 'merchant') { R.bgfx.spawn('fire/brazier', o.x + 90, 300, { light: 0.35 }); R.bgfx.spawn('fire/candle', o.x - 100, 300, { light: 0.3 }); }
       }
     }
-    R.trans.clear(); R.iris(w, 'open');   // 방 입장: 리라를 중심으로 아이리스가 열림
+    R.trans.clear(); if (!boss) R.iris(w, 'open');   // 방 입장: 리라를 중심으로 아이리스가 열림 (보스방은 등장 연출이 대신)
   }
 
   // 이펙트 연출 규칙 (눈 아프지 않게):

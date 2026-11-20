@@ -34,6 +34,8 @@ export const CFG = {
     ring:    { inv: true, cost: 55, castF: 24, fireF: 8, dmg: 36, radius: 150 },
     ward:    { inv: true, cost: 45, castF: 24, fireF: 8, dmg: 14, radius: 120, blueF: 300 },
     spear:   { inv: true, cost: 55, castF: 24, fireF: 8, dmg: 40, len: 320, poise: 0.4 },
+    chain:   { cost: 40, castF: 18, fireF: 7, dmg: 20, range: 240, n: 3, poise: 0.2 },
+    blast:   { inv: true, cost: 60, castF: 24, fireF: 8, dmg: 50, range: 420, radius: 90, delay: 31, poise: 0.4 },
     heal:    { cost: 50, castF: 26, fireF: 12, heal: 2 },
     sanctum: { inv: true, cost: 60, castF: 26, fireF: 10, dmg: 28, radius: 120, heal: 1, poise: 0.3 },
   },

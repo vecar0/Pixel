@@ -176,8 +176,15 @@ test('치유의 빛은 체력 2, 성광 기둥은 주변 피해 + 체력 1', () 
   cast(w, 'heal'); steps(w, 30); eq(w.player.hp, 4);
   cast(w, 'sanctum'); steps(w, 30); eq(w.player.hp, 5); eq(d.hp, 72);
 });
+test('연쇄 번개는 앞쪽 적 셋까지만, 뒤쪽은 안 맞음', () => {
+  const w = W(); settle(w); w.player.face = 1;
+  const ds = [60, 110, 160, 210].map(dx => { const d = makeDummy(w, { hp: 100 }); d.x = w.player.x + dx; return d; });
+  const back = makeDummy(w, { hp: 100, behind: true });
+  cast(w, 'chain'); steps(w, 20);
+  eq(ds.filter(d => d.hp === 80).length, 3); eq(back.hp, 100);
+});
 test('착탄형(운석·낙뢰·화염 기둥·별똥비): 이펙트가 떨어지는 순간에 피해, 그 전엔 없음', () => {
-  for (const sp of ['meteor', 'thunder', 'pillar', 'stars']) {
+  for (const sp of ['meteor', 'thunder', 'pillar', 'stars', 'blast']) {
     const w = W(); settle(w); w.player.face = 1;
     const d = makeDummy(w, { hp: 200 }); d.x = w.player.x + 140;
     cast(w, sp); const S = CFG.skill[sp];
@@ -252,9 +259,9 @@ test('나방은 무엇에 맞든 한 방에 죽는다 (지역 체력 배수와 �
   const e = spawnEnemy(w, 'moth', w.player.x + 30, w.player.y, { hpMul: 3 });
   damageEnemy(w, e, 1); ok(e.dead);
 });
-test('보스방 기믹: 등불 화로를 베면 보스에게 피해·자세, 15초 재충전 / 양쪽 발판', () => {
+test('보스방 기믹: 등불 화로를 베면 보스에게 피해·자세, 15초 재충전 / 발판 · 넓은 방', () => {
   const w = createWorld({ room: 'boss' }); steps(w, 30);
-  ok(w.solids.filter(s => s.oneWay).length === 2);
+  ok(w.solids.filter(s => s.oneWay).length >= 2); eq(w.width, 1120);
   const b = w.enemies[0], o = w.props[0]; b.update = () => {}; const hp = b.hp;
   w.player.x = o.x + 16; w.player.face = -1; steps(w, 5);
   tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 2);

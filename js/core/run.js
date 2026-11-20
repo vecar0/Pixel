@@ -2,7 +2,7 @@
 import { CFG } from './config.js';
 import { createWorld } from './world.js';
 import { ELITE_MODS, ENEMY_DEFS } from './enemies.js';
-import { STATS, startStats, statMods, train, STAT_MAX, STAT_MIN } from './stats.js';
+import { startStats, statMods, train } from './stats.js';
 import { OIL_SPELL, spellFor } from './spells.js';
 
 // 결정적 난수 (런 상태에 저장)
@@ -94,17 +94,8 @@ export function chooseOath(r, id) {
 }
 
 // 각인 3택1: 가진 것 제외, 서약과 같은 계열은 3배 확률
-// 단련 제안: 서로 다른 (올릴 스탯, 내릴 스탯) 쌍 n개. 최대치는 올리지 않고, 최소치는 내리지 않는다
-export function trainOffer(r, n = 2) {
-  const ids = STATS.map(s => s.id), out = [];
-  for (let tries = 0; out.length < n && tries < 50; tries++) {
-    const up = ids[(rand(r) * ids.length) | 0], down = ids[(rand(r) * ids.length) | 0];
-    if (up === down || r.stats[up] >= STAT_MAX || r.stats[down] <= STAT_MIN || out.some(o => o.up === up)) continue;
-    out.push({ up, down });
-  }
-  return out;
-}
-export function takeTrain(r, up, down) { train(r.stats, up, down); r.lastUp = up; }
+// 단련: up +1, 반대 스탯 -1 (스탯 찍기 화면에서 한 점씩)
+export function takeTrain(r, up) { train(r.stats, up); r.lastUp = up; }
 // 지금 빌드가 쓰는 마법
 export const runSpell = r => spellFor(r.stats, r.baseSpell, r.lastUp);
 

@@ -10,9 +10,9 @@ import { ENEMY_DEFS } from './core/enemies.js';
 import { icon, RELIC_TONE } from './icons.js';
 import { CFG } from './core/config.js';
 import { SPELLS, STAT_SPELL, spellFor } from './core/spells.js';
-import { STATS, STAT_BY_ID, tierOf } from './core/stats.js';
-import { trainOffer, takeTrain, runSpell } from './core/run.js';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, OATHS, ROOM_TYPES, newRun, chooseOath, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js';
+import { STATS, STAT_BY_ID, tierOf, PAIRS, OPP, canTrain } from './core/stats.js';
+import { takeTrain, runSpell } from './core/run.js';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -56,13 +56,14 @@ function play() {
   world = buildRoomWorld(run); R.runInfo = run; R.region = run.region;
   R.reset(); R.dir.preloadRegion(run.region); R.dir.enterRoom(world, run.region, run.room === 'boss');
   const ST = { combat: '전투', elite: '강적', shop: '떠돌이 상인', rest: '작은 등불', boss: ENEMY_DEFS[regionOf(run).boss].name };
-  R.banner = { s: ST[run.room] || '', sub: `${regionOf(run).name} · ${run.roomIdx + 1} / ${run.length}`, t: 150, dur: 150 };
+  if (run.room === 'boss') { R.startCine(ST.boss, `${regionOf(run).name}의 대등을 지키는 자`); R.banner = null; }
+  else R.banner = { s: ST[run.room] || '', sub: `${regionOf(run).name} · ${run.roomIdx + 1} / ${run.length}`, t: 150, dur: 150 };
   world.player.lagTicks = Math.max(0, Math.min(6, Math.round(save.settings.offsetMs / 16.7)));   // 타이밍 보정
   sfx.musicFor(run.region, run.room === 'boss'); acc = 0; slowT = 0; mode = 'play'; screen(''); showTouch(); }
 // 디버그·테스트용: 방 바로 열기
-function setRoom(room) { if (!run) { run = newRun(); chooseOath(run, 'parry'); } enterRoom(run, room === 'arena' ? 'combat' : room); play(); }
+function setRoom(room) { if (!run) { run = newRun(); } enterRoom(run, room === 'arena' ? 'combat' : room); play(); }
 // 빠른 시작 (패링의 서약)
-function start() { run = newRun(); chooseOath(run, 'parry'); enterRoom(run, 'combat'); bossesKilled = []; practice = false; play(); }
+function start() { run = newRun(); enterRoom(run, 'combat'); bossesKilled = []; practice = false; play(); R.irisMode = null; R.trans.clear(); }   // 테스트용 빠른 시작: 전환 연출 생략
 function newPilgrimage(opts = {}) {
   bossesKilled = []; practice = false;
   run = newRun(opts.seed, { dark: save.dark, pool: relicPool(save), oil: save.oil, shortcut: (save.bossKills.bellBoss || 0) >= 3, daily: !!opts.daily });
@@ -81,40 +82,43 @@ const runStat = () => {
     <span class="spells" title="지금 마법">${icon(SPELLS[runSpell(run)].icon, SPELLS[runSpell(run)].tone)}${SPELLS[runSpell(run)].name}</span>
     <span class="relics">${run.relics.map(k => icon(k, RELIC_TONE[RELICS[k].tag])).join('')}</span></div>`;
 };
-// 스탯 표: 5종, 10칸 막대(반 칸 단위), 지금 구간의 능력/약점
+// 스탯 표: 반대 스탯 3쌍을 한 줄씩 (왼쪽 스탯 ▸ 저울 ◂ 오른쪽 스탯), 지금 구간의 능력/약점
 const TIER_TXT = { t7: '7', t10: '10', low: '약점' };
-function statBlock(st, hi = {}) {
-  return `<div class="stats5">${STATS.map(s => { const v = st[s.id], T = tierOf(v);
-    const bar = Array.from({ length: 10 }, (_, i) => `<i class="${v >= i + 1 ? 'on' : ''}${i === 6 || i === 9 ? ' mark' : ''}"></i>`).join('');
-    const [m7, m10] = STAT_SPELL[s.id];
-    return `<div class="srow ${hi[s.id] || ''}">${icon(s.icon, s.tone)}<b>${s.name}</b><span class="bar">${bar}</span><em>${v}</em><small>${T === 'mid' ? s.per : (T === 'low' ? '약점: ' + s.low : s[T])}</small><small class="sm">마법 7 ${SPELLS[m7].name} · 10 ${SPELLS[m10].name}</small></div>`; }).join('')}
-    ${run ? `<div class="srow cur">${icon(SPELLS[runSpell(run)].icon, SPELLS[runSpell(run)].tone)}<b>마법</b><span>${SPELLS[runSpell(run)].name} — 가장 높은 스탯(7 이상)이 마법을 정한다</span></div>` : ''}</div>`;
+const tierLine = s => { const v = run.stats[s.id], T = tierOf(v); return T === 'mid' ? s.per : T === 'low' ? '약점: ' + s.low : `${TIER_TXT[T]}: ${s[T]}`; };
+function pairRow(a, b, sel, st = run.stats) {
+  const A = STAT_BY_ID[a], B = STAT_BY_ID[b], va = st[a];
+  const cells = Array.from({ length: 10 }, (_, i) => `<i class="${i < va ? 'l' : 'r'}${i === 4 ? ' mid' : ''}"></i>`).join('');
+  const side = (S, id, dir) => `<button class="sside ${dir} ${sel === id ? 'on' : ''}" data-up="${id}" ${canTrain(run.stats, id) ? '' : 'disabled'}>${icon(S.icon, S.tone)}<b>${S.name}</b><em>${st[id]}</em></button>`;
+  return `<div class="spair">${side(A, a, 'L')}<div class="scale t-${A.tone}-${B.tone}">${cells}</div>${side(B, b, 'R')}
+    ${sel === undefined ? `<small class="sl">${tierLine(A)}</small><small class="sr">${tierLine(B)}</small>` : ''}</div>`;   // 설명 줄은 일시정지 표에서만 (단련 화면은 아래 미리 보기가 대신)
 }
-// 단련 카드: +1 / -1, 구간이 바뀌면 무엇이 생기고 사라지는지 적어 준다
-function trainCard(o) {
-  const U = STAT_BY_ID[o.up], D = STAT_BY_ID[o.down], u0 = run.stats[o.up], u1 = Math.min(10, u0 + 1), d0 = run.stats[o.down], d1 = Math.max(1, d0 - 1);
+function statBlock() {
+  const sp = SPELLS[runSpell(run)];
+  return `<div class="stats5">${PAIRS.map(([a, b]) => pairRow(a, b, undefined)).join('')}
+    <div class="srow cur">${icon(sp.icon, sp.tone)}<b>마법</b><span>${sp.name} — 가장 높은 스탯(7 이상)이 마법을 정한다</span></div></div>`;
+}
+// 단련 미리 보기: 무엇이 오르고 내리는지, 구간이 바뀌면 생기고 잃는 능력, 마법 변화
+function trainPreview(up) {
+  const down = OPP[up], U = STAT_BY_ID[up], D = STAT_BY_ID[down], u0 = run.stats[up], u1 = u0 + 1, d0 = run.stats[down], d1 = d0 - 1;
   const notes = [];
-  if (tierOf(u1) !== tierOf(u0)) notes.push(tierOf(u1) === 'mid' ? `${U.name} 약점 해소` : `${U.name} ${TIER_TXT[tierOf(u1)]}: ${U[tierOf(u1)]}`);
-  if (tierOf(d1) !== tierOf(d0)) notes.push(tierOf(d1) === 'low' ? `${D.name} 약점: ${D.low}` : `${D.name} ${TIER_TXT[tierOf(d0)]} 능력 잃음`);
-  const s0 = runSpell(run), s1 = spellFor({ ...run.stats, [o.up]: u1, [o.down]: d1 }, run.baseSpell, o.up);
-  const magic = s1 !== s0 ? `<em class="magic">${icon(SPELLS[s1].icon, SPELLS[s1].tone)}마법: ${SPELLS[s0].name} → ${SPELLS[s1].name}</em>` : '';
-  return `<button class="pick t-${U.tone === 'red' ? 'red' : U.tone}" data-id="train:${o.up}:${o.down}"><div class="niche">${icon(U.icon, U.tone)}</div><b>${U.name} 단련</b>
-    <span>${U.name} ${u0} → <strong>${u1}</strong> <small>(${U.per.replace('점마다 ', '')})</small><br>${D.name} ${d0} → ${d1}</span>${magic}${notes.length ? `<em class="note">${notes.join('<br>')}</em>` : ''}</button>`;
+  if (tierOf(u1) !== tierOf(u0)) notes.push(tierOf(u1) === 'mid' ? `${U.name} 약점 해소` : `<b>${U.name} ${TIER_TXT[tierOf(u1)]}</b>: ${U[tierOf(u1)]}`);
+  if (tierOf(d1) !== tierOf(d0)) notes.push(tierOf(d1) === 'low' ? `<b class="bad">${D.name} 약점</b>: ${D.low}` : `${D.name} ${TIER_TXT[tierOf(d0)]} 능력 잃음`);
+  const s0 = runSpell(run), s1 = spellFor({ ...run.stats, [up]: u1, [down]: d1 }, run.baseSpell, up);
+  if (s1 !== s0) notes.push(`${icon(SPELLS[s1].icon, SPELLS[s1].tone)}<b>마법</b>: ${SPELLS[s0].name} → ${SPELLS[s1].name}`);
+  return `<div class="tprev"><div>${U.name} ${u0} → <strong>${u1}</strong> · ${D.name} ${d0} → ${d1}</div><small>${U.per}</small>${notes.map(n => `<div class="note">${n}</div>`).join('')}</div>`;
 }
-// 보상 카드 공통 처리
-function takeReward(id, after) {
-  if (id.startsWith('train:')) { const [, up, down] = id.split(':'); takeTrain(run, up, down); return after(); }
-  takeRelic(run, id); after();
-}
-// 전투방 보상: 단련 2 + 각인 1 / 엘리트·보스: 각인 3
-function rewardScreen(after) {
+// 전투방 보상: 스탯 1점 찍기 (반대 스탯이 1 내려감). 엘리트·보스는 각인 3택1
+function rewardScreen(after, sel = null) {
   mode = 'relic'; touch.classList.add('hidden');
-  const tr = trainOffer(run, 2), rl = relicOffer(run, 1);
-  if (!tr.length) return relicScreen(after);
-  screen(`<div class="card"><h2>무엇을 얻을까</h2>${runStat()}<div class="picks">${tr.map(trainCard).join('')}${rl.map(id => relicCard(id)).join('')}</div>
-    <details class="statsd"><summary>지금 스탯</summary>${statBlock(run.stats)}</details></div>`);
-  bindPicks(id => takeReward(id, after));
+  if (!PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b))) return relicScreen(after);
+  screen(`<div class="card statup"><h2>단련 1점</h2><div class="line">한쪽을 올리면 반대쪽이 1 내려간다</div>${runStat()}
+    <div class="stats5">${PAIRS.map(([a, b]) => pairRow(a, b, sel)).join('')}</div>
+    ${sel ? trainPreview(sel) : '<div class="tprev empty">올릴 스탯을 누르세요</div>'}
+    <div class="btns"><button class="btn" id="train" ${sel ? '' : 'disabled'}>단련</button></div></div>`);
+  for (const b of ui.querySelectorAll('[data-up]')) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); if (!b.disabled) rewardScreen(after, b.dataset.up); });
+  bind('train', () => { if (sel) { takeTrain(run, sel); after(); } });
 }
+function takeReward(id, after) { takeRelic(run, id); after(); }
 
 // ‹ 값 › 스테퍼 (셀렉트 박스 대신, 엄지로 누르기 쉽게)
 const chip = (id, label, sub, canPrev, canNext) => `<div class="chip"><button id="${id}-p" ${canPrev ? '' : 'disabled'} aria-label="이전">‹</button><div>${label}<small>${sub}</small></div><button id="${id}-n" ${canNext ? '' : 'disabled'} aria-label="다음">›</button></div>`;
@@ -155,8 +159,8 @@ function town() {
   step('dark', k => { save.dark = Math.max(0, Math.min(save.darkUnlocked, save.dark + k)); });
   step('oil', k => { save.oil = oils[Math.max(0, Math.min(oils.length - 1, oi + k))]; });
   bindPicks(id => {
-    if (id === 'go') { newPilgrimage(); oathScreen(); }
-    else if (id === 'daily') { newPilgrimage({ seed: d.seed, daily: true }); save.daily[d.key] = true; persist(); oathScreen(); }
+    if (id === 'go') { newPilgrimage(); startPilgrimage(); }
+    else if (id === 'daily') { newPilgrimage({ seed: d.seed, daily: true }); save.daily[d.key] = true; persist(); startPilgrimage(); }
     else if (id === 'shop') unlockScreen();
     else if (id === 'practice') practiceScreen();
     else if (id === 'records') recordsScreen();
@@ -178,7 +182,7 @@ function practiceScreen() {
   screen(`<div class="card"><h2>연습장</h2><div class="line">기록되지 않는 연습. 패턴을 익히세요</div><div class="picks">
     ${bosses.map(g => `<button class="pick door t-ember" data-id="${g.id}"><div class="niche">${icon('boss', 'ember')}</div><b>${ENEMY_DEFS[g.boss].name}</b><span>${g.name}</span></button>`).join('') || '<div class="line">아직 쓰러뜨린 보스가 없다. 지역 보스를 쓰러뜨리면 여기서 다시 싸울 수 있다</div>'}
     </div><div class="btns"><button class="btn alt" data-id="back">돌아가기</button></div></div>`);
-  bindPicks(id => { if (id === 'back') return town(); newPilgrimage(); chooseOath(run, 'parry'); setRegion(run, +id); enterRoom(run, 'boss'); practice = true; play(); });
+  bindPicks(id => { if (id === 'back') return town(); newPilgrimage(); setRegion(run, +id); enterRoom(run, 'boss'); practice = true; play(); });
 }
 function recordsScreen() {
   mode = 'records'; const r = save.records;
@@ -217,13 +221,8 @@ function calibrate() {
     settingsScreen(); const m = $('#calmsg'); if (m) m.textContent = deltas.length >= 4 ? `측정 완료: ${save.settings.offsetMs}ms` : '탭이 너무 적어요. 다시 해보세요';
   }, t0 + 8 * T + 400 - performance.now());
 }
-function oathScreen() {
-  mode = 'oath'; touch.classList.add('hidden'); if (!run || run.relics.length) newPilgrimage();
-  const ch = CHALLENGES.find(c => c.id === run.challenge);
-  const OT = { parry: ['parry', 'amber'], dodge: ['shadow', 'moon'], execute: ['executioner', 'ember'] };
-  screen(`<div class="card"><h2>서약을 고르세요</h2><div class="line">${run.daily ? '오늘의 시련 · ' : ''}어둠 ${run.dark} · 이번 판 도전: ${ch.name} (성공하면 등불 조각 +2)</div><div class="picks">${OATHS.map(o => `<button class="pick t-${OT[o.id][1]}" data-id="${o.id}"><div class="niche">${icon(...OT[o.id])}</div><b>${o.name}</b><span>${o.desc}</span></button>`).join('')}</div></div>`);
-  bindPicks(id => { chooseOath(run, id); enterRoom(run, 'combat'); regionIntro(); });
-}
+// 순례 시작: 서약 없이 바로 첫 지역으로
+function startPilgrimage() { if (!run || run.relics.length || run.roomIdx) newPilgrimage(); enterRoom(run, 'combat'); regionIntro(); }
 function relicScreen(after) {
   mode = 'relic'; touch.classList.add('hidden');
   const offer = relicOffer(run, 3);
@@ -243,7 +242,7 @@ function backToRoom() {
 // 출구로 나갈 때: 아이리스가 리라 쪽으로 닫힌 뒤 다음 스테이지
 function leaveRoom() {
   mode = 'transition'; touch.classList.add('hidden'); R.iris(world, 'close');
-  const t0 = performance.now(), wait = () => { if (performance.now() - t0 >= 1000) goNext(); else { R.stepFx(world); requestAnimationFrame(wait); } };
+  const wait = () => { if (R.irisClock >= 1.02) goNext(); else { R.stepFx(world); requestAnimationFrame(wait); } };   // 완전히 닫히면 다음 방
   requestAnimationFrame(wait);
 }
 // 휴식(모닥불 앞에서): 한 번만. 고르면 바로 방으로 돌아감
@@ -302,7 +301,7 @@ function overlay(kind) {
     if (practice) { screen(`<div class="card"><h2>연습 실패</h2><button class="btn" id="again">다시</button><button class="btn alt" id="back">마을로</button></div>`); bind('again', play); return bind('back', town); }
     saveFromWorld(run, world); finish(false);
   } else if (kind === 'pause') {
-    screen(`<div class="card"><h2>잠시 멈춤</h2>${runStat()}${statBlock(run.stats)}<div class="btns"><button class="btn" id="resume">계속</button><button class="btn alt" id="home">순례 포기</button></div></div>`);
+    screen(`<div class="card"><h2>잠시 멈춤</h2>${runStat()}${statBlock()}<div class="btns"><button class="btn" id="resume">계속</button><button class="btn alt" id="home">순례 포기</button></div></div>`);
     bind('resume', resume); bind('home', () => { saveFromWorld(run, world); finish(false); });
   }
 }
@@ -319,12 +318,14 @@ function finish(won) {
     <div class="line">이번 판 도전 '${ch.name}': ${run.challengeDone ? '성공' : '실패'}</div>
     <div class="gain">${icon('ember', 'amber')}등불 조각 +${gain} (보유 ${save.shards})${won && save.darkUnlocked > run.dark ? ' · 어둠 ' + save.darkUnlocked + ' 해금' : ''}</div>
     <div class="btns"><button class="btn" id="again">다시 순례</button><button class="btn alt" id="home">마을로</button></div></div>`);
-  bind('again', () => { newPilgrimage(); oathScreen(); }); bind('home', town);
+  bind('again', () => { newPilgrimage(); startPilgrimage(); }); bind('home', town);
 }
 // 지역 입장 연출
 function regionIntro() {
   mode = 'intro'; const g = regionOf(run);
-  screen(`<div class="card intro"><div class="region">${g.id}번째 지역</div><h2>${g.name}</h2><div class="line">이곳의 대등을 지키는 것: ${ENEMY_DEFS[g.boss].name}</div><button class="btn" id="go">들어간다</button></div>`);
+  const ch = CHALLENGES.find(c => c.id === run.challenge), first = g.id === 1;
+  screen(`<div class="card intro"><div class="region">${g.id}번째 지역</div><h2>${g.name}</h2><div class="line">이곳의 대등을 지키는 것: ${ENEMY_DEFS[g.boss].name}</div>
+    ${first ? `<div class="line">${run.daily ? '오늘의 시련 · ' : ''}어둠 ${run.dark} · 이번 판 도전: ${ch.name} (성공하면 등불 조각 +2)</div>` : ''}<button class="btn" id="go">들어간다</button></div>`);
   bind('go', play);
 }
 function resume() { mode = 'play'; screen(''); showTouch(); last = performance.now(); acc = 0; }
@@ -369,7 +370,11 @@ function frameBody(now) {
   if (mode === 'play') {
     if (input.take('pause')) overlay('pause');
     else {
-      acc = stepLoop(acc, slowT > 0 && !world.hitstop ? dt * 0.45 : dt, step);   // 완벽 패링 직후 잠깐 슬로모션
+      if (R.irisBusy() || R.stepCine()) { R.stepFx(world); acc = 0; touch.classList.add('hidden'); world.wasCine = true; }   // 아이리스·보스 등장 연출 동안은 세계 정지, 버튼 숨김
+      else {
+        if (world.wasCine) { world.wasCine = false; showTouch(); }
+        acc = stepLoop(acc, slowT > 0 && !world.hitstop ? dt * 0.45 : dt, step);   // 완벽 패링 직후 잠깐 슬로모션
+      }
       if (world.over) overlay('dead');
       else if (world.won) overlay('won');
       else if (world.cleared && !world.rewarded) overlay('cleared');

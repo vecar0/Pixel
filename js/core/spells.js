@@ -10,13 +10,15 @@ export const SPELLS = {
   ring:    { name: '불꽃 고리', icon: 'ult',         tone: 'ember', fx: 'fire/fire-ring',           desc: '주변을 폭발시키고 적 탄을 지운다 · 시전 중 무적' },
   ward:    { name: '푸른 결계', icon: 'parry',       tone: 'moon',  fx: 'holy/divine-shield',       desc: '주변 냉기 + 5초간 모든 패링 완벽 · 시전 중 무적' },
   spear:   { name: '흑염 창',   icon: 'executioner', tone: 'ember', fx: 'arcane/arcane-beam',       desc: '앞으로 관통하는 광선 · 시전 중 무적' },
+  chain:   { name: '연쇄 번개', icon: 'afterglow',   tone: 'moon',  fx: 'lightning/chain-lightning', desc: '앞쪽 적 셋까지 번개가 이어진다' },
+  blast:   { name: '암흑 폭발', icon: 'elite',       tone: 'ember', fx: 'shadow/dark-explosion',    desc: '가까운 적 자리에서 크게 폭발 · 시전 중 무적' },
   heal:    { name: '치유의 빛', icon: 'heart',       tone: 'heal',  fx: 'holy/heal',                desc: '체력 2 회복' },
   sanctum: { name: '성광 기둥', icon: 'vigor',       tone: 'heal',  fx: 'holy/holy-pillar',         desc: '주변 적에게 피해 + 체력 1 회복 · 시전 중 무적' },
 };
 // 마을 기름 → 기본 마법 (7 이상인 스탯이 없을 때)
 export const OIL_SPELL = { refined: 'bolt', blue: 'ward', black: 'spear' };
 // 스탯 → 마법: [7 이상, 10]
-export const STAT_SPELL = { str: ['pillar', 'meteor'], agi: ['lance', 'stars'], wil: ['ward', 'thunder'], lmp: ['ring', 'spear'], vit: ['heal', 'sanctum'] };
+export const STAT_SPELL = { str: ['pillar', 'meteor'], agi: ['lance', 'stars'], wil: ['ward', 'thunder'], lmp: ['ring', 'spear'], vit: ['heal', 'sanctum'], fury: ['chain', 'blast'] };
 // 지금 빌드의 마법: 가장 높은 스탯(7 이상)이 정한다. 동점이면 마지막으로 올린 스탯, 그래도 같으면 표 순서
 export function spellFor(stats, base = 'bolt', lastUp = null) {
   const ids = Object.keys(STAT_SPELL), top = Math.max(...ids.map(k => stats[k]));

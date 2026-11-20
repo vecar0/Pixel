@@ -32,18 +32,18 @@ class Layer {
     return null;
   }
   add(m, x, y, opts) {
-    const { life, follow, dx = 0, dy = 0, key, skip, ...rest } = opts;
+    const { life, follow, dx = 0, dy = 0, key, skip, speed, ...rest } = opts;
     for (const k in rest) if (rest[k] === undefined) delete rest[k];   // undefined가 이펙트 기본값을 덮지 않게
     const fx = createFx(m, { x: Math.round(x), y: Math.round(y), seed: (Math.random() * 1e6) | 0, ...rest });
     if (skip) fx.update((m.meta.duration || 1) * skip);   // 화면 전환: 덮인 상태에서 시작해 걷히는 절반만
-    fx.life = life ?? Infinity; fx.follow = follow; fx.dx = dx; fx.dy = dy; fx.key = key;
+    fx.speed = speed || 1; fx.life = life ?? Infinity; fx.follow = follow; fx.dx = dx; fx.dy = dy; fx.key = key;
     this.list.push(fx); this.dirty = true;
     return fx;
   }
   stopKey(key) { for (const f of this.list) if (f.key === key) { f.stop(); f.key = null; } }   // 끄는 중인 것은 키를 놓아 바로 새로 띄울 수 있게
   update(dt) {
     for (const fx of this.list) {
-      fx.update(dt);
+      fx.update(dt * (fx.speed || 1));
       if (--fx.life <= 0) fx.stop();
       const t = fx.follow;
       if (t) {

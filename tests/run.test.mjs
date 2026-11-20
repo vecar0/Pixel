@@ -1,7 +1,7 @@
 // 런 구조 테스트: node tests/run.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
-import { trainOffer, takeTrain, applyStats, runSpell, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, nextStage, stageOf, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
+import { takeTrain, applyStats, runSpell, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, nextStage, stageOf, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
 import { tick, EMPTY_INPUT } from '../js/core/world.js';
 import { spawnEnemy, ENEMY_DEFS } from '../js/core/enemies.js';
 import { createWorld } from '../js/core/world.js';
@@ -207,11 +207,12 @@ test('웨이브 적은 리라 옆에 생기지 않고, 0.8초 동안 솟아오�
   steps(w, 50); eq(e.spawnT, 0);
 });
 
-test('스탯: 모두 5에서 시작, 단련은 +1/-1, 1~10으로 묶임', () => {
+test('스탯: 6종 모두 5에서 시작, 반대 스탯 쌍(힘↔민첩·의지↔등불·생명↔투지), 0~10', () => {
   const r = newRun(3); ok(Object.values(r.stats).every(v => v === 5));
-  takeTrain(r, 'str', 'agi'); eq(r.stats.str, 6); eq(r.stats.agi, 4);
-  for (let i = 0; i < 9; i++) takeTrain(r, 'str', 'agi'); eq(r.stats.str, 10); eq(r.stats.agi, 1);
-  const o = trainOffer(r, 2); eq(o.length, 2); ok(o.every(x => x.up !== x.down && x.up !== 'str' && x.down !== 'agi'));
+  takeTrain(r, 'str'); eq(r.stats.str, 6); eq(r.stats.agi, 4);                          // 반대 스탯(민첩)이 1 내려감
+  for (let i = 0; i < 9; i++) takeTrain(r, 'str'); eq(r.stats.str, 10); eq(r.stats.agi, 0);   // 쌍의 합은 늘 10, 끝에서 멈춤
+  takeTrain(r, 'wil'); eq(r.stats.wil, 6); eq(r.stats.lmp, 4); takeTrain(r, 'fury'); eq(r.stats.fury, 6); eq(r.stats.vit, 4);
+  eq(r.stats.str + r.stats.agi, 10); eq(r.stats.wil + r.stats.lmp, 10); eq(r.stats.vit + r.stats.fury, 10);
 });
 test('스탯은 한 점마다 체감: 힘 1점 = 피해 +12%, 생명 1점 = 최대 체력 +1, 의지 1점 = 완벽 판정 +1프레임', () => {
   const mk = st => { const r = newRun(1); chooseOath(r, 'parry'); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
@@ -221,9 +222,9 @@ test('스탯은 한 점마다 체감: 힘 1점 = 피해 +12%, 생명 1점 = 최�
 test('스탯 빌드가 마법을 정한다: 7 이상 없으면 기름 마법, 가장 높은 스탯의 7/10 마법, 동점이면 마지막으로 올린 스탯', () => {
   const r = newRun(5, { oil: 'blue' }); eq(runSpell(r), 'ward');
   eq(runSpell(newRun(5)), 'bolt');
-  takeTrain(r, 'str', 'vit'); eq(runSpell(r), 'ward');                                     // 힘 6: 아직 기름 마법
-  takeTrain(r, 'str', 'vit'); eq(runSpell(r), 'pillar');                                   // 힘 7 → 화염 기둥
-  takeTrain(r, 'str', 'vit'); eq(r.stats.str, 8); eq(runSpell(r), 'pillar');               // 힘 8 → 화염 기둥
+  takeTrain(r, 'str'); eq(runSpell(r), 'ward');                                     // 힘 6: 아직 기름 마법
+  takeTrain(r, 'str'); eq(runSpell(r), 'pillar');                                   // 힘 7 → 화염 기둥
+  takeTrain(r, 'str'); eq(r.stats.str, 8); eq(runSpell(r), 'pillar');               // 힘 8 → 화염 기둥
   r.stats.agi = 8; r.lastUp = 'agi'; eq(runSpell(r), 'lance');                              // 동점 → 마지막으로 올린 민첩
   r.stats.str = 10; eq(runSpell(r), 'meteor');                                               // 힘 10 → 운석
   enterRoom(r, 'combat'); eq(buildRoomWorld(r).player.spells.join(), 'meteor');
@@ -252,6 +253,13 @@ test('전투방 출구: 적이 남아 있으면 잠겨서 못 나가고, 다 잡
   w.player.x = ex.x; tick(w, I()); ok(!w.events.some(e => e.type === 'exit'));
   w.player.x = 100; w.enemies.length = 0; w.waves = []; steps(w, 3); ok(w.cleared); ok(!w.exited);
   w.player.x = ex.x; let out = false; for (let i = 0; i < 3; i++) { tick(w, I()); if (w.events.some(e => e.type === 'exit')) out = true; } ok(out);
+});
+
+test('투지: 높으면 치명타가 나오고(10이면 3배), 7 이상이면 처치 뒤 다음 공격 치명타', () => {
+  const mk = st => { const r = newRun(1); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
+  const w = mk({ fury: 10, vit: 0 }); eq(w.player.mods.critMul, 3); ok(w.player.mods.critChance > 0.25); ok(w.player.mods.killCrit);
+  eq(mk({}).player.mods.critChance, 0); eq(w.player.maxHp, 1);
+  eq(runSpell(Object.assign(newRun(1), { stats: { ...newRun(1).stats, fury: 7, vit: 3 } })), 'chain');
 });
 
 run();

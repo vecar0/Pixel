@@ -4,12 +4,17 @@
 //  유리 여왕거미 — 수정 거울: 거울 뒤에 숨으면 수정 광선이 반사돼 거미에게 돌아간다 (거울은 깨졌다가 다시 자람)
 //  흑염의 순례자 — 빛의 등대: 등대를 켜면 빛 속의 그림자는 피해 1.5배·반격 불가. 어둠 속에서는 피해 절반
 import { overlap } from './player.js';
+import { spawnRain } from './enemies.js';
+
+// 2막(체력 절반) 무대 변화: 무덤종 = 종탑이 무너져 잔해가 떨어짐·대종 재충전 2배 빠름 / 성녀 = 물이 차올라 낮은 바닥에선 느려짐(제단 위는 마른 땅)
+//  여왕거미 = 세 번째 거울이 자라고 천장 수정 파편이 쏟아짐 / 순례자 = 개기일식: 더 어두워지고 등대가 짧게 탄다
 
 export const GIMMICK = {
-  bell:   { rope: [380, 740], x: 560, half: 66, dropF: 40, trapF: 240, riseF: 50, cd: 600, dmg: 80 },
+  bell:   { rope: [600, 1000], x: 800, half: 66, dropF: 40, trapF: 240, riseF: 50, cd: 600, cd2: 300, dmg: 80 },
   veil:   { firstF: 300, cd: 900, mul: 0.25, breakDmg: 60, breakPoise: 0.7 },
-  mirror: { xs: [300, 640], h: 94, cd: 900, dmg: 70, poise: 0.5 },
-  light:  { xs: [180, 560, 940], r: 140, litF: 720, inMul: 1.5, outMul: 0.5 },
+  mirror: { xs: [440, 980], x2: 1300, h: 94, cd: 900, dmg: 70, poise: 0.5 },
+  light:  { xs: [260, 800, 1340], r: 140, litF: 720, litF2: 420, inMul: 1.5, outMul: 0.5 },
+  phase2: { roarF: 110, water: 262, waterRiseF: 150, slow: 0.6, debrisF: 200, shardsF: 260 },   // 체력 절반: 포효 → 무대가 바뀐다
 };
 export const GIMMICK_OF = { bellBoss: 'bell', saint: 'veil', spider: 'mirror', shadow: 'light' };
 export const GIMMICK_HINT = {
@@ -44,7 +49,7 @@ export function hitGimmick(w, box) {
       if (bell && bell.st === 'up' && bell.cd <= 0) { bell.st = 'drop'; bell.t = 0; w.events.push({ type: 'bellRelease', x: bell.x }); w.shake = Math.max(w.shake, 4); }
     }
     if (o.kind === 'beacon' && o.litT <= 0 && overlap(box, { x: o.x - 16, y: 236, w: 32, h: 64 })) {
-      o.litT = GIMMICK.light.litF; w.events.push({ type: 'beaconLit', x: o.x }); w.hitstop = Math.max(w.hitstop, 4);
+      o.litT = w.phase2 ? GIMMICK.light.litF2 : GIMMICK.light.litF; w.events.push({ type: 'beaconLit', x: o.x }); w.hitstop = Math.max(w.hitstop, 4);
     }
   }
 }
@@ -72,7 +77,25 @@ export function breakVeil(w, e, b) {
 }
 
 export function updateGimmick(w, damageEnemy) {
-  const b = bossOf(w);
+  const b = bossOf(w), P2 = GIMMICK.phase2, p = w.player;
+  // 2막: 체력 절반이 되면 포효 (무적·정지) → 무대 변화
+  if (b && !w.phase2 && b.hp <= b.maxHp / 2) {
+    w.phase2 = { t: 0 }; b.roarT = P2.roarF; b.st = 'idle'; b.atk = null; b.srcs = []; b.stunT = 0; b.poise = 0;
+    w.projectiles = w.projectiles.filter(q => q.owner !== 'enemy');
+    w.events.push({ type: 'phase2', kind: b.kind, x: b.x + b.w / 2, y: b.y + b.h / 2 }); w.shake = Math.max(w.shake, 14);
+    if (b.kind === 'spider') w.props.push({ kind: 'mirror', x: GIMMICK.mirror.x2, cd: 600, hitBy: null });   // 세 번째 거울이 자라기 시작
+    if (b.kind === 'shadow') w.eclipse = true;
+  }
+  p.slowMul = 1;
+  if (w.phase2 && b) {
+    const t = ++w.phase2.t, live = t > P2.roarF;
+    if (b.kind === 'saint') {                                            // 물이 차오름 (포효와 함께)
+      w.water = 300 - (300 - P2.water) * Math.min(1, t / P2.waterRiseF);
+      if (p.y + p.h > w.water + 3) p.slowMul = P2.slow;
+    }
+    if (live && b.kind === 'bellBoss' && t % P2.debrisF === 0 && b.stunT <= 0) { spawnRain(w, b, { dmg: 1, parryable: false, rain: { n: 3, gap: 120, speed: 3.4 } }); w.events.push({ type: 'debris' }); }
+    if (live && b.kind === 'spider' && t % P2.shardsF === 0 && b.stunT <= 0) { spawnRain(w, b, { dmg: 1, parryable: true, rain: { n: 4, gap: 90, speed: 4 } }); w.events.push({ type: 'debris', crystal: true }); }
+  }
   for (const [e, dmg, poise] of w.gimmickHits || []) damageEnemy(w, e, dmg, poise, true);
   w.gimmickHits = null;
   // 무덤종: 대종
@@ -90,7 +113,7 @@ export function updateGimmick(w, damageEnemy) {
       w.hitboxes.push({ src: {}, owner: null, x: zone.x, y: zone.y, w: zone.w, h: zone.h, dmg: 1, parryable: false, dir: 1 });   // 리라가 밑에 있으면 맞음
       w.shake = Math.max(w.shake, 12); w.hitstop = Math.max(w.hitstop, 6);
     } else if (bell.st === 'down' && (bell.t >= B.trapF || (bell.trapped && (bell.trapped.dead || bell.trapped.stunT <= 0)))) { bell.st = 'rise'; bell.t = 0; bell.trapped = null; }
-    else if (bell.st === 'rise' && bell.t >= B.riseF) { bell.st = 'up'; bell.t = 0; bell.cd = B.cd; }
+    else if (bell.st === 'rise' && bell.t >= B.riseF) { bell.st = 'up'; bell.t = 0; bell.cd = w.phase2 ? B.cd2 : B.cd; }
   }
   // 성녀: 물의 장막
   if (b && b.kind === 'saint') {

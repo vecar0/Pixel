@@ -25,7 +25,9 @@ const C = {
 };
 const MAX_PARTICLES = 400;
 
-const bellOf = w => w.props.find(o => o.kind === 'bell') || {};
+const bellOf = w => (w.props || []).find(o => o.kind === 'bell') || {};
+const PHASE2_TITLE = { bellBoss: ['2막 · 무너지는 종탑', '천장에서 잔해가 떨어진다 · 대종이 더 빨리 다시 걸린다'], saint: ['2막 · 차오르는 물', '낮은 바닥에선 느려진다 · 양쪽 제단 위로'],
+  spider: ['2막 · 깨어나는 광맥', '세 번째 거울이 자란다 · 천장 수정이 쏟아진다'], shadow: ['2막 · 개기일식', '더 어두워지고 등대가 짧게 탄다'] };
 export class Renderer {
   constructor(canvas) {
     this.cv = canvas; this.ctx = canvas.getContext('2d');
@@ -90,7 +92,8 @@ export class Renderer {
       else if (ev.type === 'bellMiss') this.texts.push({ x: ev.x, y: 200, t: 0, s: '빗나감', life: 40 });
       else if (ev.type === 'veilUp') this.say('물의 장막 — 물창을 완벽 패링해 되돌려라');
       else if (ev.type === 'veilBreak') { this.flash = 0.9; this.zoom = 1; this.texts.push({ x: ev.x, y: ev.y - 70, t: 0, s: '장막 붕괴!', life: 70 }); }
-      else if (ev.type === 'mirrorReflect') { this.flash = 0.8; this.texts.push({ x: ev.bx, y: ev.by - 70, t: 0, s: '반사!', life: 60 }); }
+      else if (ev.type === 'phase2') { this.flash = 1; this.zoom = 1; const P = PHASE2_TITLE[ev.kind] || ['2막', '']; this.banner = { s: P[0], sub: P[1], t: 170, dur: 170, y: 140 }; }
+      else if (ev.type === 'mirrorReflect') { this.beamBack = { x0: ev.x, x1: ev.bx, y: ev.y, t: 14 }; this.flash = 0.8; this.texts.push({ x: ev.bx, y: ev.by - 70, t: 0, s: '반사!', life: 60 }); }
       else if (ev.type === 'exposed') this.texts.push({ x: ev.x, y: ev.y - 16, t: 0, s: '드러났다!', life: 50 });
       else if (ev.type === 'beaconOut' && ev.snuffed) this.texts.push({ x: ev.x, y: 230, t: 0, s: '등대가 꺼졌다', life: 50 });
       else if (ev.type === 'resist' && w.t - (this.resistT || 0) > 40) { this.resistT = w.t; this.texts.push({ x: ev.x, y: ev.y - 10, t: 0, s: ev.veil ? '장막' : '어둠', life: 30 }); }
@@ -195,7 +198,7 @@ export class Renderer {
     const d = this.dctx;
     d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, vw, H);
     const beacons = (w.props || []).filter(o => o.kind === 'beacon');
-    d.fillStyle = beacons.length ? 'rgba(4,2,8,0.78)' : w.town ? 'rgba(4,2,8,0.18)' : 'rgba(4,2,8,0.5)'; d.fillRect(0, 0, vw, H);   // 그림자 보스방은 더 어둡다
+    d.fillStyle = beacons.length ? (w.eclipse ? 'rgba(2,1,4,0.9)' : 'rgba(4,2,8,0.78)') : w.town ? 'rgba(4,2,8,0.18)' : 'rgba(4,2,8,0.5)'; d.fillRect(0, 0, vw, H);   // 그림자 보스방은 더 어둡다
     d.globalCompositeOperation = 'destination-out';
     for (const o of beacons) if (o.litT > 0) {                            // 켜진 등대: 둥근 빛 구멍
       const bx = o.x + ox, by = 248 + oy, r = 150 * Math.min(1, o.litT / 40), bg = d.createRadialGradient(bx, by, 10, bx, by, r);
@@ -217,12 +220,13 @@ export class Renderer {
     const hideChars = this.irisBusy() || (this.cine && this.cine.hideLira);
     for (const e of w.enemies) if (e.dummy) {                              // 마을 허수아비 이름표
       g.font = '10px Galmuri9, monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      const x = Math.round(e.x + e.w / 2), y = Math.round(e.y - 14), tw = g.measureText('허수아비 (연습 상대)').width + 12;
+      const x = Math.round(e.x + e.w / 2), y = 214, tw = g.measureText('허수아비 (연습 상대)').width + 12;
       g.fillStyle = 'rgba(13,10,17,.75)'; g.fillRect(Math.round(x - tw / 2), y - 7, Math.round(tw), 14); g.fillStyle = '#cfc6dc'; g.fillText('허수아비 (연습 상대)', x, y);
       g.textAlign = 'left'; g.textBaseline = 'top';
     }
     const hasBeacon = (w.props || []).some(o => o.kind === 'beacon');
-    if (!this.irisBusy()) for (const e of w.enemies) { if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; this.drawEnemy(g, w, e); g.globalAlpha = 1; }   // 어둠 속 그림자는 흐릿하게
+    const trapped = bellOf(w).st === 'down' && bellOf(w).trapped;           // 대종에 갇힌 보스는 종 안 (그리지 않음). 허수아비는 그림 + 맞으면 흔들림
+    if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; this.drawEnemy(g, w, e); g.globalAlpha = 1; }   // 어둠 속 그림자는 흐릿하게
     if (w.props) this.drawGimmickFront(g, w);                             // 대종은 보스 위에 (가둠)
     this.drawWarnings(g, w);
     for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
@@ -243,6 +247,15 @@ export class Renderer {
       g.fillStyle = gl; g.beginPath(); g.arc(bx, by, r * 2.2, 0, Math.PI * 2); g.fill();
     }
     for (const q of this.parts) { g.fillStyle = q.col; g.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s); }
+    if (this.beamBack && this.beamBack.t > 0) {                            // 거울에서 거미로 되돌아가는 광선
+      const B = this.beamBack, a = B.t / 14, x0 = Math.min(B.x0, B.x1), wd = Math.abs(B.x1 - B.x0); B.t--;
+      g.fillStyle = `rgba(150,230,255,${0.7 * a})`; g.fillRect(x0, B.y - 9, wd, 18); g.fillStyle = `rgba(255,255,255,${a})`; g.fillRect(x0, B.y - 3, wd, 6);
+    }
+    if (w.water != null && w.water < 299) {                               // 성녀 2막: 차오른 물 (반투명 + 출렁이는 수면)
+      const top = w.water, x0 = Math.max(0, camX - 20), x1 = Math.min(w.width, camX + vw + 20);
+      g.fillStyle = 'rgba(40,110,150,0.42)'; g.fillRect(x0, top, x1 - x0, 300 - top + 2);
+      g.fillStyle = 'rgba(170,230,255,0.7)'; for (let x = Math.floor(x0 / 8) * 8; x < x1; x += 8) g.fillRect(x, Math.round(top + Math.sin(x * 0.05 + w.t * 0.08) * 1.5), 6, 2);
+    }
     if (this.debug) {
       g.strokeStyle = '#0f0'; for (const h of w.hitboxes) g.strokeRect(h.x + 0.5, h.y + 0.5, h.w, h.h);
       const ab = attackBox(p); if (ab) { g.strokeStyle = '#ff0'; g.strokeRect(ab.x + 0.5, ab.y + 0.5, ab.w, ab.h); }
@@ -268,7 +281,7 @@ export class Renderer {
     if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.22})`; g.fillRect(0, 0, vw, H); }   // 화면 섬광은 은은하게
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
     if (this.hud !== false && !(this.cine && this.cine.t < CINE.out2)) this.drawHud(g, w);   // 등장 연출 중엔 HUD 숨김
-    for (const [m, y] of [[this.banner, 96], [this.sayMsg, H - 70]]) {     // 스테이지 이름 배너 · 안내 한 줄
+    for (const [m, y] of [[this.banner, this.banner?.y ?? 96], [this.sayMsg, H - 70]]) {     // 스테이지 이름 배너 · 안내 한 줄
       if (!m || m.t <= 0) continue; m.t--;
       const a = Math.min(1, m.t / 30, (m.dur || 150) - m.t < 20 ? ((m.dur || 150) - m.t) / 20 : 1);
       g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -423,7 +436,7 @@ export class Renderer {
       this.drawGimmickProp(g, w, o);
       const show = o.kind === 'exit' ? pcx > o.x - 260 : gim ? Math.abs(o.x - pcx) < 90 : o.kind === 'bell' ? false : o === near;
       if (!show) continue;
-      const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : o.kind === 'altar' ? 206 : 214, txt = o.kind === 'exit' || gim || o.used ? label : `공격 버튼  ${label}`;
+      const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : o.kind === 'altar' ? 180 : o.kind === 'keeper' ? 192 : o.kind === 'board' ? 218 : 214, txt = o.kind === 'exit' || gim || o.used ? label : `공격 버튼  ${label}`;
       g.font = '10px Galmuri9, monospace'; g.textBaseline = 'middle'; g.textAlign = 'center';
       const tw = g.measureText(txt).width + 14, bob = Math.round(Math.sin(w.t * 0.1) * 2), lx = Math.max(tw / 2 + 4, Math.min(w.width - tw / 2 - 4, o.x));   // 벽 가까이선 화면 안으로
       g.fillStyle = 'rgba(13,10,17,.8)'; g.fillRect(Math.round(lx - tw / 2), y - 8 + bob, Math.round(tw), 16);
@@ -449,9 +462,11 @@ export class Renderer {
       const im = this.img('mirror'), x = Math.round(o.x - im.naturalWidth / 2), grow = o.cd > 0 ? 0.15 + 0.6 * (1 - o.cd / 900) : 1, h = Math.round(im.naturalHeight * grow);
       if (o.cd <= 0) { const gl = g.createRadialGradient(o.x, 260, 4, o.x, 260, 50); gl.addColorStop(0, 'rgba(120,220,255,0.22)'); gl.addColorStop(1, 'rgba(120,220,255,0)'); g.fillStyle = gl; g.fillRect(o.x - 50, 210, 100, 90); }
       g.globalAlpha = o.cd > 0 ? 0.55 : 1; g.drawImage(im, 0, im.naturalHeight - h, im.naturalWidth, h, x, 300 - h, im.naturalWidth, h); g.globalAlpha = 1;
-    } else if (o.kind === 'altar' && this.img('beacon')) {                 // 마을 순례 제단: 늘 불이 켜진 등대 받침
-      const im = this.img('beacon'); g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight);
-      const gl = g.createRadialGradient(o.x, 240, 4, o.x, 240, 80); gl.addColorStop(0, 'rgba(255,170,70,0.3)'); gl.addColorStop(1, 'rgba(255,170,70,0)'); g.fillStyle = gl; g.fillRect(o.x - 80, 160, 160, 140);
+    } else if ((o.kind === 'keeper' || o.kind === 'board') && this.img(o.kind)) {   // 마을: 등대지기 · 게시판
+      const im = this.img(o.kind); g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight + 1);
+    } else if (o.kind === 'altar' && this.img('shrine')) {                 // 마을 순례 제단: 등대 모양 돌 제단 (꼭대기 그릇에 늘 불)
+      const im = this.img('shrine'); g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight + 1);
+      const gl = g.createRadialGradient(o.x, 214, 4, o.x, 214, 90); gl.addColorStop(0, 'rgba(255,170,70,0.3)'); gl.addColorStop(1, 'rgba(255,170,70,0)'); g.fillStyle = gl; g.fillRect(o.x - 80, 160, 160, 140);
     } else if (o.kind === 'beacon' && this.img('beacon')) {               // 빛의 등대: 돌 받침 + 쇠 그릇 (켜지면 불꽃은 fxmap)
       const im = this.img('beacon'), x = Math.round(o.x - im.naturalWidth / 2);
       g.drawImage(im, x, 300 - im.naturalHeight);
@@ -469,8 +484,9 @@ export class Renderer {
     else if (bell.st === 'down') y = ground;
     else if (bell.st === 'rise') y = ground + (top - ground) * Math.min(1, bell.t / G.riseF);
     const yy = Math.round(y + (bell.st === 'up' ? Math.sin(w.t * 0.03) * 2 : 0));
+    const rattle = bell.st === 'down' && bell.trapped ? Math.round(Math.sin(w.t * 0.9) * (bell.t % 50 < 14 ? 2 : 0.6)) : 0;   // 안에서 보스가 몸부림 → 종이 덜컹
     if (bell.st === 'up' || bell.st === 'rise') { g.fillStyle = '#5a5264'; for (let k = yy + 4; k > -10; k -= 6) g.fillRect(Math.round(bell.x) - 2, k, 4, 4); }   // 천장 사슬
-    g.drawImage(im, Math.round(bell.x - im.naturalWidth / 2), yy);
+    g.drawImage(im, Math.round(bell.x - im.naturalWidth / 2) + rattle, yy);
     this.bellY = yy;
   }
   say(s, t = 150) { this.sayMsg = { s, t }; }

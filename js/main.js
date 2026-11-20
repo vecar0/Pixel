@@ -214,16 +214,17 @@ function buildTown() {
   const W = TOWN_W, w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }], spawn: { x: 140, y: 240 } });
   w.haven = 'town'; w.town = true;
   w.props = [
-    { kind: 'merchant', x: 360, label: '등대지기의 창고 (해금)' },
-    { kind: 'altar', x: 900, label: '순례 준비 (어둠·기름·출발)' },
-    { kind: 'campfire', x: 1180, label: '모닥불 (기록·연습장·설정)' },
+    { kind: 'keeper', x: 300, label: '등대지기의 창고 (해금)' },
+    { kind: 'altar', x: 860, label: '순례 제단 (어둠·기름·출발)' },
+    { kind: 'board', x: 1070, label: '게시판 (기록)' },
+    { kind: 'campfire', x: 1270, label: '모닥불 (연습장·설정)' },
     { kind: 'exit', x: W - 70, label: '순례 길 →' },
   ];
   townDummy(w);
   return w;
 }
 function townDummy(w) {   // 허수아비: 공격하지 않는 연습 상대 (쓰러지면 다시 선다)
-  const e = spawnEnemy(w, 'ghoul', 620, 300 - ENEMY_DEFS.ghoul.h - 2, { hpMul: 30 });
+  const e = spawnEnemy(w, 'ghoul', 560, 300 - ENEMY_DEFS.ghoul.h - 2, { hpMul: 30 });
   e.cd = 1e9; e.speed = 0; e.dummy = true; e.spawnT = 0;
 }
 function town() {
@@ -464,7 +465,7 @@ function onEvents(w) {
     else if (SOUND[ev.type]) sfx.play(SOUND[ev.type]);
     if (ev.type === 'kill' && run) run.kills++;
     if (w.town) {                                                         // 마을
-      if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'merchant') unlockScreen(); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'campfire') campMenu(); }
+      if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'keeper') unlockScreen(); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'board') recordsScreen(); else if (ev.kind === 'campfire') campMenu(); }
       if (ev.type === 'exit') prepScreen();
       continue;
     }
@@ -475,6 +476,8 @@ function onEvents(w) {
     if (ev.type === 'veilBreak' || ev.type === 'mirrorReflect') sfx.play('execute');
     if (ev.type === 'veilUp') sfx.play('heal');
     if (ev.type === 'beaconLit') sfx.play('ignite');
+    if (ev.type === 'phase2') { sfx.play('slam'); sfx.play('ult'); slowT = 50; if (navigator.vibrate) navigator.vibrate([60, 40, 120]); }
+    if (ev.type === 'debris') sfx.play('telegraph');
   }
   const p = w.player;
   if (p.stateT === 0 && p.state === 'attack') sfx.play('swing');

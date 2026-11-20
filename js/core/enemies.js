@@ -194,7 +194,7 @@ export function spawnWaves(w, e, a) {
 }
 
 // 낙하 파편: 리라 위쪽에서 떨어짐 (예고 동안 표시는 렌더가 rainMark로)
-function spawnRain(w, e, a) {
+export function spawnRain(w, e, a) {
   const p = w.player;
   for (let i = 0; i < a.rain.n; i++) {
     const x = p.x + p.w / 2 + (i - (a.rain.n - 1) / 2) * a.rain.gap;

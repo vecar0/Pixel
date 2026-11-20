@@ -53,9 +53,9 @@ test('상호작용 도착 판정: 상인·모닥불 앞(반경 안) 어디서든
 test('보스방: 양쪽 끝까지 걸어서 닿고, 보스를 쓰러뜨리면 won', () => {
   const r = newRun(5); r.roomIdx = 5; nextStage(r); eq(r.room, 'boss');
   const w = buildRoomWorld(r); w.player.hp = 999; const b = w.enemies[0]; b.update = () => {};
-  for (let t = 0; t < 600 && w.player.x > 60; t++) tick(w, I({ left: true }));
+  for (let t = 0; t < 600 && w.player.x > 60; t++) tick(w, I({ left: true, jump: t % 30 === 0, jumpHeld: true }));   // 언덕은 점프로 넘음
   ok(w.player.x <= 60, 'left end');
-  for (let t = 0; t < 900 && w.player.x < w.width - 100; t++) tick(w, I({ right: true, jump: t % 30 === 0 }));
+  for (let t = 0; t < 900 && w.player.x < w.width - 100; t++) tick(w, I({ right: true, jump: t % 30 === 0, jumpHeld: true, roll: t % 40 === 20 }));   // 보스 몸은 걸어서 못 지나감 → 구르기로
   ok(w.player.x >= w.width - 100, 'right end ' + w.player.x);
   damageEnemy(w, b, 99999); for (let i = 0; i < 3; i++) tick(w, I()); ok(w.won);
 });

@@ -6,6 +6,16 @@ import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite } from './enemies.js';
 import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js';
 import { ACTIONS } from './player.js';
 
+// 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판
+const walls = W => [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }];
+const plat = (x, y, w = 120) => ({ x, y, w, h: 8, oneWay: true });
+const hill = (x, w, h) => ({ x, y: 300 - h, w, h });
+export const BOSS_ARENAS = {
+  bellBoss: { width: 1600, solids: [...walls(1600), hill(80, 200, 34), hill(1320, 200, 34), plat(330, 206), plat(1150, 206)], spawn: { x: 320, y: 230 } },   // 묘지 예배당: 양쪽 무덤 언덕 (가운데 위는 대종)
+  saint:    { width: 1600, solids: [...walls(1600), hill(200, 260, 44), hill(1140, 260, 44), plat(560, 200), plat(920, 200), plat(740, 136, 120)], spawn: { x: 520, y: 230 } },    // 침수 성당: 양쪽 제단 (물이 차면 피난처)
+  spider:   { width: 1600, solids: [...walls(1600), hill(660, 280, 26), plat(220, 220), plat(420, 160), plat(1060, 160), plat(1260, 220), plat(740, 110, 120)], spawn: { x: 120, y: 230 } },   // 유리 광산: 가운데 바위 둔덕, 계단식 발판
+  shadow:   { width: 1600, solids: [...walls(1600), plat(420, 206), plat(620, 156), plat(860, 156), plat(1060, 206)], spawn: { x: 120, y: 230 } },   // 무너진 성소: 가운데 높은 발판 둘
+};
 export const EMPTY_INPUT = Object.freeze({
   left: false, right: false, down: false, jumpHeld: false,
   jump: false, attack: false, parry: false, roll: false, skill: false, flask: false,
@@ -22,20 +32,20 @@ const ROOMS = {
     ],
     spawn: { x: 80, y: 230 },
   },
-  boss: {                                                          // 넓은 보스방 (등장 연출 뒤 전체를 씀)
+  boss: {                                                          // 기본 보스방 (BOSS_ARENAS가 없을 때)
     width: 1120,
     solids: [
       { x: -40, y: 0, w: 40, h: 360 }, { x: 1120, y: 0, w: 40, h: 360 },
       { x: -40, y: 300, w: 1200, h: 60 },
-      { x: 170, y: 218, w: 120, h: 8, oneWay: true }, { x: 500, y: 196, w: 120, h: 8, oneWay: true }, { x: 830, y: 218, w: 120, h: 8, oneWay: true },   // 발판 셋: 충격파·광선 피하기
+      { x: 170, y: 218, w: 120, h: 8, oneWay: true }, { x: 500, y: 196, w: 120, h: 8, oneWay: true }, { x: 830, y: 218, w: 120, h: 8, oneWay: true },
     ],
     spawn: { x: 80, y: 230 },
   },
 };
 
 export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bellBoss', variant = null, hpMul = 1 } = {}) {
-  const def = ROOMS[room] || { width: width || 2000, solids: [], spawn: { x: 100, y: 250 } };
-  const sp = spawn || def.spawn;
+  const def = (room === 'boss' && BOSS_ARENAS[boss]) || ROOMS[room] || { width: width || 2000, solids: [], spawn: { x: 100, y: 250 } };
+  const sp = spawn || def.spawn || { x: 80, y: 230 };
   const w = {
     room, t: 0, hitstop: 0, shake: 0,
     width: width || def.width,
@@ -47,7 +57,7 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
   };
   if (room === 'arena') w.waves = [[['ghoul', 520], ['ghoul', 600], ['moth', 700]], [['ghoul', 900], ['moth', 1000]]];
   if (room === 'boss') {
-    spawnEnemy(w, boss, 820, 300 - ENEMY_DEFS[boss].h - 2, { variant, hpMul });   // 바닥 위에서 시작
+    spawnEnemy(w, boss, w.width * 0.68, 300 - ENEMY_DEFS[boss].h - 2, { variant, hpMul });   // 바닥 위에서 시작
     w.props = gimmickProps(boss);                                         // 보스마다 고유 기믹 오브젝트
   }
   updateCamera(w);
@@ -58,7 +68,7 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
 export const INTERACT_R = 56;
 export function nearProp(w) {
   const p = w.player, cx = p.x + p.w / 2;
-  return (w.props || []).find(o => (o.kind === 'merchant' || o.kind === 'campfire' || o.kind === 'altar') && Math.abs(o.x - cx) < INTERACT_R) || null;
+  return (w.props || []).find(o => ['merchant', 'campfire', 'altar', 'keeper', 'board'].includes(o.kind) && Math.abs(o.x - cx) < INTERACT_R) || null;
 }
 // 오브젝트: 상인·모닥불은 공격 버튼으로 이용, 출구는 열려 있으면 닿는 순간 나감 (전투방은 적을 다 잡아야 열림)
 function propInput(w, inp) {
@@ -124,12 +134,14 @@ export function tick(w, inp) {
   for (const e of w.enemies) {
     if (e.dead) continue;
     if (e.flash > 0) e.flash--;
+    if (e.roarT > 0) { e.roarT--; e.vx = 0; continue; }                   // 2막 포효 중: 멈춤·무적
     if (e.burnT > 0 && --e.burnT % 60 === 0) { damageEnemy(w, e, 3); if (e.dead) continue; }   // 화상
     updatePoise(e);
     if (e.stunT > 0) continue;
     updateEnemy(w, e);
   }
   if (w.room === 'boss') updateGimmick(w, damageEnemy);
+  separateBodies(w);
   updateProjectiles(w);
 
   resolvePlayerAttacks(w);
@@ -139,6 +151,21 @@ export function tick(w, inp) {
   w.enemies = w.enemies.filter(e => !e.dead);
   updateWaves(w);
   updateCamera(w);
+}
+
+// 몸 충돌: 걷기·점프로는 적을 통과하지 못한다 (구르기 무적 중에는 빠져나갈 수 있음). 겹치면 리라를 가까운 쪽으로 밀어 냄
+function separateBodies(w) {
+  const p = w.player;
+  if (p.state === 'execute' || p.state === 'dead' || p.state === 'roll') return;
+  for (const e of w.enemies) {
+    if (e.dead || e.spawnT > 0 || ENEMY_DEFS[e.kind]?.fly || !overlap(p, e)) continue;
+    const pc = p.x + p.w / 2, ec = e.x + e.w / 2, left = pc < ec;
+    let nx = left ? e.x - p.w : e.x + e.w;
+    if (nx < 0 || nx + p.w > w.width) nx = left ? e.x + e.w : e.x - p.w;   // 벽에 끼면 반대쪽으로
+    nx = Math.max(0, Math.min(w.width - p.w, nx));
+    if (p.y + p.h - 10 < e.y && p.vy >= 0) { p.x = nx; continue; }          // 위에서 떨어지면 옆으로 미끄러짐 (머리 위에 서지 않음)
+    p.x = nx; if (Math.sign(p.vx) === (left ? 1 : -1)) p.vx = 0;
+  }
 }
 
 // 유도: 남은 적 중 가장 가까운 쪽으로 한 틱에 최대 0.14라디안 회전 (관통탄은 이미 맞은 적 제외)

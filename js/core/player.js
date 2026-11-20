@@ -133,7 +133,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'roll') {
     p.vx = t < RO.totalF ? p.rollDir * RO.dist * p.mods.rollMul / RO.totalF : 0;
   } else if (free || p.state === 'flask') {
-    const spd = P.speed * (p.mods.speedMul || 1), max = p.state === 'flask' && !(p.mods.res || {}).enduring ? spd * 0.3 : spd;   // 공명 질긴 걸음
+    const spd = P.speed * (p.mods.speedMul || 1) * (p.slowMul || 1), max = p.state === 'flask' && !(p.mods.res || {}).enduring ? spd * 0.3 : spd;   // 공명 질긴 걸음 · slowMul: 물에 잠긴 바닥
     if (dir) {
       p.vx += dir * spd / P.accelF;
       if (Math.abs(p.vx) > max) p.vx = Math.sign(p.vx) * max;

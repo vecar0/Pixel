@@ -325,7 +325,7 @@ test('여왕거미 수정 거울: 거울 뒤에 숨으면 광선이 반사돼 �
   for (const mirror of [true, false]) {
     const { w, b } = gWorld('spider'), m = w.props.find(o => o.kind === 'mirror' && o.x === GIMMICK.mirror.xs[1]);
     if (!mirror) for (const o of w.props) o.cd = 1e9;
-    b.x = 760; b.y = 300 - b.h; b.face = -1; w.player.x = m.x - 120; w.player.face = 1;
+    b.x = m.x + 120; b.y = 300 - b.h; b.face = -1; w.player.x = m.x - 120; w.player.face = 1;
     const hp = b.hp, php = w.player.hp; b.cd = 0; b.forceNext = 'beam'; b.speed = 0;
     for (let i = 0; i < 120 && !(b.st === 'recover'); i++) { tick(w, I()); b.forceNext = 'beam'; }
     if (mirror) { eq(w.player.hp, php); eq(hp - b.hp, GIMMICK.mirror.dmg); ok(m.cd > 0); }
@@ -333,14 +333,27 @@ test('여왕거미 수정 거울: 거울 뒤에 숨으면 광선이 반사돼 �
   }
 });
 test('흑염의 순례자 빛의 등대: 켜진 등대 곁에선 피해 1.5배·반격 없음, 어둠 속에선 절반', () => {
-  const { w, b } = gWorld('shadow'), o = w.props.find(o => o.kind === 'beacon' && o.x === 560);
-  b.x = 560 - b.w / 2; b.y = 300 - b.h; steps(w, 2); eq(b.exposed, false);
+  const X = GIMMICK.light.xs[1], { w, b } = gWorld('shadow'), o = w.props.find(o => o.kind === 'beacon' && o.x === X);
+  b.x = X + 30; b.y = 300 - b.h; steps(w, 2); eq(b.exposed, false);
   eq(damageEnemy(w, b, 40), 20);
-  w.player.x = 560 - 40; w.player.face = 1; steps(w, 2); tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 2);
+  w.player.x = X - 40; w.player.face = 1; steps(w, 2); tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 2);
   ok(o.litT > 0, 'lit'); steps(w, 12); ok(b.exposed, 'exposed'); eq(damageEnemy(w, b, 40), 60);
 });
+test('몸 충돌: 걸어서는 적을 통과 못 하고, 구르기(무적)로는 빠져나간다', () => {
+  const w = W(); settle(w); w.player.face = 1; const d = makeDummy(w, { hp: 999 }); d.x = w.player.x + 60; d.cd = 1e9;
+  steps(w, 90, { right: true }); ok(w.player.x + w.player.w <= d.x + 1, 'blocked ' + w.player.x);
+  tick(w, I({ roll: true, right: true })); steps(w, 30, { right: true }); ok(w.player.x > d.x + d.w - 4, 'rolled through ' + w.player.x);
+});
+test('2막: 체력 절반이면 포효(무적·정지) 후 무대 변화 — 성녀는 물이 차올라 낮은 바닥에서 느려짐', () => {
+  const { w, b } = gWorld('saint'); w.player.x = 700; steps(w, 5);
+  damageEnemy(w, b, b.hp - Math.floor(b.maxHp / 2)); steps(w, 2);
+  ok(w.phase2, 'phase2'); ok(b.roarT > 0, 'roar'); eq(damageEnemy(w, b, 30), 0);
+  steps(w, GIMMICK.phase2.waterRiseF + 5); ok(w.water <= GIMMICK.phase2.water + 1, 'water'); eq(w.player.slowMul, GIMMICK.phase2.slow);
+  const { w: w2, b: b2 } = gWorld('spider'); damageEnemy(w2, b2, b2.hp - Math.floor(b2.maxHp / 2)); steps(w2, 2);
+  eq(w2.props.filter(o => o.kind === 'mirror').length, 3);
+});
 function bossWorld(force) {
-  const w = createWorld({ room: 'boss' }); steps(w, 30); w.player.hp = 99;
+  const w = createWorld({ room: 'boss' }); w.player.x = 520; steps(w, 30); w.player.hp = 99;   // 평평한 바닥 위
   const b = w.enemies.find(e => e.boss); b.forceNext = force; b.x = w.player.x + 60;
   return { w, b };
 }

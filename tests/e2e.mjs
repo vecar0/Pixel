@@ -40,8 +40,8 @@ await check('마을: 걸어서 창고·제단·모닥불·허수아비, 오른�
   eq(await p.evaluate(() => window.__lk.mode), 'town'); ok(await p.evaluate(() => window.__lk.world.town), 'walk town');
   const at = async (kind, want) => { await p.evaluate(k => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === k).x - 30; }, kind); await p.waitForTimeout(200);
     await p.keyboard.press('j'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), want);
-    await p.locator('[data-id=back]').dispatchEvent('pointerup'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), 'town'); };
-  await at('merchant', 'unlock'); await at('altar', 'prep'); await at('campfire', 'camp');
+    await p.locator('[data-id=back], #back').first().dispatchEvent('pointerup'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), 'town'); };
+  await at('keeper', 'unlock'); await at('altar', 'prep'); await at('board', 'records'); await at('campfire', 'camp');
   ok(await p.evaluate(() => window.__lk.world.enemies.some(e => e.dummy)), 'dummy');
   await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(300);
   eq(await p.evaluate(() => window.__lk.mode), 'prep');

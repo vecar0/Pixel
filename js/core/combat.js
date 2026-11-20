@@ -74,6 +74,7 @@ export function addPoise(w, e, frac) {
 // 반환값: 실제로 들어간 피해 (보스 기믹 배율 반영). raw = 기믹 배율 무시 (기믹 자체 피해)
 export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
   if (e.dead) return 0;
+  if (e.roarT > 0) return 0;                                           // 2막 포효 중엔 무적
   if (!raw && e.boss) { const k = gimmickDamageMul(w, e); if (k !== 1) { dmg = Math.round(dmg * k); poiseFrac *= k; if (k < 1 && dmg > 0) w.events.push({ type: 'resist', x: e.x + e.w / 2, y: e.y, veil: !!e.veil }); } }
   if (ENEMY_DEFS[e.kind]?.oneHit && dmg > 0) dmg = e.hp;              // 나방: 한 방
   e.hp -= dmg;

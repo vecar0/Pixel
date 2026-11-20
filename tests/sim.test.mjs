@@ -7,6 +7,7 @@ import { invulnerable, attackBox } from '../js/core/player.js';
 import { ENEMY_DEFS, spawnEnemy } from '../js/core/enemies.js';
 import { I, steps, FLAT, makeDummy } from './helpers.mjs';
 import { stepLoop } from '../js/loop.js';
+import { SPELLS, STAT_SPELL, spellFor } from '../js/core/spells.js';
 
 const W = (o = {}) => createWorld({ room: 'test', solids: FLAT, ...o });
 const settle = w => steps(w, 30); // 바닥에 내려앉기
@@ -203,14 +204,31 @@ test('연쇄 번개는 앞쪽 적 셋까지만, 뒤쪽은 안 맞음', () => {
   cast(w, 'chain'); steps(w, 20);
   eq(ds.filter(d => d.hp === 100 - CFG.skill.chain.dmg).length, 3); eq(back.hp, 100);
 });
-test('착탄형(운석·낙뢰·화염 기둥·별똥비): 이펙트가 떨어지는 순간에 피해, 그 전엔 없음', () => {
-  for (const sp of ['meteor', 'thunder', 'pillar', 'stars', 'blast']) {
+test('착탄형(운석·낙뢰·화염 기둥·고드름 비·회오리·심판·암흑 폭발): 이펙트가 떨어지는 순간에 피해, 그 전엔 없음', () => {
+  for (const sp of ['meteor', 'thunder', 'pillar', 'stars', 'blast', 'tornado', 'smite']) {
     const w = W(); settle(w); w.player.face = 1;
     const d = makeDummy(w, { hp: 200 }); d.x = w.player.x + 140;
     cast(w, sp); const S = CFG.skill[sp];
     steps(w, S.fireF + S.delay - 2); eq(d.hp, 200, sp + ' early');
     steps(w, 4); eq(d.hp, 200 - S.dmg, sp + ' land');
   }
+});
+test('새 마법: 회오리 3연타 · 서리 가시/가시 덩굴 앞쪽 직선 · 도깨비불 3발 · 피의 갈취 흡혈', () => {
+  { const w = W(); settle(w); w.player.face = 1; const d = makeDummy(w, { hp: 200 }); d.x = w.player.x + 140;
+    cast(w, 'tornado'); steps(w, 120); eq(d.hp, 200 - CFG.skill.tornado.dmg * 3); }
+  for (const sp of ['spikes', 'thorns']) { const w = W(); settle(w); w.player.face = 1;
+    const near = makeDummy(w, { hp: 200 }); near.x = w.player.x + 60; const far = makeDummy(w, { hp: 200 }); far.x = w.player.x + 400; const back = makeDummy(w, { hp: 200, behind: true });
+    cast(w, sp); steps(w, 60); eq(near.hp, 200 - CFG.skill[sp].dmg, sp); eq(far.hp, 200, sp + ' far'); eq(back.hp, 200, sp + ' back'); }
+  { const w = W(); settle(w); w.player.face = 1; const d = makeDummy(w, { hp: 200 }); d.x = w.player.x + 120;
+    cast(w, 'wisps'); steps(w, 120); eq(d.hp, 200 - CFG.skill.wisps.dmg * 3); }
+  { const w = W(); settle(w); w.player.face = 1; w.player.hp = 2; const d = makeDummy(w, { hp: 200 }); d.x = w.player.x + 120;
+    cast(w, 'drain'); steps(w, 30); eq(d.hp, 200 - CFG.skill.drain.dmg); eq(w.player.hp, 3); }
+});
+test('마법 표: 스탯 14·17·20에서 마법이 바뀐다 (스탯마다 3개, 모두 서로 다름)', () => {
+  const ids = Object.values(STAT_SPELL).flat(); eq(ids.length, 18); eq(new Set(ids).size, 18);
+  for (const id of ids) ok(SPELLS[id] && CFG.skill[id], id);
+  const st = { str: 10, agi: 10, wil: 10, lmp: 10, vit: 10, fury: 10 };
+  eq(spellFor({ ...st, str: 14 }), 'pillar'); eq(spellFor({ ...st, str: 17 }), 'tornado'); eq(spellFor({ ...st, str: 20 }), 'meteor'); eq(spellFor({ ...st, str: 13 }), 'bolt');
 });
 test('flask: 40틱 뒤 hp +2, 기름병 -1 / 0개면 무시', () => {
   const w = W(); settle(w); w.player.hp = 2;

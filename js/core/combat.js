@@ -166,17 +166,25 @@ export function resolveSkill(w, ev) {
   const aim = nearestTarget(w, 520);                                    // 자동 조준: 가장 가까운 적(앞쪽 우선) 쪽으로 돌아서 쏜다
   if (aim) { p.face = Math.sign(aim.x + aim.w / 2 - cx) || p.face; ev.face = p.face; }
   const live = liveOf(w);
-  if (ev.spell === 'bolt' || ev.spell === 'lance') {
-    const n = ev.spell === 'bolt' && p.mods.lmp7 ? 2 : 1;            // 등불 7: 등불 탄 두 발
-    for (let i = 0; i < n; i++) w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 16, y: p.y + 18 + (n > 1 ? (i ? 8 : -8) : 0), w: 16, h: 12,
-      vx: p.face * S.speed, vy: n > 1 ? (i ? 0.25 : -0.25) : 0, pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player',
-      bolt: ev.spell === 'bolt' ? 'lamp' : 'lance', pierce: ev.spell === 'lance', homing: !!S.homing, spd: S.speed, life: 110, hits: [], src: {} });
+  if (ev.spell === 'bolt' || ev.spell === 'lance' || ev.spell === 'wisps') {
+    const n = S.n || (ev.spell === 'bolt' && p.mods.lmp7 ? 2 : 1);  // 등불 14: 등불 탄 두 발 · 도깨비불 3발
+    const spread = n === 3 ? [-0.9, 0, 0.9] : n === 2 ? [-0.25, 0.25] : [0];
+    for (let i = 0; i < n; i++) w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 16, y: p.y + 18 + (n > 1 ? (i - (n - 1) / 2) * 10 : 0), w: 16, h: 12,
+      vx: p.face * S.speed, vy: spread[i], pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player',
+      bolt: ev.spell === 'lance' ? 'lance' : 'lamp', pierce: ev.spell === 'lance', homing: !!S.homing, spd: S.speed, life: 110, hits: [], src: {} });
+  } else if (S.line) {                                                 // 바닥 직선: 앞쪽 line px 안의 땅 위 적 (가시가 지나가는 시간만큼 늦게)
+    const x0 = p.face > 0 ? p.x + p.w : p.x - S.line;
+    ev.tx = cx; w.pending.push({ t: S.delay, spell: ev.spell, x: x0 + S.line / 2, dmg: Math.round(S.dmg * M), poise: S.poise * PM, r: S.line / 2, y0: p.y - 20, y1: p.y + p.h + 10 });
   } else if (S.delay) {                                                // 착탄형: 표적 자리에 이펙트를 먼저 띄우고, 떨어지는 순간 피해
     let tx;
     if (ev.spell === 'stars') tx = cx + p.face * S.ahead;
     else { const t = nearestTarget(w, S.range); tx = t ? t.x + t.w / 2 : cx + p.face * 120; }
     ev.tx = tx; ev.ty = 300;
-    w.pending.push({ t: S.delay, spell: ev.spell, x: tx, dmg: Math.round(S.dmg * M), poise: S.poise * PM, r: S.radius });
+    (S.ticks || [0]).forEach((ox, i) => w.pending.push({ t: S.delay + i * (S.gap || 0), spell: ev.spell, x: tx + ox * p.face, dmg: Math.round(S.dmg * M), poise: S.poise * PM, r: S.radius }));
+  } else if (ev.spell === 'drain') {                                   // 흡혈: 가장 가까운 적 하나, 맞히면 체력 회복
+    const t = nearestTarget(w, S.range); ev.tx = t ? t.x + t.w / 2 : null;
+    if (t) { spellHit(w, t, Math.round(S.dmg * M), S.poise * PM, 'drain');
+      const hp0 = p.hp; p.hp = Math.min(p.maxHp, p.hp + S.heal); if (p.hp > hp0) w.events.push({ type: 'heal', amount: p.hp - hp0, from: hp0, x: cx, y: p.y + p.h, spell: true }); }
   } else if (ev.spell === 'ring') {
     for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.radius && Math.abs(e.y + e.h / 2 - (p.y + p.h / 2)) < 120) spellHit(w, e, Math.round(S.dmg * M), 0.2 * PM, 'ring');
     w.projectiles = w.projectiles.filter(b => b.owner !== 'enemy');
@@ -201,9 +209,9 @@ export function resolveSkill(w, ev) {
 }
 // 지연 마법 착탄: 그 자리 반경 안의 적
 export function landSkill(w, d) {
-  for (const e of liveOf(w)) if (Math.abs(e.x + e.w / 2 - d.x) <= d.r + e.w / 2) spellHit(w, e, d.dmg, d.poise, d.spell);
+  for (const e of liveOf(w)) if (Math.abs(e.x + e.w / 2 - d.x) <= d.r + e.w / 2 && (d.y0 == null || (e.y + e.h > d.y0 && e.y < d.y1))) spellHit(w, e, d.dmg, d.poise, d.spell);
   w.shake = Math.max(w.shake, d.spell === 'meteor' ? 10 : 5);
-  if (d.spell === 'meteor' || d.spell === 'thunder') w.hitstop = Math.max(w.hitstop, 4);
+  if (d.spell === 'meteor' || d.spell === 'thunder' || d.spell === 'smite') w.hitstop = Math.max(w.hitstop, 4);
 }
 
 // 처형 모션: 적 옆으로 파고들고, hitF에 벤다. 일반 적은 즉사, 보스는 최대 체력의 15%(×각인·투지)

@@ -142,7 +142,7 @@ function spellCard(id, label = '지금 마법') {
     <div class="sc-tags">${(SPELL_TAGS[id] || []).map(t => `<i>${t}</i>`).join('')}</div>
     <div class="sc-desc">${S.desc}${delay}</div></div></div>`;
 }
-const spellMap = () => `<div class="sc-map"><b>마법</b> 가장 높은 스탯이 14 이상이면 그 스탯의 마법, 20이면 상위 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name} ${SPELLS[STAT_SPELL[k][0]].name}/${SPELLS[STAT_SPELL[k][1]].name}`).join(' · ')}</div>`;
+const spellMap = () => `<div class="sc-map"><b>마법</b> 가장 높은 스탯이 14·17·20이면 그 스탯의 마법이 차례로 바뀐다 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name} ${STAT_SPELL[k].map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
 // 단련 미리 보기: 지금(run.stats) → 찍은 뒤(draft). 바뀌는 수치, 열리고 잃는 능력·약점·공명, 마법 변화
 function trainPreview(draft, lastUp) {
   const st0 = run.stats, ch = STATS.filter(S => draft[S.id] !== st0[S.id]);

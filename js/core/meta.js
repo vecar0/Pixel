@@ -34,6 +34,7 @@ export function buy(s, id) {
 // 런 결과를 저장에 반영: 조각, 보스 기록, 어둠 단계 해금, 기록
 export function recordRun(s, r, { won, bossesKilled = [] }) {
   s.records.runs++; s.records.perfectTotal += r.perfect;
+  s.records.newBest = (r.score || 0) > (s.records.bestScore || 0); s.records.bestScore = Math.max(s.records.bestScore || 0, r.score || 0);   // 최고 점수
   for (const b of bossesKilled) s.bossKills[b] = (s.bossKills[b] || 0) + 1;
   let gain = r.shards + bossesKilled.length * 2;
   if (r.challengeDone) { gain += 2; s.records.challenges++; }

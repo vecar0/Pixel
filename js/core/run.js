@@ -4,6 +4,7 @@ import { createWorld } from './world.js';
 import { ELITE_MODS, ENEMY_DEFS } from './enemies.js';
 import { startStats, statMods, train } from './stats.js';
 import { OIL_SPELL, spellFor } from './spells.js';
+import { populateArena, parTime } from './level.js';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -55,7 +56,7 @@ export const ROOM_TYPES = {
 // opts: { dark: 어둠 단계 0~10, pool: 해금된 각인 목록, oil, shortcut: 지역1 단축, daily }
 export function newRun(seed = (Math.random() * 1e9) | 0, opts = {}) {
   const r = { seed, rng: seed >>> 0 || 1, region: 1, roomIdx: 0, length: 6, relics: [], oath: null,
-    embers: 0, hp: null, flasks: null, room: 'combat', perfect: 0, executes: 0, kills: 0, t: 0,
+    embers: 0, hp: null, flasks: null, room: 'combat', perfect: 0, executes: 0, kills: 0, t: 0, score: 0, scoreLog: {}, tutorial: !!opts.tutorial,
     dark: opts.dark || 0, pool: opts.pool || Object.keys(RELICS), oil: opts.oil || 'refined', daily: !!opts.daily,
     stats: startStats(), baseSpell: OIL_SPELL[opts.oil || 'refined'] || 'bolt', lastUp: null, shortcut: !!opts.shortcut, noHitBoss: false, noFlaskRegion: false, regionFlasksUsed: 0, shards: 0, done: [] };
   r.variants = REGIONS.map(() => null);
@@ -199,10 +200,14 @@ export function buildRoomWorld(r) {
     const pick = () => kinds[(rand(r) * kinds.length) | 0];
     const wave = n => Array.from({ length: n }, () => [pick(), xs()]);
     w.waves = [wave(2 + (lvl > 2 ? 1 : 0)), wave(2 + (lvl > 1 ? 1 : 0))];
+    if (r.tutorial && r.region === 1 && lvl === 0) { w.waves = [[['ghoul', 620]], [['ghoul', 760], ['moth', 900]]]; w.holdWaves = true; w.tutorial = true; }   // 첫 순례 첫 방: 튜토리얼 (적 적게, 준비되면 등장)
     if (lvl > 3 || r.dark >= 4) w.waves.push(wave(3));
     const mod = () => mods[(rand(r) * mods.length) | 0];
     if (r.dark >= 3 && rand(r) < 0.3) w.waves[1][0] = [w.waves[1][0][0], w.waves[1][0][1], 'elite', mod()];
     if (type === 'elite') { const m = w.width / 2; w.waves = [[[kinds[0], m, 'elite', mod()], [pick(), m + 220]], [[pick(), m - 80], [kinds[0], m + 140, 'elite', mod()]]]; }
+    w.waveCount = w.waves.length;
+    populateArena(w, r.region, lvl, () => rand(r), !!w.tutorial);
+    w.par = w.tutorial ? 0 : parTime(w);                                // 방 목표 시간(초): 안에 정리하면 보너스 (튜토리얼은 없음)       // 항아리·가시·분출구·움직이는 발판·레버와 보물 상자 (지역이 깊을수록 많이)
   }
   const p = w.player;
   applyRelics(p, r.relics);

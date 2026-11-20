@@ -52,7 +52,7 @@ let bossesKilled = [], practice = false;
 
 let run = null, mode = 'title', world = createWorld({ room: 'arena' }), acc = 0, last = performance.now(), slowT = 0;
 // 테스트·디버그용 훅
-const lk = window.__lk = { get world() { return world; }, get mode() { return mode; }, get run() { return run; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y), gotoBoss: reg => { setRegion(run, reg); enterRoom(run, 'boss'); play(); } };
+const lk = window.__lk = { get tut() { return tut; }, get world() { return world; }, get mode() { return mode; }, get run() { return run; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y), gotoBoss: reg => { setRegion(run, reg); enterRoom(run, 'boss'); play(); } };
 
 function screen(html) { input.clear(); R.hud = !html; ui.innerHTML = html ? `<div class="screen">${html}</div>` : ''; }
 function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); sfx.play('click'); fn(); }); }
@@ -65,14 +65,71 @@ function play() {
   else R.banner = { s: ST[run.room] || '', sub: `${regionOf(run).name} · ${run.roomIdx + 1} / ${run.length}`, t: 150, dur: 150 };
   world.player.lagTicks = Math.max(0, Math.min(6, Math.round(save.settings.offsetMs / 16.7)));   // 타이밍 보정
   if (world.player.roomHealed) R.healFx(world.player, 1, world.player.hp - 1);                 // 생명 16
-  sfx.musicFor(run.region, run.room === 'boss'); acc = 0; slowT = 0; mode = 'play'; screen(''); showTouch(); }
+  sfx.musicFor(run.region, run.room === 'boss'); acc = 0; slowT = 0; mode = 'play'; screen(''); showTouch();
+  tut = world.tutorial ? { step: 0, x0: world.player.x, t: 0, hurt: 0 } : null; if (tut) { R.banner = { s: '첫 순례', sub: '하나씩 해 보세요', t: 150, dur: 150 }; tutStep(0); } }
+// 대화창: 초상·이름·한 글자씩 나오는 대사. 누르면(또는 Enter) 다 보이고, 다시 누르면 다음 줄 → 끝나면 then()
+const TALK = {
+  keeper: { name: '등대지기 노라', img: 'assets/keeper.png', lines: [
+    ['등대의 불이 꺼진 지 오래야.', '네 등불로 네 개의 대등을 다시 켜 주렴.'],
+    ['불씨 조각을 모아 오면', '창고 물건을 내어 주지. 기름도, 각인도.'],
+    ['허수아비로 손을 풀고 가렴.', '패링은 적이 번쩍이는 그 순간이 전부야.'],
+    ['어둠이 깊을수록 보상도 크다네.', '자신이 생기면 제단에서 어둠을 올려 봐.'],
+    ['방마다 목표 시간이 있어.', '빨리 정리하면 불씨를 더 얹어 주지.'],
+  ] },
+  merchant: { name: '떠돌이 상인', img: 'assets/merchant.png', lines: [
+    ['오, 손님이군. 불씨만 있으면 뭐든 내주지.'],
+    ['이 근처엔 레버로 여는 작은 방이 있다더군.', '보물 상자가 잠들어 있대.'],
+    ['항아리는 깨 봐. 가끔 빛 구슬이 나오거든.'],
+  ] },
+};
+function talk(who, then, pick) {
+  const T = TALK[who], lines = T.lines[pick ?? ((Math.random() * T.lines.length) | 0)];
+  mode = 'talk'; touch.classList.add('hidden');
+  let i = 0, shown = 0, timer = 0;
+  const draw = () => {
+    screen(`<div class="talkbox"><img class="portrait" src="${T.img}" alt=""><div class="talk-body"><b>${T.name}</b><p id="tline"></p></div><button class="btn next" id="tnext">${i < lines.length - 1 ? '▶' : '확인'}</button></div>`);
+    const el = $('#tline'), full = lines[i]; shown = 0; clearInterval(timer);
+    timer = setInterval(() => { shown++; el.textContent = full.slice(0, shown); if (shown >= full.length) clearInterval(timer); }, 28);
+    const next = () => { if (shown < full.length) { shown = full.length; el.textContent = full; clearInterval(timer); return; } clearInterval(timer); if (++i < lines.length) draw(); else then(); };
+    bind('tnext', next); $('.talkbox').addEventListener('pointerup', e => { if (e.target.id !== 'tnext') next(); });
+  };
+  draw();
+}
+// 튜토리얼 (첫 순례 첫 방): 한 단계씩 해 보면 다음 안내. 적은 '패링' 단계에서야 나온다
+let tut = null;
+const K = (key, btn) => TOUCH ? `(${btn} 버튼)` : `(${key})`;
+const TUT = [
+  () => `이동해 보세요 ${TOUCH ? '(왼쪽 스틱)' : '(← → 또는 A D)'}`,
+  () => `점프 ${K('스페이스 · W', '점프')} — 발판에 올라갈 수 있어요`,
+  () => `공격 ${K('J', '공격')} — 항아리를 깨 보세요`,
+  () => '불씨를 주우면 점수와 상점 화폐가 돼요',
+  () => `적의 공격이 번쩍이는 순간 패링 ${K('K', '패링')} — 완벽 패링은 빛을 크게 모아요`,
+  () => `구르기 ${K('L · Shift', '회피')} — 무적으로 피하고 적을 지나갈 수 있어요`,
+  () => `빛 게이지가 차면 마법 ${K('U', '마법')} — 적을 모두 쓰러뜨리면 출구가 열려요`,
+];
+function tutStep(n) { tut.step = n; if (n >= TUT.length) { R.say('튜토리얼 끝! 이제 순례를 이어 가세요', 200); save.tutorialDone = true; persist(); tut = null; return; } R.say(TUT[n](), 1e9); if (n === 4) world.holdWaves = false; }
+function tutTick() {
+  if (!tut || !world.tutorial) return;
+  const p = world.player;
+  if (tut.step === 0 && Math.abs(p.x - tut.x0) > 110) tutStep(1);
+  else if (tut.step === 1 && !p.onGround) tutStep(2);
+  else if (tut.step === 3 && ++tut.t > 150) tutStep(4);
+  else if (tut.step === 6 && world.cleared) tutStep(7);
+}
+function tutEvent(ev) {
+  if (tut.step === 2 && ev.type === 'urnBreak') { tut.t = 0; tutStep(3); }
+  else if (tut.step === 4 && ev.type === 'parry') tutStep(5);
+  else if (tut.step === 4 && ev.type === 'hurt' && ++tut.hurt % 2 === 0) R.say('공격 직전 몸이 번쩍이는 순간을 노려요 — ' + TUT[4](), 1e9);
+  else if (tut.step === 5 && ev.type === 'rollStart') tutStep(6);
+  else if (tut.step === 6 && ev.type === 'castStart') tutStep(7);
+}
 // 디버그·테스트용: 방 바로 열기
 function setRoom(room) { if (!run) { run = newRun(); } enterRoom(run, room === 'arena' ? 'combat' : room); play(); }
 // 빠른 시작 (패링의 서약)
 function start() { run = newRun(); enterRoom(run, 'combat'); bossesKilled = []; practice = false; play(); R.irisMode = null; R.trans.clear(); }   // 테스트용 빠른 시작: 전환 연출 생략
 function newPilgrimage(opts = {}) {
   bossesKilled = []; practice = false;
-  run = newRun(opts.seed, { dark: save.dark, pool: relicPool(save), oil: save.oil, shortcut: (save.bossKills.bellBoss || 0) >= 3, daily: !!opts.daily });
+  run = newRun(opts.seed, { dark: save.dark, pool: relicPool(save), oil: save.oil, shortcut: (save.bossKills.bellBoss || 0) >= 3, daily: !!opts.daily, tutorial: !save.records.runs && !save.tutorialDone });   // 첫 순례 = 튜토리얼 방
 }
 
 const relicCard = (id, extra = '') => { const r = RELICS[id], t = RELIC_TONE[r.tag] || 'bone';
@@ -403,7 +460,11 @@ function overlay(kind) {
   if (kind === 'cleared') {
     // 방을 비우면 출구만 열린다. 보상(단련·각인)은 출구로 나가 아이리스가 검게 닫힌 뒤 고른다 (leaveRoom)
     world.rewarded = world.counted = true; run.pending = run.room === 'combat' ? 'train' : 'relic'; roomCleared(run);
-    resume(); R.say(run.pending === 'train' ? '출구가 열렸다 — 나가면 단련' : '출구가 열렸다 — 나가면 각인 선택');
+    addScore('room', 100);
+    const sec = world.t / 60, par = world.par || 0, fast = par && sec <= par;
+    const bonus = fast ? Math.round(200 * (1 - sec / par)) + 20 : 0;
+    if (fast) { addScore('time', bonus); run.embers += 5; }
+    resume(); R.say((fast ? `빠른 정리! ${Math.ceil(sec)}초 / 목표 ${par}초 · 점수 +${bonus} · 불씨 +5 — ` : '') + (run.pending === 'train' ? '출구가 열렸다 — 나가면 단련' : '출구가 열렸다 — 나가면 각인 선택'), fast ? 240 : 150);
   } else if (kind === 'won') {
     saveFromWorld(run, world);
     const boss = regionOf(run).boss;
@@ -433,7 +494,8 @@ function finish(won) {
   const mins = run.t ? Math.floor(run.t / 3600) + '분 ' + Math.floor(run.t / 60 % 60) + '초' : '-';
   screen(`<div class="card result"><h2 class="${won ? '' : 'lost'}">${won ? '꺼진 태양이 다시 떠올랐다' : '등불이 꺼졌다'}</h2>
     <div class="line">${regionOf(run).name}, ${run.roomIdx + 1}번째 방 · 어둠 ${run.dark}</div>
-    <div class="tally"><span><b>${run.perfect}</b>완벽 패링</span><span><b>${run.executes}</b>처형</span><span><b>${run.kills}</b>처치</span><span><b>${mins}</b>시간</span></div>
+    <div class="tally"><span><b>${run.score || 0}</b>점수${save.records.newBest ? ' · 최고 기록!' : ''}</span><span><b>${run.perfect}</b>완벽 패링</span><span><b>${run.kills}</b>처치</span><span><b>${mins}</b>시간</span></div>
+    <div class="line">${Object.entries(run.scoreLog || {}).map(([k, v]) => `${SCORE_NAME[k] || k} ${v}`).join(' · ')} · 최고 점수 ${save.records.bestScore || 0}</div>
     ${runStat()}
     <div class="line">이번 판 도전 '${ch.name}': ${run.challengeDone ? '성공' : '실패'}</div>
     <div class="gain">${icon('ember', 'amber')}등불 조각 +${gain} (보유 ${save.shards})${won && save.darkUnlocked > run.dark ? ' · 어둠 ' + save.darkUnlocked + ' 해금' : ''}</div>
@@ -448,6 +510,9 @@ function regionIntro() {
     ${first ? `<div class="line">${run.daily ? '오늘의 시련 · ' : ''}어둠 ${run.dark} · 이번 판 도전: ${ch.name} (성공하면 등불 조각 +2)</div>` : ''}<button class="btn" id="go">들어간다</button></div>`);
   bind('go', play);
 }
+// 점수: 처치 10(강적 50, 보스 500) · 완벽 패링 25 · 처형 40 · 불씨 5 · 상자 100 · 방 정리 100 · 목표 시간 보너스 최대 200
+const SCORE_NAME = { kill: '처치', parry: '완벽 패링', execute: '처형', ember: '불씨 수집', chest: '보물 상자', room: '방 정리', time: '빠른 정리', boss: '보스' };
+function addScore(k, n) { if (!run || !n) return; run.score = (run.score || 0) + n; run.scoreLog = run.scoreLog || {}; run.scoreLog[k] = (run.scoreLog[k] || 0) + n; }
 function resume() { mode = 'play'; screen(''); showTouch(); last = performance.now(); acc = 0; }
 
 const SOUND = { hurt: 'hurt', kill: 'kill', execute: 'execute', slam: 'slam', telegraph: 'telegraph', heal: 'heal' };
@@ -463,13 +528,22 @@ function onEvents(w) {
     else if (ev.type === 'execute') { sfx.play('execute'); if (navigator.vibrate) navigator.vibrate([40, 30, 60]); }
     else if (ev.type === 'castStart') sfx.play(ev.spell === 'bolt' ? 'bolt' : 'ult');
     else if (SOUND[ev.type]) sfx.play(SOUND[ev.type]);
-    if (ev.type === 'kill' && run) run.kills++;
+    if (ev.type === 'kill' && run) { run.kills++; if (!ev.dummy) addScore(ev.boss ? 'boss' : 'kill', ev.boss ? 500 : ev.elite ? 50 : 10); }
+    if (ev.type === 'parry' && ev.perfect) addScore('parry', 25);
+    if (ev.type === 'execute') addScore('execute', 40);
+    if (ev.type === 'pickup') { if (ev.kind === 'ember' && run) { run.embers++; addScore('ember', 5); } sfx.play(ev.kind === 'ember' ? 'click' : 'heal'); }
+    if (ev.type === 'chestOpen') { addScore('chest', 100); sfx.play('ignite'); }
+    if (ev.type === 'chestEmbers' && run) { run.embers += ev.n; R.say(`보물 상자 — 불씨 +${ev.n}`); }
+    if (ev.type === 'urnBreak') sfx.play('hit');
+    if (ev.type === 'lever' || ev.type === 'gateOpen') sfx.play(ev.type === 'lever' ? 'parryNormal' : 'slam');
+    if (ev.type === 'ventFire') sfx.play('ult');
+    if (w.tutorial && tut) tutEvent(ev);
     if (w.town) {                                                         // 마을
-      if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'keeper') unlockScreen(); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'board') recordsScreen(); else if (ev.kind === 'campfire') campMenu(); }
+      if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'keeper') talk('keeper', unlockScreen); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'board') recordsScreen(); else if (ev.kind === 'campfire') campMenu(); }
       if (ev.type === 'exit') prepScreen();
       continue;
     }
-    if (ev.type === 'interact') { if (ev.kind === 'merchant') shopScreen(); else if (ev.kind === 'campfire') restScreen(); }
+    if (ev.type === 'interact') { if (ev.kind === 'merchant') { if (run && !run.metMerchant) { run.metMerchant = true; talk('merchant', shopScreen); } else shopScreen(); } else if (ev.kind === 'campfire') restScreen(); }
     if (ev.type === 'exit') { saveFromWorld(run, w); if (!w.counted) roomCleared(run); leaveRoom(); return; }
     if (ev.type === 'bellRelease') sfx.play('telegraph');
     if (ev.type === 'bellTrap' || ev.type === 'bellMiss') sfx.play('slam');
@@ -481,7 +555,7 @@ function onEvents(w) {
   }
   const p = w.player;
   if (p.stateT === 0 && p.state === 'attack') sfx.play('swing');
-  if (p.stateT === 0 && p.state === 'roll') sfx.play('roll');
+  if (p.stateT === 0 && p.state === 'roll') { sfx.play('roll'); if (tut && w.tutorial) tutEvent({ type: 'rollStart' }); }
 }
 
 function step() {
@@ -515,7 +589,7 @@ function frameBody(now) {
       else {
         if (world.wasCine) { world.wasCine = false; showTouch(); if (run && run.room === 'boss' && !world.hinted) { world.hinted = true; const b = world.enemies.find(e => e.boss); if (b && GIMMICK_HINT[b.kind]) R.say(GIMMICK_HINT[b.kind], 360); } }   // 보스 기믹 힌트
         const rate = world.player.state === 'execute' && !world.hitstop ? CFG.execute.slow : slowT > 0 && !world.hitstop ? 0.45 : 1;   // 처형 중 슬로모션, 완벽 패링 직후 잠깐 슬로
-        acc = stepLoop(acc, dt * rate, step);
+        acc = stepLoop(acc, dt * rate, step); tutTick();
       }
       if (world.over) overlay('dead');
       else if (world.won) overlay('won');

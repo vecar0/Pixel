@@ -1,5 +1,6 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
 import { hitGimmick, gimmickDamageMul } from './gimmick.js';
+import { hitLevel } from './level.js';
 import { CFG } from './config.js';
 import { ENEMY_DEFS } from './enemies.js';
 import { attackBox, invulnerable, overlap } from './player.js';
@@ -84,7 +85,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
     e.hp = 0; e.dead = true;
     w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill * w.player.mods.lightMul + (w.player.mods.lmp10 ? 15 : 0));   // 등불 10: 처치마다 빛 +15
     if (w.player.mods.killCrit) w.player.crit = true;                   // 투지 7: 처치하면 다음 공격 치명타
-    w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
+    w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss, elite: !!e.elite, dummy: !!e.dummy });
   }
   return dmg;
 }
@@ -93,7 +94,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
 export function resolvePlayerAttacks(w) {
   const p = w.player, box = attackBox(p);
   if (!box) return;
-  if (p.stateT === CFG.attack.startupF) hitGimmick(w, box);              // 보스방 기믹 오브젝트 (휘두를 때 한 번)
+  if (p.stateT === CFG.attack.startupF) { hitGimmick(w, box); hitLevel(w, box); }   // 보스 기믹·항아리·레버·상자 (휘두를 때 한 번)              // 보스방 기믹 오브젝트 (휘두를 때 한 번)
   for (const e of w.enemies) {
     if (e.dead || e.spawnT > 0 || e.hitBy === p.swing || !overlap(box, e)) continue;
     e.hitBy = p.swing;

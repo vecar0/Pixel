@@ -35,11 +35,12 @@ for (let guard = 0; guard < 2000; guard++) {
   if (st.room === 'rest' || st.room === 'shop') {
     await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props[0].x - 11; }); await p.waitForTimeout(150);
     await p.keyboard.press('j'); await p.waitForTimeout(250);
+    for (let k = 0; k < 8 && (await mode()) === 'talk'; k++) { await tap('#tnext'); await p.waitForTimeout(120); }   // 상인 첫 대화
     (await mode()) === st.room || fail(st.room + ' 창이 안 열림');
     await tap(st.room === 'rest' ? '[data-id=heal]' : '[data-id=leave]'); await p.waitForTimeout(250);
   } else {
     // 전투: 리라는 무적, 적을 차례로 처치 (웨이브 포함)
-    await p.evaluate(() => { window.__lk.world.player.iframes = 1e9; });
+    await p.evaluate(() => { window.__lk.world.player.iframes = 1e9; window.__lk.world.holdWaves = false; });   // 튜토리얼 방도 바로 진행
     const done = await until(async () => {
       await p.evaluate(async () => { const { damageEnemy } = await import('/js/core/combat.js'); const w = window.__lk.world; for (const e of w.enemies) if (!(e.spawnT > 0)) damageEnemy(w, e, 99999); });
       const md = await mode(); return md !== 'play' || await p.evaluate(() => !!window.__lk.world.rewarded);

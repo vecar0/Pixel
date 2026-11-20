@@ -8,6 +8,8 @@ import { ENEMY_DEFS, spawnEnemy } from '../js/core/enemies.js';
 import { I, steps, FLAT, makeDummy } from './helpers.mjs';
 import { stepLoop } from '../js/loop.js';
 import { GIMMICK } from '../js/core/gimmick.js';
+import { initLevel, LV } from '../js/core/level.js';
+import { newRun, enterRoom, buildRoomWorld, setRegion } from '../js/core/run.js';
 import { SPELLS, STAT_SPELL, spellFor } from '../js/core/spells.js';
 
 const W = (o = {}) => createWorld({ room: 'test', solids: FLAT, ...o });
@@ -351,6 +353,45 @@ test('2막: 체력 절반이면 포효(무적·정지) 후 무대 변화 — 성
   steps(w, GIMMICK.phase2.waterRiseF + 5); ok(w.water <= GIMMICK.phase2.water + 1, 'water'); eq(w.player.slowMul, GIMMICK.phase2.slow);
   const { w: w2, b: b2 } = gWorld('spider'); damageEnemy(w2, b2, b2.hp - Math.floor(b2.maxHp / 2)); steps(w2, 2);
   eq(w2.props.filter(o => o.kind === 'mirror').length, 3);
+});
+/* ── 레벨 요소 ── */
+function lvWorld() { const w = W(); initLevel(w); settle(w); w.player.face = 1; return w; }
+test('항아리: 베면 깨지고 불씨가 튀어나와 리라에게 빨려 들어와 주워진다', () => {
+  const w = lvWorld(), L = w.level; L.urns.push({ x: w.player.x + 30, y: 270, w: 22, h: 30, loot: 'ember' });
+  tick(w, I({ attack: true })); let got = 0;
+  for (let i = 0; i < 200; i++) { tick(w, I()); got += w.events.filter(e => e.type === 'pickup').length; }
+  ok(L.urns[0].broken, 'broken'); ok(got >= 2, 'picked ' + got);
+});
+test('가시: 밟으면 피해 1 + 튕겨 오름, 구르기 무적이면 무사', () => {
+  const w = lvWorld(); w.level.spikes.push({ x: w.player.x + 40, w: 48 }); const hp = w.player.hp;
+  let bounced = false; for (let i = 0; i < 40; i++) { tick(w, I({ right: true })); if (w.player.vy < -5) bounced = true; }
+  eq(w.player.hp, hp - 1); ok(bounced, 'bounce');
+  const w2 = lvWorld(); w2.level.spikes.push({ x: w2.player.x + 40, w: 48 }); const hp2 = w2.player.hp;
+  tick(w2, I({ roll: true, right: true })); steps(w2, 10); eq(w2.player.hp, hp2);
+});
+test('불기둥 분출구: 예고 뒤 분출하면 적도 리라도 맞는다', () => {
+  const w = lvWorld(); const d = makeDummy(w, { hp: 200 }); d.x = w.player.x + 200;
+  w.level.vents.push({ x: d.x + d.w / 2, off: 0, st: 'idle' }); const hp = w.player.hp;
+  steps(w, LV.vent.period + 5); eq(d.hp, 200 - LV.vent.enemyDmg);
+  w.level.vents[0].x = w.player.x + w.player.w / 2; steps(w, LV.vent.period); ok(w.player.hp < hp, 'player burned');
+});
+test('레버를 베면 철문이 열리고(벽 판정 사라짐) 상자를 열면 불씨·회복·빛', () => {
+  const w = lvWorld(), L = w.level, gate = { x: w.player.x - 60, y: 160, w: 16, h: 140 }; w.solids.push(gate);
+  L.gates.push({ id: 1, x: gate.x, y: 300, solid: gate, open: false, t: 0 }); L.levers.push({ x: w.player.x + 34, y: 300, on: false, gate: 1 });
+  tick(w, I({ attack: true })); steps(w, 50); ok(L.levers[0].on, 'lever'); ok(!w.solids.includes(gate), 'gate gone');
+  L.chests.push({ x: w.player.x + 34, y: 300, open: false }); steps(w, 20); tick(w, I({ attack: true })); steps(w, 12);
+  ok(L.chests[0].open, 'chest'); ok(L.pickups.some(q => q.kind === 'heal') && L.pickups.some(q => q.kind === 'light'), 'loot');
+});
+test('움직이는 발판: 위에 선 리라를 함께 옮긴다', () => {
+  const w = lvWorld(), s = { x: w.player.x - 10, y: 250, w: 72, h: 8, oneWay: true }; w.solids.push(s);
+  w.level.movers.push({ solid: s, x0: s.x, x1: s.x + 200, dir: 1 }); w.player.y = 250 - w.player.h - 2; steps(w, 10);
+  const x0 = w.player.x; steps(w, 60); ok(w.player.x - x0 > 40, 'carried ' + (w.player.x - x0));
+});
+test('레벨 배치: 지역이 깊을수록 가시·분출구가 늘고, 지역 3부터 움직이는 발판, 튜토리얼 방은 항아리만', () => {
+  const r = newRun(9); r.tutorial = true; enterRoom(r, 'combat'); const t = buildRoomWorld(r);
+  ok(t.tutorial && t.holdWaves, 'tutorial'); eq(t.level.spikes.length + t.level.vents.length, 0); ok(t.level.urns.length >= 3);
+  const r4 = newRun(9); setRegion(r4, 4); enterRoom(r4, 'combat'); r4.roomIdx = 2; const w4 = buildRoomWorld(r4);
+  ok(w4.level.vents.length >= 1, 'vents'); ok(w4.level.movers.length === 1, 'mover'); ok(w4.level.chests.length === 1, 'chest');
 });
 function bossWorld(force) {
   const w = createWorld({ room: 'boss' }); w.player.x = 520; steps(w, 30); w.player.hp = 99;   // 평평한 바닥 위

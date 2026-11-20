@@ -39,13 +39,26 @@ await check('마을: 걸어서 창고·제단·모닥불·허수아비, 오른�
   await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
   eq(await p.evaluate(() => window.__lk.mode), 'town'); ok(await p.evaluate(() => window.__lk.world.town), 'walk town');
   const at = async (kind, want) => { await p.evaluate(k => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === k).x - 30; }, kind); await p.waitForTimeout(200);
-    await p.keyboard.press('j'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), want);
+    await p.keyboard.press('j'); await p.waitForTimeout(250);
+    for (let k = 0; k < 8 && await p.evaluate(() => window.__lk.mode) === 'talk'; k++) { await p.locator('#tnext').dispatchEvent('pointerup'); await p.waitForTimeout(120); }   // 등대지기 대화
+    eq(await p.evaluate(() => window.__lk.mode), want);
     await p.locator('[data-id=back], #back').first().dispatchEvent('pointerup'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), 'town'); };
   await at('keeper', 'unlock'); await at('altar', 'prep'); await at('board', 'records'); await at('campfire', 'camp');
   ok(await p.evaluate(() => window.__lk.world.enemies.some(e => e.dummy)), 'dummy');
   await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(300);
   eq(await p.evaluate(() => window.__lk.mode), 'prep');
   await p.locator('[data-id=go]').dispatchEvent('pointerup'); await p.waitForTimeout(300); eq(await p.evaluate(() => window.__lk.mode), 'intro');
+});
+await check('첫 순례 튜토리얼: 이동 → 점프 → 항아리 → 불씨 → (적 등장) 패링 단계', PC, async p => {
+  await p.keyboard.press('Enter'); await p.waitForTimeout(1200); await p.keyboard.press('Enter'); await p.waitForTimeout(300); await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
+  ok(await p.evaluate(() => window.__lk.world.tutorial && window.__lk.world.holdWaves), 'tutorial room');
+  const step = () => p.evaluate(() => window.__lk.tut && window.__lk.tut.step);
+  await p.keyboard.down('d'); await p.waitForTimeout(900); await p.keyboard.up('d'); eq(await step(), 1);
+  await p.keyboard.press('Space'); await p.waitForTimeout(400); eq(await step(), 2);
+  await p.evaluate(() => { const w = window.__lk.world, u = w.level.urns[0]; w.player.x = u.x - 30; w.player.face = 1; }); await p.waitForTimeout(200);
+  await p.keyboard.press('j'); await p.waitForTimeout(400); eq(await step(), 3);
+  await p.waitForTimeout(2800); eq(await step(), 4); eq(await p.evaluate(() => window.__lk.world.holdWaves), false);
+  ok(await p.evaluate(() => window.__lk.run.score > 0), 'score from embers');
 });
 await check('런: 클리어 → 출구 열림 → 아이리스 닫힘 뒤 단련 → 정해진 다음 방 → 휴식 방 모닥불·출구', PC, async p => {
   await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);

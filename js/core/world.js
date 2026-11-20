@@ -1,6 +1,7 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
 import { CFG } from './config.js';
 import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js';
+import { updateLevel, dropPickups } from './level.js';
 import { createPlayer, updatePlayer, overlap } from './player.js';
 import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite } from './enemies.js';
 import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js';
@@ -95,7 +96,7 @@ function updateCamera(w) {
 // 웨이브: 적이 다 죽으면 60틱 뒤 다음 웨이브. 마지막까지 끝나면 cleared
 function updateWaves(w) {
   if (w.room === 'boss') { if (!w.enemies.length && !w.won) { w.won = true; w.events.push({ type: 'win' }); } return; }
-  if (w.enemies.length || w.cleared || w.room !== 'arena') return;
+  if (w.enemies.length || w.cleared || w.room !== 'arena' || w.holdWaves) return;   // holdWaves: 튜토리얼에서 준비될 때까지 대기
   if (!w.waves.length) { w.cleared = true; w.events.push({ type: 'cleared' }); return; }
   if (++w.waveDelay < 60) return;
   w.waveDelay = 0;
@@ -141,11 +142,13 @@ export function tick(w, inp) {
     updateEnemy(w, e);
   }
   if (w.room === 'boss') updateGimmick(w, damageEnemy);
+  updateLevel(w, damageEnemy);
   separateBodies(w);
   updateProjectiles(w);
 
   resolvePlayerAttacks(w);
-  for (const hb of w.hitboxes) resolveEnemyHit(w, hb);
+  for (const hb of w.hitboxes) if (resolveEnemyHit(w, hb) === 'hit' && hb.hazard) { w.player.vy = -6.5; w.player.onGround = false; }   // 가시·불기둥: 맞으면 튕겨 오름
+  for (const ev of w.events) if (ev.type === 'kill' && !ev.boss && !ev.dummy) dropPickups(w, ev.x, ev.y, ev.elite ? 5 : 1 + (ev.x | 0) % 2);   // 처치: 불씨 1~2 (엘리트 5)
   for (const e of w.enemies) if (e.dead && e.mods && e.mods.includes('split'))   // 분열: 나방 둘
     for (const k of [-1, 1]) spawnEnemy(w, 'moth', e.x + k * 20, e.y - 10, { hpMul: w.hpMul });
   w.enemies = w.enemies.filter(e => !e.dead);

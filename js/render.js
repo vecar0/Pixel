@@ -217,6 +217,7 @@ export class Renderer {
     g.save(); g.translate(ox, oy);
     if (bd) this.drawPlatforms(g, w);                                     // 발판: 어둠 위에 선명하게 (밟을 수 있는 면)
     if (w.props) this.drawProps(g, w);                                    // 쉼터 오브젝트 (상인 등)
+    if (w.level) this.drawLevel(g, w);                                    // 항아리·가시·분출구·발판·레버·철문·상자
     const hideChars = this.irisBusy() || (this.cine && this.cine.hideLira);
     for (const e of w.enemies) if (e.dummy) {                              // 마을 허수아비 이름표
       g.font = '10px Galmuri9, monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -247,6 +248,7 @@ export class Renderer {
       g.fillStyle = gl; g.beginPath(); g.arc(bx, by, r * 2.2, 0, Math.PI * 2); g.fill();
     }
     for (const q of this.parts) { g.fillStyle = q.col; g.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s); }
+    if (w.level) this.drawPickups(g, w);
     if (this.beamBack && this.beamBack.t > 0) {                            // 거울에서 거미로 되돌아가는 광선
       const B = this.beamBack, a = B.t / 14, x0 = Math.min(B.x0, B.x1), wd = Math.abs(B.x1 - B.x0); B.t--;
       g.fillStyle = `rgba(150,230,255,${0.7 * a})`; g.fillRect(x0, B.y - 9, wd, 18); g.fillStyle = `rgba(255,255,255,${a})`; g.fillRect(x0, B.y - 3, wd, 6);
@@ -446,6 +448,37 @@ export class Renderer {
     }
   }
   img(n) { this.imgs = this.imgs || {}; let im = this.imgs[n]; if (!im) { im = this.imgs[n] = new Image(); im.src = `assets/${n}.png`; } return im.complete && im.naturalWidth ? im : null; }
+  // 레벨 오브젝트 (게임 그림과 같은 픽셀 소품)
+  drawLevel(g, w) {
+    const L = w.level, t = w.t, I = n => this.img(n);
+    for (const s of L.spikes) { const im = I('spikes'); if (im) for (let x = 0; x < s.w; x += im.naturalWidth) { const ww = Math.min(im.naturalWidth, s.w - x); g.drawImage(im, 0, 0, ww, im.naturalHeight, s.x + x, 300 - im.naturalHeight + 1, ww, im.naturalHeight); } }
+    for (const v of L.vents) {
+      const im = I('vent'), x = Math.round(v.x);
+      if (im) g.drawImage(im, (im.naturalWidth - 40) >> 1, 0, 40, im.naturalHeight, x - 20, 300 - im.naturalHeight + 2, 40, im.naturalHeight);
+      if (v.st === 'warn') {                                              // 예고: 틈새가 달아오르고 불씨·연기가 오름
+        const k = 0.4 + 0.6 * Math.abs(Math.sin(t * 0.25)); g.fillStyle = `rgba(255,120,40,${0.35 * k})`; g.fillRect(x - 14, 180, 28, 120);
+        g.fillStyle = `rgba(255,190,90,${k})`; g.fillRect(x - 16, 294, 32, 3);
+        if (t % 4 === 0) this.parts.push({ x: x - 10 + Math.random() * 20, y: 292, vx: (Math.random() - 0.5) * 0.4, vy: -1 - Math.random(), life: 30, col: Math.random() < 0.5 ? '#5a5060' : '#ffb347', s: 2 });
+      }
+    }
+    for (const m of L.movers) { const im = I('mover'), s = m.solid; if (im) g.drawImage(im, Math.round(s.x + s.w / 2 - im.naturalWidth / 2), Math.round(s.y - 2)); }
+    for (const u of L.urns) if (!u.broken) { const im = I('urn'); if (im) g.drawImage(im, Math.round(u.x + u.w / 2 - im.naturalWidth / 2), Math.round(u.y + u.h - im.naturalHeight + 1)); }
+    for (const c of L.chests) { const im = I(c.open ? 'chest-open' : 'chest'); if (im) g.drawImage(im, Math.round(c.x - im.naturalWidth / 2), Math.round(c.y - im.naturalHeight + 1));
+      if (!c.open) { const k = 0.5 + 0.5 * Math.sin(t * 0.1); g.fillStyle = `rgba(255,200,90,${0.25 * k})`; g.fillRect(c.x - 20, c.y - 30, 40, 30); } }
+    for (const gt of L.gates) { const im = I('gate'); if (!im || (gt.open && !gt.solid)) continue; g.drawImage(im, Math.round(gt.x - im.naturalWidth / 2), Math.round(300 - im.naturalHeight + 1 - (gt.lift || 0))); }   // 열리면 위로 올라가며 사라짐
+    for (const v of L.levers) { const im = I('lever'); if (!im) continue; g.save(); g.translate(Math.round(v.x), Math.round(v.y - im.naturalHeight + 1)); if (v.on) { g.scale(-1, 1); g.filter = 'hue-rotate(110deg)'; } g.drawImage(im, -im.naturalWidth / 2, 0); g.restore();
+      if (!v.on) { const k = 0.5 + 0.5 * Math.sin(t * 0.15); g.fillStyle = `rgba(255,179,71,${0.3 * k})`; g.fillRect(Math.round(v.x) - 14, Math.round(v.y) - 34, 28, 34); } }
+  }
+  drawPickups(g, w) {
+    for (const q of w.level.pickups) {
+      const x = Math.round(q.x + 4), y = Math.round(q.y + 4 + Math.sin((w.t + q.x) * 0.15) * (q.vy === 0 ? 1.5 : 0));
+      const col = q.kind === 'heal' ? ['127,224,138', '#7fe08a', '#e6ffe8'] : q.kind === 'light' ? ['255,200,90', '#ffb347', '#fff2c8'] : ['255,150,60', '#ff9a3a', '#ffe2a8'];
+      const r = q.kind === 'ember' ? 7 : 10, gl = g.createRadialGradient(x, y, 0, x, y, r);
+      gl.addColorStop(0, `rgba(${col[0]},0.55)`); gl.addColorStop(1, `rgba(${col[0]},0)`); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2);
+      g.fillStyle = col[1]; if (q.kind === 'heal') { g.fillRect(x - 1, y - 3, 3, 7); g.fillRect(x - 3, y - 1, 7, 3); } else g.fillRect(x - 2, y - 2, q.kind === 'light' ? 5 : 4, q.kind === 'light' ? 5 : 4);
+      g.fillStyle = col[2]; g.fillRect(x - 1, y - 1, 2, 2);
+    }
+  }
   // 보스 기믹 오브젝트 (보스 뒤): 쇠사슬 고리 · 수정 거울 · 빛의 등대
   drawGimmickProp(g, w, o) {
     const t = w.t;
@@ -898,6 +931,12 @@ export class Renderer {
       g.globalAlpha = 1;
       g.drawImage(I('ember', 'amber'), x0 + n * 14 + 2, 6);
       g.fillStyle = '#ffe2a8'; g.fillText(String(r.embers), x0 + n * 14 + 16, 7);
+      // 점수 · 방 목표 시간 (전투·강적 방에서 정리하기 전까지)
+      const sx = x0 + n * 14 + 60; plate(sx - 4, 3, 70, 18); g.fillStyle = '#cfc6dc'; g.fillText('점수 ' + (r.score || 0), sx, 7);
+      if (w.par && !w.cleared && (w.room === 'arena')) {
+        const sec = Math.floor(w.t / 60), left = w.par - sec, mm = v => `${Math.floor(Math.max(0, v) / 60)}:${String(Math.max(0, v) % 60).padStart(2, '0')}`;
+        plate(sx + 70, 3, 64, 18); g.fillStyle = left > 10 ? '#ffe2a8' : left > 0 ? '#ff9a6a' : '#7a7088'; g.fillText((left > 0 ? '⏱ ' : '') + mm(left > 0 ? left : sec), sx + 74, 7);
+      }
     }
     this.vw *= hs; g.restore();
     const boss = w.enemies.find(e => e.boss);

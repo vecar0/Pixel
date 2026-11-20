@@ -1,3 +1,5 @@
+import { readdirSync } from 'fs';
+import { spawnSync } from 'child_process';
 // 검수(QA): 진행이 막히는 함정 시뮬레이션. node tests/qa.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
@@ -69,4 +71,8 @@ test('한 판 전체 경로: 지역 4개의 정해진 스테이지를 끝까지 
   eq(seen.filter(s => s === 'boss').length, 4); eq(seen.length, 23);
 });
 
+test('모든 JS 파일 문법 검사 (줄 중간 // 주석이 코드를 삼키는 실수 방지)', () => {
+  const files = [...readdirSync(new URL('../js/', import.meta.url)).filter(f => f.endsWith('.js')).map(f => 'js/' + f), ...readdirSync(new URL('../js/core/', import.meta.url)).filter(f => f.endsWith('.js')).map(f => 'js/core/' + f)];
+  for (const f of files) { const r = spawnSync(process.execPath, ['--check', new URL('../' + f, import.meta.url).pathname]); ok(r.status === 0, f + ' ' + String(r.stderr).split('\n').slice(0, 4).join(' ')); }
+});
 run();

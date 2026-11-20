@@ -9,8 +9,11 @@ const PR = CFG.parry, PO = CFG.poise;
 // hitbox = { src, owner, x,y,w,h, dmg, parryable, dir }  (src.done이면 이미 처리된 공격)
 export function resolveEnemyHit(w, hb) {
   const p = w.player;
-  if (hb.src.done || p.state === 'dead' || !overlap(p, hb)) return 'ignored';
   const front = hb.dir === -p.face;
+  // 탄 패링: 패링 자세일 때는 몸 앞 PR.projReach 만큼, 위아래로 PR.projPad 만큼 넓게 받아낸다 (몸에 닿기 직전 탄도 막힘)
+  const guard = hb.proj && p.state === 'parry' && front && hb.parryable && p.stateT < PR.normalF + (p.lagTicks || 0)
+    ? { x: p.face > 0 ? p.x : p.x - PR.projReach, y: p.y - PR.projPad, w: p.w + PR.projReach, h: p.h + PR.projPad * 2 } : p;
+  if (hb.src.done || p.state === 'dead' || !overlap(guard, hb)) return 'ignored';
   const lag = p.lagTicks || 0;                                   // 설정의 타이밍 보정 (터치 지연만큼 판정창을 늘림)
   if (p.state === 'parry' && p.stateT < PR.normalF + lag && hb.parryable && front) {
     const perfect = p.stateT < Math.min(PR.normalF, Math.max(2, PR.perfectF + (p.mods.perfectExtra || 0))) + lag || p.blueT > 0 || p.mods.allPerfect;   // 의지: 점마다 ±1프레임   // 결계·의지 10: 모든 패링이 완벽

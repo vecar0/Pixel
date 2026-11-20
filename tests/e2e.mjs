@@ -35,13 +35,17 @@ await check('PC: 타이틀 → Enter(마을) → Enter(출발) → 지역 입장
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'play');
 });
-await check('런: 클리어 → 보상 → 방으로 복귀 → 열린 출구 → 정해진 다음 방 → 휴식 방 모닥불·출구', PC, async p => {
+await check('런: 클리어 → 출구 열림 → 아이리스 닫힘 뒤 단련 → 정해진 다음 방 → 휴식 방 모닥불·출구', PC, async p => {
   await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
   const exitNow = async () => { await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(3200); };   // 아이리스 닫힘 ~1.7초 + 열림 ~1초
   ok(await p.evaluate(() => window.__lk.world.props.find(o => o.kind === 'exit').locked), 'locked');
   await p.evaluate(() => { const w = window.__lk.world; w.enemies.length = 0; w.waves = []; });
   await p.waitForTimeout(300);
-  eq(await p.evaluate(() => window.__lk.mode), 'relic');
+  eq(await p.evaluate(() => window.__lk.mode), 'play');                 // 방을 비우면 출구만 열림
+  eq(await p.evaluate(() => window.__lk.world.props.find(o => o.kind === 'exit').locked), false);
+  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(2600);
+  eq(await p.evaluate(() => window.__lk.mode), 'relic');                 // 아이리스가 닫힌 검은 화면에서 단련
+  ok(await p.evaluate(() => window.__lk.R.irisClock >= 1.02), 'iris closed');
   eq(await p.locator('[data-up]').count(), 6);                          // 반대 스탯 3쌍
   await p.locator('[data-up=str]').dispatchEvent('pointerup'); await p.waitForTimeout(150);
   await p.screenshot({ path: path.join(out, 'relic.png') });
@@ -50,12 +54,14 @@ await check('런: 클리어 → 보상 → 방으로 복귀 → 열린 출구 �
   await p.locator('[data-up=str]').dispatchEvent('pointerup'); await p.waitForTimeout(100);
   await p.locator('#train').dispatchEvent('pointerup'); await p.waitForTimeout(300);
   eq(await p.evaluate(() => window.__lk.run.stats.str + ',' + window.__lk.run.stats.agi), '12,8');
-  eq(await p.evaluate(() => window.__lk.mode), 'play');                 // 방으로 돌아옴 (출구 열림)
+  await p.waitForTimeout(1200);
+  eq(await p.evaluate(() => window.__lk.mode), 'play');                 // 단련 뒤 다음 방
   eq(await p.evaluate(() => window.__lk.run.roomIdx), 1);
-  await exitNow(); eq(await p.evaluate(() => window.__lk.run.room), 'combat');
+  eq(await p.evaluate(() => window.__lk.run.room), 'combat');
   await p.evaluate(() => { const w = window.__lk.world; w.enemies.length = 0; w.waves = []; }); await p.waitForTimeout(300);
+  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(2600);
   for (let k = 0; k < 2; k++) { await p.locator('[data-up=fury]').dispatchEvent('pointerup'); await p.waitForTimeout(100); await p.locator('#train').dispatchEvent('pointerup'); await p.waitForTimeout(250); }
-  await exitNow(); eq(await p.evaluate(() => window.__lk.run.room), 'rest');
+  await p.waitForTimeout(1500); eq(await p.evaluate(() => window.__lk.run.room), 'rest');
   await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props[0].x - 11; }); await p.waitForTimeout(200);
   await p.keyboard.press('j'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'rest');

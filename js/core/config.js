@@ -17,7 +17,7 @@ export const CFG = {
   },
   attack: { dmg: [10, 10, 18], startupF: 7, activeF: 4, recoveryF: 16, range: 38, comboWindowF: 18, hitstop: [4, 4, 7], push: [4, 4, 6.5], lunge: 2.1 },
   parry: {
-    perfectF: 6, normalF: 12, whiffF: 18, successRecoverF: 4, reach: 40,
+    perfectF: 6, normalF: 12, whiffF: 18, successRecoverF: 4, reach: 40, projReach: 30, projPad: 14,   // projReach/Pad: 탄을 패링으로 받는 앞쪽·위아래 여유(px)
     hitstopPerfect: 8, hitstopNormal: 3, staggerF: 30, staggerPush: 8,
   },
   roll: { totalF: 22, dist: 128, iStart: 2, iEnd: 13, endLagF: 6 },

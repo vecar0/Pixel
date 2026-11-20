@@ -267,19 +267,19 @@ function relicScreen(after) {
   bindPicks(id => takeReward(id, after));
 }
 // 다음 스테이지: 정해진 순서대로 바로 들어간다 (들어갈 때 아이리스가 열림)
-function goNext() { nextStage(run); play(); }
-// 보상을 고른 뒤 방으로 돌아옴: 고른 각인·단련을 바로 적용, 출구가 열렸다고 알림
-function backToRoom() {
-  const p = world.player, hp = p.hp, fl = p.flasks;
-  applyRelics(p, run.relics); applyStats(p, run.stats);
-  p.hp = Math.min(p.maxHp, hp); p.flasks = Math.min(Math.max(p.maxFlasks, fl), fl);
-  const prev = p.spells[0]; p.spells = [runSpell(run)];
-  resume(); R.say(p.spells[0] !== prev ? `새 마법 「${SPELLS[p.spells[0]].name}」 — ${SPELLS[p.spells[0]].desc}` : '출구가 열렸다 — 오른쪽 끝으로');
+function goNext() {
+  const prev = world && world.player.spells[0]; nextStage(run); play();
+  const now = world.player.spells[0];
+  if (prev && now !== prev) R.say(`새 마법 「${SPELLS[now].name}」 — ${SPELLS[now].desc}`);
 }
 // 출구로 나갈 때: 아이리스가 리라 쪽으로 닫힌 뒤 다음 스테이지
 function leaveRoom() {
   mode = 'transition'; touch.classList.add('hidden'); R.iris(world, 'close');
-  const wait = () => { if (R.irisClock >= 1.02) goNext(); else { R.stepFx(world); requestAnimationFrame(wait); } };   // 완전히 닫히면 다음 방
+  const closed = () => {                                                  // 완전히 닫힌 검은 화면에서 남은 보상을 고른 뒤 다음 방
+    const k = run.pending; run.pending = null;
+    if (k === 'train') rewardScreen(goNext); else if (k === 'relic') relicScreen(goNext); else goNext();
+  };
+  const wait = () => { if (R.irisClock >= 1.02) closed(); else { R.stepFx(world); requestAnimationFrame(wait); } };
   requestAnimationFrame(wait);
 }
 // 휴식(모닥불 앞에서): 한 번만. 고르면 바로 방으로 돌아감
@@ -324,8 +324,9 @@ function shopScreen() {
 function overlay(kind) {
   mode = kind; touch.classList.add('hidden');
   if (kind === 'cleared') {
-    world.rewarded = world.counted = true; const wasCombat = run.room === 'combat'; roomCleared(run);
-    if (wasCombat) rewardScreen(backToRoom); else relicScreen(backToRoom);
+    // 방을 비우면 출구만 열린다. 보상(단련·각인)은 출구로 나가 아이리스가 검게 닫힌 뒤 고른다 (leaveRoom)
+    world.rewarded = world.counted = true; run.pending = run.room === 'combat' ? 'train' : 'relic'; roomCleared(run);
+    resume(); R.say(run.pending === 'train' ? '출구가 열렸다 — 나가면 단련' : '출구가 열렸다 — 나가면 각인 선택');
   } else if (kind === 'won') {
     saveFromWorld(run, world);
     const boss = regionOf(run).boss;

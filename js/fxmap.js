@@ -37,7 +37,7 @@ const SPAWN = { ghoul: 'spawn/summon-rise', moth: 'spawn/poof', spearman: 'water
 const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['melee/claw-swipe', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['melee/hammer-smash', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
   bellBoss: ['melee/heavy-cleave', DUST], spider: ['melee/claw-swipe', LILAC], shadow: ['melee/sword-slash', VIOLET], saint: ['melee/spear-sweep', CYAN] };
 const DEATH = { ghoul: ['spawn/poof', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/splash'], priest: ['water/wave-crash'], shellguard: ['ice/ice-shatter', LILAC], assassin: ['explosions/implosion', VIOLET] };
-const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', {}], shadow: ['shadow/void-orb', {}] };
+const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
 
 export const ALL_IDS = [...new Set([
   ...Object.values(AMBIENT).flatMap(a => [...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]),

@@ -51,14 +51,25 @@ for (let guard = 0; guard < 2000; guard++) {
       if (await p.evaluate(() => !!document.querySelector('#next'))) { await tap('#next'); await p.waitForTimeout(300); await tap('.pick'); await p.waitForTimeout(300); continue; }
       break;                                                                  // 마지막 보스 → 결과 화면
     }
-    if (md === 'relic' && await p.evaluate(() => !!document.querySelector('[data-up]'))) { while (await p.evaluate(() => !!document.querySelector('[data-up]'))) { await tap('[data-up]:not([disabled])'); await p.waitForTimeout(100); await tap('#train'); await p.waitForTimeout(150); } }
-    else if (md === 'relic') await tap('.pick');
-    else fail('보상 화면 없이 ' + md + ' ' + JSON.stringify(st));
+    md === 'play' || fail('방을 비운 뒤 바로 보상 화면이 뜸(출구 뒤로 미뤄야 함): ' + md);
     await p.waitForTimeout(300);
   }
   (await mode()) === 'play' || fail('방으로 안 돌아옴: ' + (await mode()) + ' ' + JSON.stringify(st) + ' ' + log.slice(-3).join('|') + ' html=' + (await p.evaluate(() => document.querySelector('#ui').innerText.slice(0, 120))));
   await p.evaluate(() => { const w = window.__lk.world; window.__oldW = w; w.player.x = w.props.find(o => o.kind === 'exit').x; });
-  await until(() => p.evaluate(() => window.__lk.world !== window.__oldW), 8000) || fail('출구로 못 나감 ' + JSON.stringify(st));   // 새 방(새 world)이 열릴 때까지
+  // 출구 → 아이리스가 검게 닫힘 → (전투방이면 단련, 강적방이면 각인) → 새 방
+  let rewarded = false;
+  const moved = await until(async () => {
+    if (await mode() === 'relic') {
+      const closed = await p.evaluate(() => window.__lk.R.irisClock >= 1.02);
+      closed || fail('보상 화면이 아이리스가 닫히기 전에 뜸');
+      if (await p.evaluate(() => !!document.querySelector('[data-up]'))) await tap('[data-up]:not([disabled])'), await p.waitForTimeout(100), await tap('#train');
+      else await tap('.pick');
+      rewarded = true; await p.waitForTimeout(150);
+    }
+    return p.evaluate(() => window.__lk.world !== window.__oldW);
+  }, 12000);
+  moved || fail('출구로 못 나감 ' + JSON.stringify(st));
+  if ((st.room === 'combat' || st.room === 'elite') && !rewarded) fail('출구 뒤 보상 화면 없음 ' + JSON.stringify(st));
 }
 await p.waitForTimeout(500); await p.screenshot({ path: path.join(out, 'run-end.png') });
 const end = await p.evaluate(() => document.querySelector('.card.result h2')?.textContent || '');

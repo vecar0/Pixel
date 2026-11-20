@@ -25,7 +25,7 @@ export const ENEMY_DEFS = {
   },
   priest: {
     hp: 25, w: 24, h: 56, speed: 0.7, range: 280, keepAway: 140, cooldown: [70, 110],
-    attacks: { bolts: { name: 'bolts', telegraphF: 24, activeF: 1, recoverF: 40, dmg: 1, parryable: true, hits: 3, gapF: 16, bolt: { speed: 3.4, w: 10, h: 10 } } },
+    attacks: { bolts: { name: 'bolts', telegraphF: 24, activeF: 1, recoverF: 40, dmg: 1, parryable: true, hits: 3, gapF: 22, bolt: { speed: 2.8, w: 10, h: 10 } } },
   },
   // 지역 3: 유리 광산
   shellguard: {
@@ -168,11 +168,12 @@ export function updateEnemy(w, e) {
   }
 }
 
-// 조준탄: 리라 가슴 높이를 향해
+// 조준탄: 리라 허리 높이(검을 든 높이)를 향해 낮게. 기울기는 완만하게 제한해 패링 자세로 받기 쉽게
 function spawnBolt(w, e, a) {
   const p = w.player, b = a.bolt;
-  const sx = e.face > 0 ? e.x + e.w : e.x - b.w, sy = e.y + 16;
-  const tx = p.x + p.w / 2, ty = p.y + 24, l = Math.hypot(tx - sx, ty - sy) || 1;
+  const sx = e.face > 0 ? e.x + e.w : e.x - b.w, sy = e.y + e.h * 0.55 - b.h / 2;
+  const tx = p.x + p.w / 2, dx = tx - sx, ty0 = p.y + p.h * 0.62 - b.h / 2;
+  const ty = sy + Math.max(-0.35, Math.min(0.35, (ty0 - sy) / (Math.abs(dx) || 1))) * Math.abs(dx), l = Math.hypot(dx, ty - sy) || 1;
   w.projectiles.push({ x: sx, y: sy, w: b.w, h: b.h, vx: (tx - sx) / l * b.speed, vy: (ty - sy) / l * b.speed,
     dmg: a.dmg, parryable: a.parryable, owner: 'enemy', life: 160, src: e, bolt: e.kind });
   w.events.push({ type: 'bolt', x: sx, y: sy });

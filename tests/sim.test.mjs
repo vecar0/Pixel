@@ -425,4 +425,24 @@ test('juice: 완벽 패링당한 일반 적은 30틱 동안 공격 못 하고 �
   ok(parried > 0, 'no perfect'); ok(Math.abs(pushed) > 6, 'not pushed ' + pushed); ok(teleAfter - parried >= 30 + CFG.parry.hitstopPerfect, teleAfter - parried);
 });
 
+
+/* ── 사제 마법탄: 낮게(허리 높이) 날아오고, 패링 자세면 몸 앞에서 받아낸다 ── */
+function priestBolt() {
+  const w = W(); settle(w); const p = w.player; p.face = 1;
+  spawnEnemy(w, 'priest', p.x + 220, p.y); const e = w.enemies[0]; e.spawnT = 0; e.cool = 0;
+  for (let i = 0; i < 300 && !w.projectiles.length; i++) tick(w, I());
+  return { w, p, b: w.projectiles[0] };
+}
+test('사제 탄: 리라 몸 아래쪽 절반(허리 높이)으로, 거의 수평으로 날아온다', () => {
+  const { p, b } = priestBolt(); ok(b, 'no bolt');
+  const cy = b.y + b.h / 2; ok(cy > p.y + p.h * 0.45 && cy < p.y + p.h * 0.8, cy - p.y);
+  ok(Math.abs(b.vy) <= Math.abs(b.vx) * 0.36, b.vy);
+});
+test('사제 탄: 몸에 닿기 전(앞 여유 안)에 누른 패링도 막는다', () => {
+  const { w, p, b } = priestBolt(); ok(b, 'no bolt');
+  for (let i = 0; i < 400 && b.x > p.x + p.w + CFG.parry.projReach - 4; i++) tick(w, I());
+  ok(b.x - (p.x + p.w) > 4, 'bolt already touching');                   // 아직 몸에 안 닿은 거리
+  tick(w, I({ parry: true })); steps(w, 12);
+  eq(b.owner, 'player'); eq(p.hp, p.maxHp);                             // 튕겨 나감 (완벽 패링 반사)
+});
 run();

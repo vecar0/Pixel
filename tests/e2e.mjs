@@ -47,6 +47,12 @@ await check('런: 클리어 → 출구 열림 → 아이리스 닫힘 뒤 단련
   eq(await p.evaluate(() => window.__lk.mode), 'relic');                 // 아이리스가 닫힌 검은 화면에서 단련
   ok(await p.evaluate(() => window.__lk.R.irisClock >= 1.02), 'iris closed');
   eq(await p.locator('[data-up]').count(), 6);                          // 반대 스탯 3쌍
+  eq(await p.locator('.scard').count(), 6);
+  ok(await p.evaluate(() => new Set([...document.querySelectorAll('.scard')].map(c => c.offsetHeight)).size === 1), 'cards same height');   // 칸 크기 일정
+  await p.locator('[data-info=str]').dispatchEvent('pointerup'); await p.waitForTimeout(100);
+  eq(await p.locator('.spop li').count(), 7);                                 // 팝업: 능력 5 + 약점 2
+  await p.locator('#popclose').dispatchEvent('pointerup', { bubbles: true }); await p.waitForTimeout(100);
+  eq(await p.locator('.spop').count(), 0);
   ok(await p.locator('#train').isDisabled(), 'train enabled before spending');   // 점수가 남으면 완료 불가
   await p.locator('[data-up=str]').dispatchEvent('pointerup'); await p.waitForTimeout(120);
   await p.locator('[data-up=agi]').dispatchEvent('pointerup'); await p.waitForTimeout(120);   // 반대 화살표 = 되돌리기

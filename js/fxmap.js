@@ -24,7 +24,7 @@ const DUST = ['#1c1610', '#33281c', '#4f3f2c', '#6e5a40', '#927a58', '#b89f78', 
 // [id, x비율, y] — 배경 레이어(어둠 아래)에 그려져 캐릭터보다 뒤로 물러나 보인다
 const AMBIENT = {
   1: { world: [['fire/candle', 0.03, 300], ['fire/candle', 0.97, 300]],
-       screen: ['weather/fog', 'weather/fireflies'], boss: [['fire/brazier', 0.03, 300], ['fire/brazier', 0.97, 300]] },
+       screen: ['weather/fog', 'weather/fireflies'], boss: [['fire/candle', 0.03, 300], ['fire/candle', 0.97, 300]] },   // 보스방 양끝: 장식 촛불 (기믹 아님)
   2: { world: [['water/drip', 0.2, 40], ['water/drip', 0.5, 30], ['water/drip', 0.8, 40], ['fire/candle', 0.03, 300], ['fire/candle', 0.97, 300]],
        screen: ['weather/god-rays'], boss: [['water/waterfall', 0.04, 220], ['water/waterfall', 0.96, 220], ['water/drip', 0.5, 30]] },
   3: { world: [['fire/torch', 0.04, 250], ['fire/torch', 0.96, 250]],
@@ -68,7 +68,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['melee/heavy-cleave', 'explosions/implosion', 'arcane/magic-circle-cast', 'arcane/spell-charge', 'arcane/mana-burst', 'ice/ice-shatter', 'fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'fire/fire-tornado', 'ice/ice-spikes', 'holy/smite', 'nature/thorns', 'shadow/life-steal', 'lightning/chain-lightning', 'lightning/zap-hit', 'shadow/dark-explosion', 'holy/heal-aoe', 'explosions/small-explosion', 'ice/snowflake-burst', 'lightning/thunderclap', 'explosions/plasma-explosion', 'holy/sunburst', 'nature/healing-bloom', 'holy/feather-burst', 'explosions/big-explosion', 'explosions/implosion', 'nature/quake', 'impacts/ground-slam', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['melee/heavy-cleave', 'explosions/implosion', 'arcane/magic-circle-cast', 'arcane/spell-charge', 'arcane/mana-burst', 'ice/ice-shatter', 'fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'fire/fire-tornado', 'ice/ice-spikes', 'holy/smite', 'nature/thorns', 'shadow/life-steal', 'lightning/chain-lightning', 'lightning/zap-hit', 'shadow/dark-explosion', 'holy/heal-aoe', 'explosions/small-explosion', 'ice/snowflake-burst', 'water/wave-crash', 'ice/ice-shatter', 'lightning/thunderclap', 'explosions/plasma-explosion', 'holy/sunburst', 'nature/healing-bloom', 'holy/feather-burst', 'explosions/big-explosion', 'explosions/implosion', 'nature/quake', 'impacts/ground-slam', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -81,6 +81,7 @@ export class FxDirector {
       for (const o of w.props) {
         if (o.kind === 'campfire') { R.fx.spawn('fire/campfire', o.x, 300, { light: 0.5 }); for (const d of [-110, 110]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
         if (o.kind === 'merchant') { R.bgfx.spawn('fire/brazier', o.x + 90, 300, { light: 0.35 }); R.bgfx.spawn('fire/candle', o.x - 100, 300, { light: 0.3 }); }
+        if (o.kind === 'altar') { R.fx.spawn('fire/brazier', o.x, 246, { light: 0.55 }); for (const d of [-70, 70]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
       }
     }
     R.trans.clear(); if (!boss) R.iris(w, 'open');   // 방 입장: 리라를 중심으로 아이리스가 열림 (보스방은 등장 연출이 대신)
@@ -177,10 +178,19 @@ export class FxDirector {
         R.flash = Math.max(R.flash, L[1]);
         break;
       }
+      // 보스 기믹 연출
+      case 'bellRelease': P('impacts/hit-spark', ev.x, 60, { height: 20, palette: GOLD, life: 30, light: 0.4 }, 3); break;
+      case 'bellTrap': this.spell('impacts/ground-slam', ev.x, 300, { palette: GOLD, life: 70, light: 0.5 }); this.spell('nature/quake', ev.x, 300, { palette: DUST, life: 80, light: 0.3 }); break;
+      case 'bellMiss': this.spell('impacts/ground-slam', ev.x, 300, { palette: DUST, life: 60, light: 0.3 }); break;
+      case 'veilUp': { const b = w.enemies.find(e => e.boss); if (b) R.fx.spawn('holy/divine-shield', 0, 0, { follow: b, dy: b.h / 2, key: 'veil', light: 0.35, palette: CYAN }); break; }
+      case 'veilBreak': R.fx.stopKey('veil'); this.spell('water/wave-crash', ev.x, ev.y + 40, { life: 70, light: 0.5 }); this.spell('impacts/crit-hit', ev.x, ev.y + 20, { life: 50, light: 0.5 }); break;
+      case 'mirrorReflect': this.spell('ice/snowflake-burst', ev.x, ev.y, { life: 50, light: 0.5 }); this.spell('impacts/hit-spark', ev.x, ev.y + 16, { height: 16, palette: CYAN, life: 30, light: 0.5 }); this.spell('lightning/zap-hit', ev.bx, ev.by, { life: 40, light: 0.5 }); break;
+      case 'beaconLit': R.fx.spawn('fire/brazier', ev.x, 246, { light: 0.55, key: 'beacon' + ev.x }); this.spell('impacts/hit-spark', ev.x, 246, { height: 10, palette: AMBER, life: 30, light: 0.5 }); break;
+      case 'beaconOut': R.fx.stopKey('beacon' + ev.x); break;
+      case 'exposed': P('impacts/hit-spark', ev.x, ev.y + 30, { height: 20, palette: GOLD, life: 30, light: 0.4 }, 2); break;
       case 'land': if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;
       case 'dead': P('spawn/soul-rise', ev.x, ev.y, { actor: R.actorOf(w.player), flip: w.player.face < 0 }, 3); R.trans.spawn('transitions/burn-away', 0, 0, {}); break;
       case 'afterglow': P('lightning/spark-arc', ev.x, ev.y + 20, { palette: AMBER, life: 30, light: 0.3 }, 2); break;
-      case 'brazier': P('fire/flame-pillar', ev.tx, ev.ty, { life: 110, light: 0.45 }, 3); P('fire/fire-ring', ev.x, 300, { life: 50, light: 0.3 }, 2); break;
     }
   }
   // 매 틱: 탄에 이펙트 붙이기, 엘리트 표시, 화상
@@ -197,11 +207,6 @@ export class FxDirector {
     // 오브젝트: 열린 출구엔 포탈, 보스방 화로는 충전되면 불이 붙고 쓰면 꺼짐
     (w.props || []).forEach((o, i) => {
       if (o.kind === 'exit' && !o.locked && !o.fx) { o.fx = true; F.spawn('arcane/portal', o.x, 300, { light: 0.4, palette: AMBER }); }
-      if (o.kind === 'brazier') {
-        const ready = o.cd <= 0;
-        if (ready && !o.fx) { o.fx = true; F.spawn('fire/brazier', o.x, 300, { light: 0.5, key: 'brz' + i }); }
-        if (!ready && o.fx) { o.fx = false; F.stopKey('brz' + i); }
-      }
     });
     // 적 몸에 감기는 상태 이펙트는 한 번에 하나만: 기절 > 화상 > 엘리트 (겹쳐 감기면 몸이 안 보임)
     for (const e of w.enemies) {

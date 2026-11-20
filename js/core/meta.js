@@ -10,7 +10,7 @@ export const UNLOCKS = [
   { id: 'oil:black', kind: 'oil', oil: 'black', name: '랜턴 기름: 흑유', cost: 8, desc: '흑염 창(관통 광선)으로 시작' },
   { id: 'practice', kind: 'practice', name: '연습장', cost: 3, desc: '쓰러뜨린 보스와 다시 싸워 패턴을 익힌다' },
 ];
-export const OILS = { refined: { name: '정제유', desc: '기본 마법: 등불 탄 (7 이상 스탯이 없을 때)' }, blue: { name: '청유', desc: '기본 마법: 푸른 결계 (7 이상 스탯이 없을 때)' }, black: { name: '흑유', desc: '기본 마법: 흑염 창 (7 이상 스탯이 없을 때)' } };
+export const OILS = { refined: { name: '정제유', desc: '기본 마법: 등불 탄 (14 이상 스탯이 없을 때)' }, blue: { name: '청유', desc: '기본 마법: 푸른 결계 (14 이상 스탯이 없을 때)' }, black: { name: '흑유', desc: '기본 마법: 흑염 창 (14 이상 스탯이 없을 때)' } };
 export const DARK_RULES = [
   '', '적 체력 +8%', '적 체력 +16%', '전투방에 엘리트 등장', '전투방 웨이브 +1', '기름병 -1',
   '적 체력 +48%', '적 체력 +56%', '적 체력 +64%', '적 체력 +72%', '적 체력 +80% · 최후의 어둠',

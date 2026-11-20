@@ -1,4 +1,5 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
+import { clipBeam } from './core/gimmick.js';
 import { CFG } from './core/config.js';
 import { attackBox } from './core/player.js';
 import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js';
@@ -24,6 +25,7 @@ const C = {
 };
 const MAX_PARTICLES = 400;
 
+const bellOf = w => w.props.find(o => o.kind === 'bell') || {};
 export class Renderer {
   constructor(canvas) {
     this.cv = canvas; this.ctx = canvas.getContext('2d');
@@ -84,6 +86,14 @@ export class Renderer {
       else if (ev.type === 'execute') { this.flash = 0.8; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!', life: 60 }); }
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
+      else if (ev.type === 'bellTrap') { this.flash = 0.9; this.texts.push({ x: ev.x, y: ev.y - 90, t: 0, s: '갇혔다!', life: 70 }); }
+      else if (ev.type === 'bellMiss') this.texts.push({ x: ev.x, y: 200, t: 0, s: '빗나감', life: 40 });
+      else if (ev.type === 'veilUp') this.say('물의 장막 — 물창을 완벽 패링해 되돌려라');
+      else if (ev.type === 'veilBreak') { this.flash = 0.9; this.zoom = 1; this.texts.push({ x: ev.x, y: ev.y - 70, t: 0, s: '장막 붕괴!', life: 70 }); }
+      else if (ev.type === 'mirrorReflect') { this.flash = 0.8; this.texts.push({ x: ev.bx, y: ev.by - 70, t: 0, s: '반사!', life: 60 }); }
+      else if (ev.type === 'exposed') this.texts.push({ x: ev.x, y: ev.y - 16, t: 0, s: '드러났다!', life: 50 });
+      else if (ev.type === 'beaconOut' && ev.snuffed) this.texts.push({ x: ev.x, y: 230, t: 0, s: '등대가 꺼졌다', life: 50 });
+      else if (ev.type === 'resist' && w.t - (this.resistT || 0) > 40) { this.resistT = w.t; this.texts.push({ x: ev.x, y: ev.y - 10, t: 0, s: ev.veil ? '장막' : '어둠', life: 30 }); }
       else if (ev.type === 'heal') this.healFx(p, ev.amount, ev.from);
       else if (ev.type === 'aegis') this.texts.push({ x: ev.x, y: ev.y - 30, t: 0, s: '수호!' });
       else if (ev.type === 'resonance') this.texts.push({ x: p.x + p.w / 2, y: p.y - 20, t: 0, s: '흘려 막기' });
@@ -184,8 +194,13 @@ export class Renderer {
     // 어둠: 리라 랜턴 주변만 밝다 (적·예고·탄은 이 위에 그려서 절대 가려지지 않음)
     const d = this.dctx;
     d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, vw, H);
-    d.fillStyle = 'rgba(4,2,8,0.5)'; d.fillRect(0, 0, vw, H);
+    const beacons = (w.props || []).filter(o => o.kind === 'beacon');
+    d.fillStyle = beacons.length ? 'rgba(4,2,8,0.78)' : 'rgba(4,2,8,0.5)'; d.fillRect(0, 0, vw, H);   // 그림자 보스방은 더 어둡다
     d.globalCompositeOperation = 'destination-out';
+    for (const o of beacons) if (o.litT > 0) {                            // 켜진 등대: 둥근 빛 구멍
+      const bx = o.x + ox, by = 240 + oy, r = 150 * Math.min(1, o.litT / 40), bg = d.createRadialGradient(bx, by, 10, bx, by, r);
+      bg.addColorStop(0, 'rgba(0,0,0,1)'); bg.addColorStop(0.7, 'rgba(0,0,0,0.85)'); bg.addColorStop(1, 'rgba(0,0,0,0)'); d.fillStyle = bg; d.fillRect(0, 0, vw, H);
+    }
     this.lampX = p.x + p.w / 2 + p.face * 30; this.lampY = p.y + p.h - 32; this.lampR = 110 + p.light * 0.9;   // 리라 손의 등불 = 이 세계의 광원
     const lx = this.lampX + ox, ly = this.lampY + oy, lr = this.lampR;
     const lg = d.createRadialGradient(lx, ly, 10, lx, ly, lr); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
@@ -200,7 +215,15 @@ export class Renderer {
     if (bd) this.drawPlatforms(g, w);                                     // 발판: 어둠 위에 선명하게 (밟을 수 있는 면)
     if (w.props) this.drawProps(g, w);                                    // 쉼터 오브젝트 (상인 등)
     const hideChars = this.irisBusy() || (this.cine && this.cine.hideLira);
-    if (!this.irisBusy()) for (const e of w.enemies) this.drawEnemy(g, w, e);
+    for (const e of w.enemies) if (e.dummy) {                              // 마을 허수아비 이름표
+      g.font = '10px Galmuri9, monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      const x = Math.round(e.x + e.w / 2), y = Math.round(e.y - 14), tw = g.measureText('허수아비 (연습 상대)').width + 12;
+      g.fillStyle = 'rgba(13,10,17,.75)'; g.fillRect(Math.round(x - tw / 2), y - 7, Math.round(tw), 14); g.fillStyle = '#cfc6dc'; g.fillText('허수아비 (연습 상대)', x, y);
+      g.textAlign = 'left'; g.textBaseline = 'top';
+    }
+    const hasBeacon = (w.props || []).some(o => o.kind === 'beacon');
+    if (!this.irisBusy()) for (const e of w.enemies) { if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; this.drawEnemy(g, w, e); g.globalAlpha = 1; }   // 어둠 속 그림자는 흐릿하게
+    if (w.props) this.drawGimmickFront(g, w);                             // 대종은 보스 위에 (가둠)
     this.drawWarnings(g, w);
     for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
     g.globalAlpha = 1;
@@ -389,13 +412,18 @@ export class Renderer {
         g.fillStyle = '#1a1620'; g.fillRect(x - 22, 236, 44, 64); g.fillStyle = '#2e2838'; g.fillRect(x - 26, 232, 52, 6); g.fillRect(x - 26, 238, 6, 62); g.fillRect(x + 20, 238, 6, 62);
         g.fillStyle = `rgba(255,79,94,${pulse})`; g.fillRect(x - 1, 248, 2, 40); g.fillRect(x - 12, 266, 24, 2); g.fillRect(x - 8, 256, 16, 1); g.fillRect(x - 8, 278, 16, 1);
       }
-      const label = o.kind === 'merchant' ? '상점 열기' : o.kind === 'campfire' ? (o.used ? '불씨가 잦아들었다' : '쉬기')
-        : o.kind === 'brazier' ? (o.cd > 0 ? `화로 재충전 ${Math.ceil(o.cd / 60)}초` : '공격해서 화로 점화 → 보스에게 불기둥')
+      const label = o.label && !(o.kind === 'campfire' && o.used) ? o.label : o.kind === 'merchant' ? '상점 열기' : o.kind === 'campfire' ? (o.used ? '불씨가 잦아들었다' : '쉬기')
+        : o.kind === 'rope' ? (bellOf(w).st !== 'up' ? '종이 떨어져 있다' : bellOf(w).cd > 0 ? `종 다시 거는 중 ${Math.ceil(bellOf(w).cd / 60)}초` : '공격: 고리를 베면 대종 낙하 (보스를 종 아래로!)')
+        : o.kind === 'mirror' ? (o.cd > 0 ? `거울 다시 자라는 중 ${Math.ceil(o.cd / 60)}초` : '수정 거울 — 뒤에 숨으면 광선 반사')
+        : o.kind === 'beacon' ? (o.litT > 0 ? `등대 ${Math.ceil(o.litT / 60)}초 — 빛 속의 그림자는 약하다` : '공격: 등대 켜기')
+        : o.kind === 'bell' ? ''
         : o.locked ? '적을 모두 쓰러뜨리면 열린다' : '다음 길 →';
       const pcx = w.player.x + w.player.w / 2;
-      const show = o.kind === 'exit' ? pcx > o.x - 260 : o.kind === 'brazier' ? Math.abs(o.x - pcx) < 90 : o === near;
+      const gim = o.kind === 'rope' || o.kind === 'mirror' || o.kind === 'beacon';
+      this.drawGimmickProp(g, w, o);
+      const show = o.kind === 'exit' ? pcx > o.x - 260 : gim ? Math.abs(o.x - pcx) < 90 : o.kind === 'bell' ? false : o === near;
       if (!show) continue;
-      const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : o.kind === 'brazier' ? 186 : 214, txt = o.kind === 'exit' || o.kind === 'brazier' || o.used ? label : `공격 버튼  ${label}`;
+      const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : o.kind === 'altar' ? 206 : 214, txt = o.kind === 'exit' || gim || o.used ? label : `공격 버튼  ${label}`;
       g.font = '10px Galmuri9, monospace'; g.textBaseline = 'middle'; g.textAlign = 'center';
       const tw = g.measureText(txt).width + 14, bob = Math.round(Math.sin(w.t * 0.1) * 2), lx = Math.max(tw / 2 + 4, Math.min(w.width - tw / 2 - 4, o.x));   // 벽 가까이선 화면 안으로
       g.fillStyle = 'rgba(13,10,17,.8)'; g.fillRect(Math.round(lx - tw / 2), y - 8 + bob, Math.round(tw), 16);
@@ -404,7 +432,48 @@ export class Renderer {
       g.textAlign = 'left'; g.textBaseline = 'top';
     }
   }
-  say(s) { this.sayMsg = { s, t: 150 }; }
+  img(n) { this.imgs = this.imgs || {}; let im = this.imgs[n]; if (!im) { im = this.imgs[n] = new Image(); im.src = `assets/${n}.png`; } return im.complete && im.naturalWidth ? im : null; }
+  // 보스 기믹 오브젝트 (보스 뒤): 쇠사슬 고리 · 수정 거울 · 빛의 등대
+  drawGimmickProp(g, w, o) {
+    const t = w.t;
+    if (o.kind === 'rope') {                                              // 천장 대종을 붙든 쇠사슬 → 바닥 고리
+      const bell = bellOf(w), up = bell.st === 'up';
+      const x0 = o.x, y0 = 266, x1 = bell.x + (o.x < bell.x ? -44 : 44), y1 = up ? (this.bellY ?? 8) + 70 : 30, n = up ? 40 : 8;
+      for (let i = 0; i <= n; i++) { const k = i / 40, x = Math.round(x0 + (x1 - x0) * k), y = Math.round(y0 + (y1 - y0) * k);
+        g.fillStyle = i % 2 ? '#5a5264' : '#8a8096'; g.fillRect(x - 2, y - 3, 4, 6); }
+      const ready = up && bell.cd <= 0, pulse = ready ? 0.5 + 0.5 * Math.sin(t * 0.15) : 0;
+      g.fillStyle = '#2a2232'; g.fillRect(x0 - 10, 266, 20, 34); g.fillStyle = '#4a4252'; g.fillRect(x0 - 10, 266, 20, 3);   // 돌 말뚝
+      g.strokeStyle = ready ? `rgba(255,${180 + 60 * pulse | 0},90,1)` : '#6a6070'; g.lineWidth = 3; g.beginPath(); g.arc(x0, 262, 7, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1;   // 고리 (빛나면 벨 수 있음)
+      if (ready) { const gl = g.createRadialGradient(x0, 262, 2, x0, 262, 26); gl.addColorStop(0, `rgba(255,179,71,${0.35 * pulse})`); gl.addColorStop(1, 'rgba(255,179,71,0)'); g.fillStyle = gl; g.fillRect(x0 - 26, 236, 52, 52); }
+    } else if (o.kind === 'mirror' && this.img('mirror')) {                // 수정 거울 (깨지면 바닥에서 다시 자람)
+      const im = this.img('mirror'), x = Math.round(o.x - im.naturalWidth / 2), grow = o.cd > 0 ? 0.15 + 0.6 * (1 - o.cd / 900) : 1, h = Math.round(im.naturalHeight * grow);
+      if (o.cd <= 0) { const gl = g.createRadialGradient(o.x, 260, 4, o.x, 260, 50); gl.addColorStop(0, 'rgba(120,220,255,0.22)'); gl.addColorStop(1, 'rgba(120,220,255,0)'); g.fillStyle = gl; g.fillRect(o.x - 50, 210, 100, 90); }
+      g.globalAlpha = o.cd > 0 ? 0.55 : 1; g.drawImage(im, 0, im.naturalHeight - h, im.naturalWidth, h, x, 300 - h, im.naturalWidth, h); g.globalAlpha = 1;
+    } else if (o.kind === 'altar' && this.img('beacon')) {                 // 마을 순례 제단: 늘 불이 켜진 등대 받침
+      const im = this.img('beacon'); g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight);
+      const gl = g.createRadialGradient(o.x, 240, 4, o.x, 240, 80); gl.addColorStop(0, 'rgba(255,170,70,0.3)'); gl.addColorStop(1, 'rgba(255,170,70,0)'); g.fillStyle = gl; g.fillRect(o.x - 80, 160, 160, 140);
+    } else if (o.kind === 'beacon' && this.img('beacon')) {               // 빛의 등대: 돌 받침 + 쇠 그릇 (켜지면 불꽃은 fxmap)
+      const im = this.img('beacon'), x = Math.round(o.x - im.naturalWidth / 2);
+      g.drawImage(im, x, 300 - im.naturalHeight);
+      if (o.litT <= 0) { const pulse = 0.5 + 0.5 * Math.sin(w.t * 0.12); g.fillStyle = `rgba(255,179,71,${0.25 + 0.4 * pulse})`; g.fillRect(Math.round(o.x) - 2, 244, 4, 3); }
+    }
+  }
+  // 대종 (보스 위에 그림): 천장에 매달림 → 떨어짐(바닥에 붉은 그림자 예고) → 가둠 → 다시 올라감
+  drawGimmickFront(g, w) {
+    const bell = w.props.find(o => o.kind === 'bell'); if (!bell) return;
+    const im = this.img('bell'); if (!im) return;
+    const G = { dropF: 40, riseF: 50 }, top = 8, ground = 300 - im.naturalHeight + 4;
+    let y = top;
+    if (bell.st === 'drop') { const k = bell.t / G.dropF; y = top + (ground - top) * Math.max(0, (k - 0.55) / 0.45) ** 2;
+      const a = 0.25 + 0.5 * k; g.fillStyle = `rgba(255,79,94,${a * 0.35})`; g.fillRect(bell.x - 78, 296, 156, 4); g.strokeStyle = `rgba(255,79,94,${a})`; g.strokeRect(bell.x - 78 + 0.5, 294.5, 156, 6); }   // 떨어질 자리
+    else if (bell.st === 'down') y = ground;
+    else if (bell.st === 'rise') y = ground + (top - ground) * Math.min(1, bell.t / G.riseF);
+    const yy = Math.round(y + (bell.st === 'up' ? Math.sin(w.t * 0.03) * 2 : 0));
+    if (bell.st === 'up' || bell.st === 'rise') { g.fillStyle = '#5a5264'; for (let k = yy + 4; k > -10; k -= 6) g.fillRect(Math.round(bell.x) - 2, k, 4, 4); }   // 천장 사슬
+    g.drawImage(im, Math.round(bell.x - im.naturalWidth / 2), yy);
+    this.bellY = yy;
+  }
+  say(s, t = 150) { this.sayMsg = { s, t }; }
   // 회복 연출: 큰 초록 '+N', 화면 가장자리 초록빛, 체력 바의 새로 찬 칸이 반짝임 (몸을 타고 오르는 빛은 fxmap의 holy/heal)
   healFx(p, amount, from = p.hp - amount) {
     this.texts.push({ x: p.x + p.w / 2, y: p.y - 18, t: 0, s: amount > 0 ? `+${amount}` : '체력 가득', heal: true, life: 50 });
@@ -467,7 +536,7 @@ export class Renderer {
     for (const e of w.enemies) {
       if (e.st !== 'telegraph' || !e.atk) continue;
       const a = ENEMY_DEFS[e.kind].attacks[e.atk];
-      if (a.beam) { g.fillStyle = blink ? 'rgba(255,79,94,0.5)' : 'rgba(255,79,94,0.2)'; g.fillRect(e.face > 0 ? e.x + e.w : e.x - a.beam.len, e.y + a.beam.y + a.beam.h / 2 - 1, a.beam.len, 3); }
+      if (a.beam) { const [bx, bl] = clipBeam(w, e, e.face > 0 ? e.x + e.w : e.x - a.beam.len, a.beam.len, e.y + a.beam.y, a.beam.h, true); g.fillStyle = blink ? 'rgba(255,79,94,0.5)' : 'rgba(255,79,94,0.2)'; g.fillRect(bx, e.y + a.beam.y + a.beam.h / 2 - 1, bl, 3); }   // 거울이 있으면 거기서 끊긴 예고
       if (a.ring) { g.strokeStyle = blink ? 'rgba(255,79,94,0.8)' : 'rgba(255,79,94,0.35)'; g.lineWidth = 2; g.beginPath(); g.ellipse(e.x + e.w / 2, e.y + e.h / 2, e.w / 2 + a.ring, e.h / 2 + 10, 0, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1; }
     }
     for (const b of w.projectiles) if (b.shard && b.y < 0) {          // 떨어질 자리 표시
@@ -475,7 +544,7 @@ export class Renderer {
     }
     for (const e of w.enemies) if (e.st === 'active' && e.atk) {
       const a = ENEMY_DEFS[e.kind].attacks[e.atk];
-      if (a.beam) { g.fillStyle = 'rgba(220,200,255,0.85)'; g.fillRect(e.face > 0 ? e.x + e.w : e.x - a.beam.len, e.y + a.beam.y, a.beam.len, a.beam.h); g.fillStyle = '#fff'; g.fillRect(e.face > 0 ? e.x + e.w : e.x - a.beam.len, e.y + a.beam.y + 8, a.beam.len, 5); }
+      if (a.beam) { const bx = e.beamX ?? (e.face > 0 ? e.x + e.w : e.x - a.beam.len), bl = e.beamL ?? a.beam.len; g.fillStyle = 'rgba(220,200,255,0.85)'; g.fillRect(bx, e.y + a.beam.y, bl, a.beam.h); g.fillStyle = '#fff'; g.fillRect(bx, e.y + a.beam.y + 8, bl, 5); }
       if (a.ring) { g.fillStyle = e.kind === 'shadow' ? 'rgba(120,40,170,0.55)' : 'rgba(200,170,255,0.5)'; g.beginPath(); g.ellipse(e.x + e.w / 2, e.y + e.h / 2, e.w / 2 + a.ring, e.h / 2 + 10, 0, 0, Math.PI * 2); g.fill(); }
     }
   }

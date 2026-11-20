@@ -7,6 +7,7 @@ import { invulnerable, attackBox } from '../js/core/player.js';
 import { ENEMY_DEFS, spawnEnemy } from '../js/core/enemies.js';
 import { I, steps, FLAT, makeDummy } from './helpers.mjs';
 import { stepLoop } from '../js/loop.js';
+import { GIMMICK } from '../js/core/gimmick.js';
 import { SPELLS, STAT_SPELL, spellFor } from '../js/core/spells.js';
 
 const W = (o = {}) => createWorld({ room: 'test', solids: FLAT, ...o });
@@ -297,14 +298,46 @@ test('나방은 무엇에 맞든 한 방에 죽는다 (지역 체력 배수와 �
   const e = spawnEnemy(w, 'moth', w.player.x + 30, w.player.y, { hpMul: 3 });
   damageEnemy(w, e, 1); ok(e.dead);
 });
-test('보스방 기믹: 등불 화로를 베면 보스에게 피해·자세, 15초 재충전 / 발판 · 넓은 방', () => {
-  const w = createWorld({ room: 'boss' }); steps(w, 30);
-  ok(w.solids.filter(s => s.oneWay).length >= 2); eq(w.width, 1120);
-  const b = w.enemies[0], o = w.props[0]; b.update = () => {}; const hp = b.hp;
-  w.player.x = o.x + 16; w.player.face = -1; steps(w, 5);
-  tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 2);
-  eq(hp - b.hp, 20); ok(b.poise >= 0.5 || b.stunT > 0); ok(o.cd > 800);
-  tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 20); eq(hp - b.hp, 20);   // 재충전 중엔 반응 없음
+// 보스 기믹 4종
+function gWorld(boss) {
+  const w = createWorld({ room: 'boss', boss }); steps(w, 30); w.player.hp = 99; w.player.maxHp = 99;
+  const b = w.enemies.find(e => e.boss); b.cd = 1e9; b.speed = 0; b.veilCd = 1e9;
+  return { w, b };
+}
+test('무덤종 대종: 보스를 종 아래 두고 고리를 베면 갇혀 그로기 + 피해, 아니면 빗나감', () => {
+  for (const under of [true, false]) {
+    const { w, b } = gWorld('bellBoss'), G = GIMMICK.bell, bell = w.props.find(o => o.kind === 'bell');
+    b.x = under ? G.x - b.w / 2 : 950; b.y = 300 - b.h;
+    w.player.x = G.rope[0] - 40; w.player.face = 1; steps(w, 3);
+    const hp = b.hp; tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 2);
+    eq(bell.st, 'drop'); steps(w, G.dropF + 2);
+    if (under) { eq(bell.st, 'down'); ok(b.stunT > 0, 'stun'); eq(hp - b.hp, G.dmg); }
+    else { eq(b.hp, hp); eq(b.stunT, 0); }
+  }
+});
+test('성녀 물의 장막: 장막 중 피해 1/4, 되돌린 물창이 장막을 깨고 크게 무너뜨림', () => {
+  const { w, b } = gWorld('saint'); b.veilCd = 1; steps(w, 2); ok(b.veil, 'veil');
+  const hp = b.hp; eq(damageEnemy(w, b, 40), 10); eq(hp - b.hp, 10);
+  w.projectiles.push({ x: b.x - 20, y: b.y + 30, w: 26, h: 8, vx: 8, vy: 0, dmg: 1, owner: 'player', reflected: true, life: 60, src: {} });
+  steps(w, 6); eq(b.veil, false); eq(hp - b.hp, 10 + GIMMICK.veil.breakDmg); ok(b.poise >= 0.5 || b.stunT > 0);
+});
+test('여왕거미 수정 거울: 거울 뒤에 숨으면 광선이 반사돼 거미가 맞고, 거울은 깨짐', () => {
+  for (const mirror of [true, false]) {
+    const { w, b } = gWorld('spider'), m = w.props.find(o => o.kind === 'mirror' && o.x === GIMMICK.mirror.xs[1]);
+    if (!mirror) for (const o of w.props) o.cd = 1e9;
+    b.x = 760; b.y = 300 - b.h; b.face = -1; w.player.x = m.x - 120; w.player.face = 1;
+    const hp = b.hp, php = w.player.hp; b.cd = 0; b.forceNext = 'beam'; b.speed = 0;
+    for (let i = 0; i < 120 && !(b.st === 'recover'); i++) { tick(w, I()); b.forceNext = 'beam'; }
+    if (mirror) { eq(w.player.hp, php); eq(hp - b.hp, GIMMICK.mirror.dmg); ok(m.cd > 0); }
+    else { ok(w.player.hp < php, 'hit without mirror'); eq(b.hp, hp); }
+  }
+});
+test('흑염의 순례자 빛의 등대: 켜진 등대 곁에선 피해 1.5배·반격 없음, 어둠 속에선 절반', () => {
+  const { w, b } = gWorld('shadow'), o = w.props.find(o => o.kind === 'beacon' && o.x === 560);
+  b.x = 560 - b.w / 2; b.y = 300 - b.h; steps(w, 2); eq(b.exposed, false);
+  eq(damageEnemy(w, b, 40), 20);
+  w.player.x = 560 - 40; w.player.face = 1; steps(w, 2); tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 2);
+  ok(o.litT > 0, 'lit'); steps(w, 12); ok(b.exposed, 'exposed'); eq(damageEnemy(w, b, 40), 60);
 });
 function bossWorld(force) {
   const w = createWorld({ room: 'boss' }); steps(w, 30); w.player.hp = 99;

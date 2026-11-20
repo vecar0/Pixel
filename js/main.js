@@ -15,6 +15,7 @@ import { CFG } from './core/config.js';
 import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js';
 import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js';
 import { takeTrain, runSpell } from './core/run.js';
+import { GIMMICK_HINT } from './core/gimmick.js';
 import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js';
 
 const $ = s => document.querySelector(s);
@@ -207,13 +208,55 @@ function title() {
   bind('go', town);
 }
 // 등대 마을: 왼쪽은 리라와 기록, 오른쪽은 출발 · 조정 · 메뉴
+// 마을: 걸어 다니는 방. 왼쪽부터 등대지기의 창고(해금) · 허수아비(연습 상대) · 순례 제단(출발 준비) · 모닥불(기록·연습장·설정), 오른쪽 끝 길 = 순례 준비
+const TOWN_W = 1500;
+function buildTown() {
+  const W = TOWN_W, w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }], spawn: { x: 140, y: 240 } });
+  w.haven = 'town'; w.town = true;
+  w.props = [
+    { kind: 'merchant', x: 360, label: '등대지기의 창고 (해금)' },
+    { kind: 'altar', x: 900, label: '순례 준비 (어둠·기름·출발)' },
+    { kind: 'campfire', x: 1180, label: '모닥불 (기록·연습장·설정)' },
+    { kind: 'exit', x: W - 70, label: '순례 길 →' },
+  ];
+  townDummy(w);
+  return w;
+}
+function townDummy(w) {   // 허수아비: 공격하지 않는 연습 상대 (쓰러지면 다시 선다)
+  const e = spawnEnemy(w, 'ghoul', 620, 300 - ENEMY_DEFS.ghoul.h - 2, { hpMul: 30 });
+  e.cd = 1e9; e.speed = 0; e.dummy = true; e.spawnT = 0;
+}
 function town() {
   if (stopTitle) { stopTitle(); stopTitle = null; }
-  mode = 'town'; touch.classList.add('hidden'); sfx.musicFor(0);
+  mode = 'town'; sfx.musicFor(0); practice = false;
+  if (!world || !world.town) {
+    world = buildTown(); run = null; R.runInfo = null; R.region = 1;
+    R.reset(); R.dir.preloadRegion(1); R.dir.enterRoom(world, 1, false);
+    R.banner = { s: '등대 마을', sub: `등불 조각 ${save.shards} · 오른쪽 끝이 순례 길`, t: 170, dur: 170 };
+    R.say('창고 · 허수아비 · 제단 · 모닥불 앞에서 공격 버튼', 240);
+  }
+  world.exited = false;
+  if (world.player.x > TOWN_W - 140) world.player.x = TOWN_W - 160;
+  screen(''); showTouch(); last = performance.now(); acc = 0;
+}
+// 모닥불: 기록·연습장·설정
+function campMenu() {
+  mode = 'camp'; touch.classList.add('hidden');
+  const has = id => save.unlocked.includes(id);
+  screen(`<div class="card"><h2>모닥불</h2><div class="quote">불가에 앉아 지난 순례를 떠올린다</div><div class="menu">
+    <button class="row-btn" data-id="records">${icon('afterglow', 'bone')}<span><b>기록</b><small>최고 어둠 · 보스 처치</small></span></button>
+    ${has('practice') ? `<button class="row-btn" data-id="practice">${icon('combat', 'bone')}<span><b>연습장</b><small>쓰러뜨린 보스와 다시</small></span></button>` : ''}
+    <button class="row-btn" data-id="settings">${icon('wick', 'bone')}<span><b>설정</b><small>타이밍 보정 · 소리</small></span></button>
+    <button class="row-btn" data-id="title">${icon('pause', 'bone')}<span><b>타이틀로</b><small>처음 화면</small></span></button>
+    </div><div class="btns"><button class="btn alt" data-id="back">닫기</button></div></div>`);
+  bindPicks(id => { if (id === 'back') town(); else if (id === 'records') recordsScreen(); else if (id === 'practice') practiceScreen(); else if (id === 'settings') settingsScreen(); else if (id === 'title') { world = null; title(); } });
+}
+function prepScreen() {   // 순례 준비: 어둠·기름 고르고 출발 (마을의 등불 제단·오른쪽 길)
+  mode = 'prep'; touch.classList.add('hidden');
   const d = dailySeed(), dailyDone = save.daily[d.key], oils = oilsOwned(save), oi = Math.max(0, oils.indexOf(save.oil)), r = save.records;
   const has = id => save.unlocked.includes(id);
   screen(`<div class="town">
-    <div class="hero"><h2>등대 마을</h2><img class="lira" alt="리라" src="assets/lira-idle.png">
+    <div class="hero"><h2>순례 준비</h2><img class="lira" alt="리라" src="assets/lira-idle.png">
       <div class="shards">${icon('ember', 'amber')}등불 조각 ${save.shards}</div>
       <div class="stats">순례 ${r.runs}회 · 귀환 ${r.wins}회<br>완벽 패링 누적 ${r.perfectTotal}</div></div>
     <div class="acts">
@@ -224,22 +267,16 @@ function town() {
       </div>
       <div class="menu">
         <button class="row-btn" data-id="daily">${icon('boss', 'amber')}<span><b>오늘의 시련</b><small>${dailyDone ? '오늘 도전함 · 재도전은 기록만' : '모두 같은 조합 · 하루 한 번'}</small></span></button>
-        <button class="row-btn" data-id="shop">${icon('lock', 'amber')}<span><b>등대지기의 창고</b><small>등불 조각으로 해금</small></span></button>
-        ${has('practice') ? `<button class="row-btn" data-id="practice">${icon('combat', 'bone')}<span><b>연습장</b><small>쓰러뜨린 보스와 다시</small></span></button>` : ''}
-        <button class="row-btn" data-id="records">${icon('afterglow', 'bone')}<span><b>기록</b><small>최고 어둠 · 보스 처치</small></span></button>
-        <button class="row-btn" data-id="settings">${icon('wick', 'bone')}<span><b>설정</b><small>타이밍 보정 · 소리</small></span></button>
+        <button class="row-btn" data-id="back">${icon('wick', 'bone')}<span><b>마을로 돌아가기</b><small>창고·허수아비·모닥불</small></span></button>
       </div>
     </div></div>`);
-  const step = (id, fn) => { bind(id + '-p', () => { fn(-1); persist(); town(); }); bind(id + '-n', () => { fn(1); persist(); town(); }); };
+  const step = (id, fn) => { bind(id + '-p', () => { fn(-1); persist(); prepScreen(); }); bind(id + '-n', () => { fn(1); persist(); prepScreen(); }); };
   step('dark', k => { save.dark = Math.max(0, Math.min(save.darkUnlocked, save.dark + k)); });
   step('oil', k => { save.oil = oils[Math.max(0, Math.min(oils.length - 1, oi + k))]; });
   bindPicks(id => {
     if (id === 'go') { newPilgrimage(); startPilgrimage(); }
     else if (id === 'daily') { newPilgrimage({ seed: d.seed, daily: true }); save.daily[d.key] = true; persist(); startPilgrimage(); }
-    else if (id === 'shop') unlockScreen();
-    else if (id === 'practice') practiceScreen();
-    else if (id === 'records') recordsScreen();
-    else if (id === 'settings') settingsScreen();
+    else if (id === 'back') town();
   });
 }
 function unlockScreen() {
@@ -426,9 +463,18 @@ function onEvents(w) {
     else if (ev.type === 'castStart') sfx.play(ev.spell === 'bolt' ? 'bolt' : 'ult');
     else if (SOUND[ev.type]) sfx.play(SOUND[ev.type]);
     if (ev.type === 'kill' && run) run.kills++;
+    if (w.town) {                                                         // 마을
+      if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'merchant') unlockScreen(); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'campfire') campMenu(); }
+      if (ev.type === 'exit') prepScreen();
+      continue;
+    }
     if (ev.type === 'interact') { if (ev.kind === 'merchant') shopScreen(); else if (ev.kind === 'campfire') restScreen(); }
     if (ev.type === 'exit') { saveFromWorld(run, w); if (!w.counted) roomCleared(run); leaveRoom(); return; }
-    if (ev.type === 'brazier') sfx.play('ignite');
+    if (ev.type === 'bellRelease') sfx.play('telegraph');
+    if (ev.type === 'bellTrap' || ev.type === 'bellMiss') sfx.play('slam');
+    if (ev.type === 'veilBreak' || ev.type === 'mirrorReflect') sfx.play('execute');
+    if (ev.type === 'veilUp') sfx.play('heal');
+    if (ev.type === 'beaconLit') sfx.play('ignite');
   }
   const p = w.player;
   if (p.stateT === 0 && p.state === 'attack') sfx.play('swing');
@@ -451,12 +497,20 @@ function frame(now) {
 function frameBody(now) {
   const dt = now - last; last = now;
   if (mode === 'title' && input.take('confirm')) town();
+  if (mode === 'town' && world && world.town) {                          // 마을 걷기
+    if (input.take('confirm')) { newPilgrimage(); startPilgrimage(); }
+    else if (input.take('pause')) campMenu();
+    else if (!R.irisBusy()) {
+      acc = stepLoop(acc, dt, () => { tick(world, input.read()); onEvents(world); R.spawnFx(world); R.stepFx(world); if (TOUCH) syncTouch();
+        if (!world.enemies.length) townDummy(world); for (const e of world.enemies) { e.cd = 1e9; e.poiseRegenT = 0; } });
+    } else R.stepFx(world);
+  }
   if (mode === 'play') {
     if (input.take('pause')) overlay('pause');
     else {
       if (R.irisBusy() || R.stepCine()) { R.stepFx(world); acc = 0; touch.classList.add('hidden'); world.wasCine = true; }   // 아이리스·보스 등장 연출 동안은 세계 정지, 버튼 숨김
       else {
-        if (world.wasCine) { world.wasCine = false; showTouch(); }
+        if (world.wasCine) { world.wasCine = false; showTouch(); if (run && run.room === 'boss' && !world.hinted) { world.hinted = true; const b = world.enemies.find(e => e.boss); if (b && GIMMICK_HINT[b.kind]) R.say(GIMMICK_HINT[b.kind], 360); } }   // 보스 기믹 힌트
         const rate = world.player.state === 'execute' && !world.hitstop ? CFG.execute.slow : slowT > 0 && !world.hitstop ? 0.45 : 1;   // 처형 중 슬로모션, 완벽 패링 직후 잠깐 슬로
         acc = stepLoop(acc, dt * rate, step);
       }
@@ -469,7 +523,7 @@ function frameBody(now) {
   R.draw(world);
   }
 
-$('#b-pause').addEventListener('pointerup', () => mode === 'play' && overlay('pause'));
+$('#b-pause').addEventListener('pointerup', () => mode === 'play' ? overlay('pause') : mode === 'town' && campMenu());
 addEventListener('resize', () => R.resize());
 // 전투 중 세로로 돌리면 일시정지 (안내 화면 뒤에서 싸움이 계속되지 않게)
 const portrait = matchMedia('(orientation: portrait) and (pointer: coarse)');

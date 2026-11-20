@@ -50,13 +50,13 @@ test('상호작용 도착 판정: 상인·모닥불 앞(반경 안) 어디서든
   }
 });
 
-test('보스방: 양쪽 화로까지 걸어서 닿고, 보스를 쓰러뜨리면 won', () => {
+test('보스방: 양쪽 끝까지 걸어서 닿고, 보스를 쓰러뜨리면 won', () => {
   const r = newRun(5); r.roomIdx = 5; nextStage(r); eq(r.room, 'boss');
   const w = buildRoomWorld(r); w.player.hp = 999; const b = w.enemies[0]; b.update = () => {};
   for (let t = 0; t < 600 && w.player.x > 60; t++) tick(w, I({ left: true }));
-  ok(w.player.x <= 60, 'left brazier');
+  ok(w.player.x <= 60, 'left end');
   for (let t = 0; t < 900 && w.player.x < w.width - 100; t++) tick(w, I({ right: true, jump: t % 30 === 0 }));
-  ok(w.player.x >= w.width - 100, 'right brazier ' + w.player.x);
+  ok(w.player.x >= w.width - 100, 'right end ' + w.player.x);
   damageEnemy(w, b, 99999); for (let i = 0; i < 3; i++) tick(w, I()); ok(w.won);
 });
 

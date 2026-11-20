@@ -2,6 +2,7 @@
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
+import { clipBeam } from './gimmick.js';
 import { CFG } from './config.js';
 import { moveAndCollide, overlap } from './player.js';
 import { BOSSES, bossPick, bossWant } from './boss.js';
@@ -152,7 +153,7 @@ export function updateEnemy(w, e) {
         if (e.stT === t0 && a.bolt) spawnBolt(w, e, a);
         if (e.stT >= t0 && e.stT < t0 + a.activeF) {
           if (a.reach) hb(k, e.face > 0 ? e.x + e.w : e.x - a.reach, e.y + e.h - (a.height || e.h), a.reach, a.height || e.h, e.face);
-          if (a.beam) hb(k, e.face > 0 ? e.x + e.w : e.x - a.beam.len, e.y + a.beam.y, a.beam.len, a.beam.h, e.face);
+          if (a.beam) { const [bx, bl] = clipBeam(w, e, e.face > 0 ? e.x + e.w : e.x - a.beam.len, a.beam.len, e.y + a.beam.y, a.beam.h); e.beamX = bx; e.beamL = bl; if (bl > 0) hb(k, bx, e.y + a.beam.y, bl, a.beam.h, e.face); }   // 수정 거울에서 끊김
           if (a.ring) hb(k, e.x - a.ring, e.y - 10, e.w + a.ring * 2, e.h + 10, Math.sign(-dx) || e.face);
         }
       }

@@ -66,6 +66,7 @@ export const bossWant = (w, e, dx) => !!e.forceNext || Math.abs(dx) < BOSSES[e.k
 
 export function bossPick(w, e, dx) {
   if (e.forceNext) return e.forceNext;
+  if (e.veil && Math.abs(dx) > 60 && rng(w) < 0.6) return rng(w) < 0.5 ? 'spear' : 'spear3';   // 장막을 두르면 물창을 더 자주 (되돌릴 기회)
   const B = BOSSES[e.kind], far = Math.abs(dx) >= B.range;
   let pool = [...(far ? B.far : B.near)];
   if (e.hp <= e.maxHp / 2 && B.phase2) pool.push(...B.phase2);

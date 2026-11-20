@@ -1,4 +1,5 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
+import { hitGimmick, gimmickDamageMul } from './gimmick.js';
 import { CFG } from './config.js';
 import { ENEMY_DEFS } from './enemies.js';
 import { attackBox, invulnerable, overlap } from './player.js';
@@ -70,8 +71,10 @@ export function addPoise(w, e, frac) {
   }
 }
 
-export function damageEnemy(w, e, dmg, poiseFrac = 0) {
-  if (e.dead) return;
+// 반환값: 실제로 들어간 피해 (보스 기믹 배율 반영). raw = 기믹 배율 무시 (기믹 자체 피해)
+export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
+  if (e.dead) return 0;
+  if (!raw && e.boss) { const k = gimmickDamageMul(w, e); if (k !== 1) { dmg = Math.round(dmg * k); poiseFrac *= k; if (k < 1 && dmg > 0) w.events.push({ type: 'resist', x: e.x + e.w / 2, y: e.y, veil: !!e.veil }); } }
   if (ENEMY_DEFS[e.kind]?.oneHit && dmg > 0) dmg = e.hp;              // 나방: 한 방
   e.hp -= dmg;
   e.flash = 6;
@@ -82,13 +85,14 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0) {
     if (w.player.mods.killCrit) w.player.crit = true;                   // 투지 7: 처치하면 다음 공격 치명타
     w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
   }
+  return dmg;
 }
 
 // 리라 공격 판정 (한 번 휘두를 때 적마다 1회)
 export function resolvePlayerAttacks(w) {
   const p = w.player, box = attackBox(p);
   if (!box) return;
-  for (const o of w.props || []) if (o.kind === 'brazier' && o.cd <= 0 && overlap(box, { x: o.x - 14, y: 250, w: 28, h: 50 })) igniteBrazier(w, o);
+  if (p.stateT === CFG.attack.startupF) hitGimmick(w, box);              // 보스방 기믹 오브젝트 (휘두를 때 한 번)
   for (const e of w.enemies) {
     if (e.dead || e.spawnT > 0 || e.hitBy === p.swing || !overlap(box, e)) continue;
     e.hitBy = p.swing;
@@ -97,7 +101,7 @@ export function resolvePlayerAttacks(w) {
       w.hitstop = Math.max(w.hitstop, 3); p.vx = -p.face * 2; e.poise = Math.min(1, e.poise + 0);
       w.events.push({ type: 'block', x: e.face > 0 ? e.x + e.w : e.x, y: e.y + e.h / 2 }); continue;
     }
-    if (e.counter && front && e.st === 'idle' && e.stunT <= 0) {        // 흑염의 순례자: 리라의 공격을 패링
+    if (e.counter && !e.exposed && front && e.st === 'idle' && e.stunT <= 0) {   // 빛 속에선 반격 못 함        // 흑염의 순례자: 리라의 공격을 패링
       w.seed = (w.seed * 1664525 + 1013904223) >>> 0;
       if (w.seed / 4294967296 < 0.4) {
         w.hitstop = Math.max(w.hitstop, 6); w.shake = 6;
@@ -121,25 +125,15 @@ export function resolvePlayerAttacks(w) {
         * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1);   // 공명 철벽 반격·버팀
       p.riposte = false;
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
-      damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit * (p.mods.poiseMul || 1) * (p.combo === 2 ? p.mods.str3Poise || 1 : 1));   // 힘 16: 3타 자세 2배
+      const dealt = damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit * (p.mods.poiseMul || 1) * (p.combo === 2 ? p.mods.str3Poise || 1 : 1));   // 힘 16: 3타 자세 2배
       if (wasCrit && p.mods.critLight) p.light = Math.min(CFG.light.max, p.light + p.mods.critLight);   // 투지 16
       if (p.combo === 2 && (p.mods.flame || RES.emberEdge)) e.burnT = 180;   // 화염 칼날 각인·공명 불꽃 칼날                       // 화염 칼날
       w.hitstop = Math.max(w.hitstop, CFG.attack.hitstop[p.combo]);
       e.kvx = p.face * CFG.attack.push[p.combo] * (e.boss ? 0.15 : 1);
       if (p.combo === 2) w.shake = Math.max(w.shake, 6);
-      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: p.combo, face: p.face, dmg: Math.round(CFG.attack.dmg[p.combo] * mul), crit: !!wasCrit });
+      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: p.combo, face: p.face, dmg: dealt, crit: !!wasCrit });
     }
   }
-}
-
-// 보스방 기믹: 등불 화로를 베면 보스 발밑에 불기둥 → 피해 + 자세 크게 (15초 재충전)
-export const BRAZIER = { cd: 900, dmg: 20, poise: 0.5 };
-function igniteBrazier(w, o) {
-  o.cd = BRAZIER.cd;
-  const b = w.enemies.find(e => e.boss && !e.dead);
-  w.events.push({ type: 'brazier', x: o.x, tx: b ? b.x + b.w / 2 : o.x, ty: b ? b.y + b.h : 300 });
-  if (b) { damageEnemy(w, b, BRAZIER.dmg, BRAZIER.poise); w.events.push({ type: 'attackHit', x: b.x + b.w / 2, y: b.y + b.h / 2, combo: 1, face: w.player.face, dmg: BRAZIER.dmg, crit: false, spell: 'brazier' }); }
-  w.hitstop = Math.max(w.hitstop, 6); w.shake = Math.max(w.shake, 8);
 }
 
 // 등불 마법 (스킬). 등장 중인 적은 맞지 않는다
@@ -147,7 +141,7 @@ const liveOf = w => w.enemies.filter(e => !e.dead && !(e.spawnT > 0));
 function spellHit(w, e, dmg, poise, spell) {
   const p = w.player; let crit = false;
   if ((p.mods.res || {}).wildfire && p.mods.critChance) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < p.mods.critChance) { crit = true; dmg = Math.round(dmg * (p.mods.critMul || 2)); } }   // 공명 폭주 등불
-  damageEnemy(w, e, dmg, poise);
+  dmg = damageEnemy(w, e, dmg, poise);
   w.hitstop = Math.max(w.hitstop, 3);                                   // 마법도 맞는 순간 멈칫 (손맛)
   w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 1, face: w.player.face, dmg, crit, spell });
 }

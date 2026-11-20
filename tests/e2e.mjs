@@ -35,6 +35,18 @@ await check('PC: 타이틀 → Enter(마을) → Enter(출발) → 지역 입장
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'play');
 });
+await check('마을: 걸어서 창고·제단·모닥불·허수아비, 오른쪽 길 = 순례 준비', PC, async p => {
+  await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
+  eq(await p.evaluate(() => window.__lk.mode), 'town'); ok(await p.evaluate(() => window.__lk.world.town), 'walk town');
+  const at = async (kind, want) => { await p.evaluate(k => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === k).x - 30; }, kind); await p.waitForTimeout(200);
+    await p.keyboard.press('j'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), want);
+    await p.locator('[data-id=back]').dispatchEvent('pointerup'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), 'town'); };
+  await at('merchant', 'unlock'); await at('altar', 'prep'); await at('campfire', 'camp');
+  ok(await p.evaluate(() => window.__lk.world.enemies.some(e => e.dummy)), 'dummy');
+  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(300);
+  eq(await p.evaluate(() => window.__lk.mode), 'prep');
+  await p.locator('[data-id=go]').dispatchEvent('pointerup'); await p.waitForTimeout(300); eq(await p.evaluate(() => window.__lk.mode), 'intro');
+});
 await check('런: 클리어 → 출구 열림 → 아이리스 닫힘 뒤 단련 → 정해진 다음 방 → 휴식 방 모닥불·출구', PC, async p => {
   await p.evaluate(() => window.__lk.start()); await p.waitForTimeout(200);
   const exitNow = async () => { await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(3200); };   // 아이리스 닫힘 ~1.7초 + 열림 ~1초

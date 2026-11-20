@@ -20,7 +20,7 @@ const fail = m => { throw new Error(m); };
 await p.goto(`http://localhost:${srv.address().port}/`); await p.waitForTimeout(800);
 await tap('#go'); await p.waitForTimeout(300);                                  // 타이틀 → 마을
 (await mode()) === 'town' || fail('마을 아님');
-await tap('[data-id=go]'); await p.waitForTimeout(300);                         // 출발 → 지역 입장
+await p.keyboard.press('Enter'); await p.waitForTimeout(300);                    // 마을에서 Enter = 바로 출발 → 지역 입장
 (await mode()) === 'intro' || fail('지역 입장 아님');
 let stages = 0;
 for (let guard = 0; guard < 2000; guard++) {

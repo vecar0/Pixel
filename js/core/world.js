@@ -1,5 +1,6 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
 import { CFG } from './config.js';
+import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js';
 import { createPlayer, updatePlayer, overlap } from './player.js';
 import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite } from './enemies.js';
 import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js';
@@ -47,7 +48,7 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
   if (room === 'arena') w.waves = [[['ghoul', 520], ['ghoul', 600], ['moth', 700]], [['ghoul', 900], ['moth', 1000]]];
   if (room === 'boss') {
     spawnEnemy(w, boss, 820, 300 - ENEMY_DEFS[boss].h - 2, { variant, hpMul });   // 바닥 위에서 시작
-    w.props = [{ kind: 'brazier', x: 46, cd: 0 }, { kind: 'brazier', x: 1074, cd: 0 }];   // 기믹: 등불 화로
+    w.props = gimmickProps(boss);                                         // 보스마다 고유 기믹 오브젝트
   }
   updateCamera(w);
   return w;
@@ -57,7 +58,7 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
 export const INTERACT_R = 56;
 export function nearProp(w) {
   const p = w.player, cx = p.x + p.w / 2;
-  return (w.props || []).find(o => (o.kind === 'merchant' || o.kind === 'campfire') && Math.abs(o.x - cx) < INTERACT_R) || null;
+  return (w.props || []).find(o => (o.kind === 'merchant' || o.kind === 'campfire' || o.kind === 'altar') && Math.abs(o.x - cx) < INTERACT_R) || null;
 }
 // 오브젝트: 상인·모닥불은 공격 버튼으로 이용, 출구는 열려 있으면 닿는 순간 나감 (전투방은 적을 다 잡아야 열림)
 function propInput(w, inp) {
@@ -128,6 +129,7 @@ export function tick(w, inp) {
     if (e.stunT > 0) continue;
     updateEnemy(w, e);
   }
+  if (w.room === 'boss') updateGimmick(w, damageEnemy);
   updateProjectiles(w);
 
   resolvePlayerAttacks(w);
@@ -162,13 +164,14 @@ function updateProjectiles(w) {
     if (b.life <= 0 || w.solids.some(s => !s.oneWay && overlap(b, s))) { b.dead = true; continue; }
     if (b.owner === 'enemy') {
       const r = resolveEnemyHit(w, { src: b, owner: b.src, x: b.x, y: b.y, w: b.w, h: b.h, dmg: b.dmg, parryable: b.parryable, dir: Math.sign(b.vx), proj: true });
-      if (r === 'perfect') { b.vx *= -1.5; b.owner = 'player'; b.done = false; b.life = 90; }
+      if (r === 'perfect') { b.vx *= -1.5; b.owner = 'player'; b.done = false; b.life = 90; b.reflected = true; }
       else if (r !== 'ignored') b.dead = true;
     } else {
       const e = w.enemies.find(e => !e.dead && !(e.spawnT > 0) && overlap(b, e) && !(b.hits && b.hits.includes(e)));
       if (e) {
-        const dmg = b.pdmg ?? b.dmg * 15;                                   // 반사탄은 dmg×15, 마법·검기는 pdmg
-        damageEnemy(w, e, dmg, (b.poise ?? CFG.poise.normal) * (w.player.mods.poiseMul || 1));
+        let dmg = b.pdmg ?? b.dmg * 15;                                     // 반사탄은 dmg×15, 마법·검기는 pdmg
+        if (breakVeil(w, e, b)) { b.dead = true; dmg = damageEnemy(w, e, GIMMICK.veil.breakDmg, GIMMICK.veil.breakPoise); w.hitstop = Math.max(w.hitstop, 8); w.shake = Math.max(w.shake, 10); w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 2, face: Math.sign(b.vx) || 1, dmg, crit: true }); continue; }   // 물의 장막 깨기
+        dmg = damageEnemy(w, e, dmg, (b.poise ?? CFG.poise.normal) * (w.player.mods.poiseMul || 1));
         if (b.pierce) b.hits.push(e); else b.dead = true;                  // 얼음 창: 관통
         w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 0, face: Math.sign(b.vx) || 1, dmg, crit: false, spell: b.bolt === 'lamp' ? 'bolt' : b.bolt === 'lance' ? 'lance' : undefined });
         if (b.homing) w.hitstop = Math.max(w.hitstop, 3);

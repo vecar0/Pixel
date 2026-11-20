@@ -58,7 +58,9 @@ await check('런: 방 클리어 → 보상 3택1 → 정해진 다음 방 → �
   await p.screenshot({ path: path.join(out, 'shop.png') });
   await p.evaluate(() => document.querySelector('[data-id=leave]').dispatchEvent(new PointerEvent('pointerup'))); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'play');
-  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props[1].x; }); await p.waitForTimeout(400);
+  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props[1].x; }); await p.waitForTimeout(300);
+  eq(await p.evaluate(() => window.__lk.mode), 'transition');                  // 아이리스가 닫히는 중
+  await p.waitForTimeout(1200);
   eq(await p.evaluate(() => window.__lk.run.room), 'elite');
 });
 await check('PC: D 홀드 → 이동', PC, async p => {

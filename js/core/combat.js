@@ -1,5 +1,6 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
 import { CFG } from './config.js';
+import { ENEMY_DEFS } from './enemies.js';
 import { attackBox, invulnerable, overlap } from './player.js';
 
 const PR = CFG.parry, PO = CFG.poise;
@@ -60,6 +61,7 @@ export function addPoise(w, e, frac) {
 
 export function damageEnemy(w, e, dmg, poiseFrac = 0) {
   if (e.dead) return;
+  if (ENEMY_DEFS[e.kind]?.oneHit && dmg > 0) dmg = e.hp;              // 나방: 한 방
   e.hp -= dmg;
   e.flash = 6;
   addPoise(w, e, poiseFrac);

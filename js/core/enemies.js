@@ -12,7 +12,7 @@ export const ENEMY_DEFS = {
     attacks: { slash: { name: 'slash', telegraphF: 20, activeF: 4, recoverF: 24, dmg: 1, parryable: true, reach: 46 } },
   },
   moth: {
-    hp: 12, w: 20, h: 16, speed: 1.6, fly: true, range: 190, cooldown: [60, 110],
+    hp: 12, w: 20, h: 16, speed: 1.6, fly: true, oneHit: true, range: 190, cooldown: [60, 110],   // oneHit: 무엇에 맞든 한 방
     attacks: { dash: { name: 'dash', telegraphF: 18, activeF: 24, recoverF: 30, dmg: 1, parryable: true, dashSpeed: 6.6 } },
   },
   // 지역 2: 침수 대성당
@@ -77,7 +77,9 @@ export function makeElite(e, mod) {
   if (mod === 'iron') e.poiseRes = 0.6;
 }
 
-export const telegraphOf = (e, a) => a.telegraphF - (e.boss && e.hp <= e.maxHp / 2 ? 4 : 0);
+// 공격 템포: 예고·후딜에 CFG.enemy.tempo 배율 (판정 길이는 그대로)
+export const telegraphOf = (e, a) => Math.round(a.telegraphF * CFG.enemy.tempo) - (e.boss && e.hp <= e.maxHp / 2 ? 4 : 0);
+export const recoverOf = a => Math.round(a.recoverF * CFG.enemy.tempo);
 
 const onScreen = (w, e) => e.x + e.w > w.camX && e.x < w.camX + CFG.VIEW_W;
 const attackers = w => w.enemies.filter(e => !e.boss && !e.dead && (e.st === 'telegraph' || e.st === 'active')).length;
@@ -158,9 +160,9 @@ export function updateEnemy(w, e) {
     if (e.stT >= (hits - 1) * gap + a.activeF) setSt(e, 'recover');
   } else if (e.st === 'recover') {
     if (!d.fly) { e.vx = 0; physics(w, e); }
-    if (e.stT >= d.attacks[e.atk].recoverF) {
+    if (e.stT >= recoverOf(d.attacks[e.atk])) {
       setSt(e, 'idle');
-      const [lo, hi] = d.cooldown; e.cd = Math.round((lo + Math.floor(rng(w) * (hi - lo))) * e.cdMul);
+      const [lo, hi] = d.cooldown; e.cd = Math.round((lo + Math.floor(rng(w) * (hi - lo))) * e.cdMul * CFG.enemy.tempo);
     }
   }
 }

@@ -231,8 +231,14 @@ function relicScreen(after) {
   screen(`<div class="card"><h2>각인을 하나 고르세요</h2>${runStat()}<div class="picks">${offer.map(id => relicCard(id)).join('')}</div></div>`);
   bindPicks(id => takeReward(id, after));
 }
-// 다음 스테이지: 정해진 순서대로 바로 들어간다
+// 다음 스테이지: 정해진 순서대로 바로 들어간다 (들어갈 때 아이리스가 열림)
 function goNext() { nextStage(run); play(); }
+// 출구로 나갈 때: 아이리스가 리라 쪽으로 닫힌 뒤 다음 스테이지
+function leaveRoom() {
+  mode = 'transition'; touch.classList.add('hidden'); R.iris(world, 'close');
+  const t0 = performance.now(), wait = () => { if (performance.now() - t0 >= 1000) goNext(); else { R.stepFx(world); requestAnimationFrame(wait); } };
+  requestAnimationFrame(wait);
+}
 // 휴식(모닥불 앞에서): 한 번만. 고르면 바로 방으로 돌아감
 function restScreen() {
   const p = world.player, fire = world.props.find(o => o.kind === 'campfire');
@@ -329,7 +335,7 @@ function onEvents(w) {
     else if (SOUND[ev.type]) sfx.play(SOUND[ev.type]);
     if (ev.type === 'kill' && run) run.kills++;
     if (ev.type === 'interact') { if (ev.kind === 'merchant') shopScreen(); else if (ev.kind === 'campfire') restScreen(); }
-    if (ev.type === 'exit') { saveFromWorld(run, w); roomCleared(run); goNext(); return; }
+    if (ev.type === 'exit') { saveFromWorld(run, w); roomCleared(run); leaveRoom(); return; }
   }
   const p = w.player;
   if (p.stateT === 0 && p.state === 'attack') sfx.play('swing');

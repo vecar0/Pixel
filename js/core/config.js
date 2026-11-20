@@ -38,6 +38,6 @@ export const CFG = {
     sanctum: { inv: true, cost: 60, castF: 26, fireF: 10, dmg: 28, radius: 120, heal: 1, poise: 0.3 },
   },
   flask: { charges: 3, useF: 40, heal: 2 },
-  enemy: { minTelegraphF: 18, bossMinTelegraphF: 14, multiHitGapF: 16, maxAttackers: 2 },
+  enemy: { minTelegraphF: 18, bossMinTelegraphF: 14, multiHitGapF: 16, maxAttackers: 2, tempo: 1.25 },   // tempo: 적 공격 템포 배율 (예고·후딜·다음 공격까지, 클수록 느림)
   loop: { maxStepsPerFrame: 5 },
 };

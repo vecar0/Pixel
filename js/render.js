@@ -1,7 +1,7 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
 import { CFG } from './core/config.js';
 import { attackBox } from './core/player.js';
-import { ENEMY_DEFS, telegraphOf, EMERGE_F } from './core/enemies.js';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js';
 import { nearProp } from './core/world.js';
 import { FxLayer, ScreenFx, actorFromImage } from './fx.js';
 import { FxDirector } from './fxmap.js';
@@ -228,7 +228,6 @@ export class Renderer {
       g.font = (m === this.banner ? '20px' : '11px') + ' Galmuri11, monospace'; g.fillStyle = '#ffe2a8'; g.shadowColor = 'rgba(255,170,70,.6)'; g.shadowBlur = 8;
       g.fillText(m.s, vw / 2, y); g.restore();
     }
-    if (this.fadeIn > 0) { g.fillStyle = `rgba(5,3,8,${this.fadeIn})`; g.fillRect(0, 0, vw, H); this.fadeIn = Math.max(0, this.fadeIn - 0.045); }
     this.trans.draw(g, vw, H);                                              // 장면 전환 · 임팩트 프레임 (맨 위)
   }
 
@@ -366,6 +365,14 @@ export class Renderer {
     }
   }
   say(s) { this.sayMsg = { s, t: 150 }; }
+  // 스테이지 전환 아이리스 (pixelfx transitions/iris, 320x180 화면 좌표). 중심 = 리라
+  // 'open': 닫힌 상태(0.45)에서 시작해 열림 / 'close': 처음부터 → 약 1초에 완전히 닫힘
+  iris(w, mode) {
+    const p = w.player, vw = this.vw || CFG.VIEW_W, camX = Math.max(0, Math.min(w.width - vw, p.x + p.w / 2 - vw * 0.4));
+    const focus = [Math.round((p.x + p.w / 2 - camX) / vw * 320), Math.round((p.y + 30) / CFG.VIEW_H * 180)];
+    this.trans.clear();
+    this.trans.spawn('transitions/iris', 0, 0, { focus, color: '#05030a', ...(mode === 'open' ? { skip: 0.45 } : {}) });
+  }
 
   // 발판: 바닥 타일 윗부분을 잘라 쓰되, 아래 그림자 + 윗면 밝은 테두리 + 양 끝 받침으로 '밟을 수 있는 것'임을 보여 줌
   drawPlatforms(g, w) {
@@ -418,7 +425,7 @@ export class Renderer {
       let list = EA.walk, i;
       if (e.st === 'telegraph' && a) { list = EA.attack; i = span(0, 3, e.stT / telegraphOf(e, a)); }
       else if (e.st === 'active' && a) { list = EA.attack; i = span(4, 5, e.stT / Math.max(1, (a.hits || 1) > 1 ? a.gapF : a.activeF)); }
-      else if (e.st === 'recover' && a) { list = EA.attack; i = span(6, 7, e.stT / a.recoverF); }
+      else if (e.st === 'recover' && a) { list = EA.attack; i = span(6, 7, e.stT / recoverOf(a)); }
       else if (e.kind === 'moth') i = ((w.t / 4) | 0) % 8;
       else i = Math.abs(e.vx) > 0.1 ? Math.floor(Math.abs(e.x) * (e.boss ? 0.06 : 0.11)) % 8 : 0;
       const f = list[i]; if (f && f.img.complete && f.img.naturalWidth) { f.anim = true; return f; }
@@ -457,7 +464,7 @@ export class Renderer {
       if (kk > 0.65) ox += (w.t & 2 ? 1 : -1);
     } else if (e.st === 'active') { ox = e.face * 7 * big; rot = e.face * 0.07 * big; }   // 공격: 앞으로 내딛기
     else if (e.st === 'recover' && a) {                                     // 후딜: 천천히 복귀
-      const kk = 1 - Math.min(1, e.stT / a.recoverF); ox = e.face * 7 * big * kk * kk; rot = e.face * 0.07 * big * kk * kk;
+      const kk = 1 - Math.min(1, e.stT / recoverOf(a)); ox = e.face * 7 * big * kk * kk; rot = e.face * 0.07 * big * kk * kk;
     }
     g.save(); g.translate(cx + Math.round(ox), base + Math.round(oy)); g.rotate(rot); g.scale((e.face > 0 ? -1 : 1) * (1 + k * 0.15), (1 - k * 0.1) * sy);
     g.drawImage(img, -f.ax, -f.ay);

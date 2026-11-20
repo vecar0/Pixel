@@ -1,6 +1,7 @@
 // headless 전투 시뮬레이션 테스트: node tests/sim.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
+import { damageEnemy } from '../js/core/combat.js';
 import { createWorld, tick } from '../js/core/world.js';
 import { invulnerable, attackBox } from '../js/core/player.js';
 import { ENEMY_DEFS, spawnEnemy } from '../js/core/enemies.js';
@@ -224,7 +225,7 @@ test('offscreen: 화면 밖 적은 공격 시작 안 함', () => {
   for (let i = 0; i < 120; i++) { tick(w, I()); if (e2.st === 'telegraph') tele = true; }
   ok(tele, 'onscreen never telegraphed');
 });
-test('ghoul: 예고 20틱 뒤 히트박스', () => {
+test('ghoul: 예고(20×템포)틱 뒤 히트박스', () => {
   const w = W(); settle(w); w.player.hp = 99;
   const e = spawnEnemy(w, 'ghoul', w.player.x + 30, w.player.y);
   let a = -1, b = -1;
@@ -233,9 +234,9 @@ test('ghoul: 예고 20틱 뒤 히트박스', () => {
     if (a < 0 && e.st === 'telegraph') a = w.t;
     if (a >= 0 && w.hitboxes.some(h => h.owner === e)) b = w.t;
   }
-  eq(b - a, 20);
+  eq(b - a, Math.round(20 * CFG.enemy.tempo));
 });
-test('moth: 예고 18틱 → 리라 쪽으로 돌진', () => {
+test('moth: 예고(18×템포)틱 → 리라 쪽으로 돌진', () => {
   const w = W(); settle(w); w.player.hp = 99;
   const e = spawnEnemy(w, 'moth', w.player.x + 120, w.player.y - 60);
   let a = -1, b = -1, vx = 0;
@@ -244,7 +245,12 @@ test('moth: 예고 18틱 → 리라 쪽으로 돌진', () => {
     if (a < 0 && e.st === 'telegraph') a = w.t;
     if (a >= 0 && e.st === 'active') { b = w.t; tick(w, I()); vx = e.vx; }
   }
-  eq(b - a, 18); ok(Math.sign(vx) === Math.sign(w.player.x - e.x) || Math.abs(w.player.x - e.x) < 10, 'dir ' + vx);
+  eq(b - a, Math.round(18 * CFG.enemy.tempo)); ok(Math.sign(vx) === Math.sign(w.player.x - e.x) || Math.abs(w.player.x - e.x) < 10, 'dir ' + vx);
+});
+test('나방은 무엇에 맞든 한 방에 죽는다 (지역 체력 배수와 무관)', () => {
+  const w = W(); settle(w);
+  const e = spawnEnemy(w, 'moth', w.player.x + 30, w.player.y, { hpMul: 3 });
+  damageEnemy(w, e, 1); ok(e.dead);
 });
 function bossWorld(force) {
   const w = createWorld({ room: 'boss' }); steps(w, 30); w.player.hp = 99;

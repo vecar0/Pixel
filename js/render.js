@@ -25,6 +25,10 @@ const C = {
 };
 const MAX_PARTICLES = 400;
 
+// 배경과 색감을 맞출 소품 (값 = 배경 색 쪽으로 섞는 정도). 수정·불빛처럼 스스로 빛나는 건 약하게
+const PROP_GRADE = { urn: 0.5, spikes: 0.45, vent: 0.45, lever: 0.4, gate: 0.5, chest: 0.4, 'chest-open': 0.35, mover: 0.5, bell: 0.45, chain: 0.5, post: 0.5,
+  mirror: 0.2, beacon: 0.5, shrine: 0.45, keeper: 0.25, board: 0.45, scarecrow: 0.4, merchant: 0.2 };   // 인물(등대지기·상인)은 약하게
+const DIM = 0.92;                                                       // 소품은 배경보다 아주 조금 어둡게 (어둠 속에 놓인 느낌)
 const bellOf = w => (w.props || []).find(o => o.kind === 'bell') || {};
 const PHASE2_TITLE = { bellBoss: ['2막 · 무너지는 종탑', '천장에서 잔해가 떨어진다 · 대종이 더 빨리 다시 걸린다'], saint: ['2막 · 차오르는 물', '낮은 바닥에선 느려진다 · 양쪽 제단 위로'],
   spider: ['2막 · 깨어나는 광맥', '세 번째 거울이 자란다 · 천장 수정이 쏟아진다'], shadow: ['2막 · 개기일식', '더 어두워지고 등대가 짧게 탄다'] };
@@ -417,8 +421,8 @@ export class Renderer {
     if (!this.merchantImg) { this.merchantImg = new Image(); this.merchantImg.src = 'assets/merchant.png'; }
     const near = nearProp(w);
     for (const o of w.props) {
-      if (o.kind === 'merchant' && this.merchantImg.naturalWidth) {
-        const im = this.merchantImg, gl = g.createRadialGradient(o.x - 20, 250, 4, o.x - 20, 250, 70);
+      if (o.kind === 'merchant' && this.img('merchant')) {
+        const im = this.img('merchant'), gl = g.createRadialGradient(o.x - 20, 250, 4, o.x - 20, 250, 70);
         gl.addColorStop(0, 'rgba(255,170,70,0.28)'); gl.addColorStop(1, 'rgba(255,170,70,0)');
         g.fillStyle = gl; g.fillRect(o.x - 100, 170, 200, 140);
         g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight);
@@ -448,7 +452,43 @@ export class Renderer {
       g.textAlign = 'left'; g.textBaseline = 'top';
     }
   }
-  img(n) { this.imgs = this.imgs || {}; let im = this.imgs[n]; if (!im) { im = this.imgs[n] = new Image(); im.src = `assets/${n}.png`; } return im.complete && im.naturalWidth ? im : null; }
+  img(n) {
+    this.imgs = this.imgs || {}; let im = this.imgs[n]; if (!im) { im = this.imgs[n] = new Image(); im.src = `assets/${n}.png`; }
+    if (!(im.complete && im.naturalWidth)) return null;
+    return PROP_GRADE[n] ? this.graded(n, im) : im;
+  }
+  // 지역 배경의 색 계단 (어두움 → 밝음 5단): 배경 3층(먼·중간·바닥) 픽셀을 밝기순으로 줄 세워 구간 평균
+  regionRamp(r) {
+    this.ramps = this.ramps || {}; if (this.ramps[r]) return this.ramps[r];
+    const B = this.bgs && this.bgs[r]; if (!B || !['far', 'mid', 'ground'].every(k => B[k] && B[k].complete && B[k].naturalWidth)) return null;
+    const px = [];
+    for (const k of ['far', 'mid', 'ground']) {
+      const im = B[k], c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0); const d = x.getImageData(0, 0, c.width, c.height).data;
+      for (let i = 0; i < d.length; i += 4 * 7) if (d[i + 3] > 200) px.push([d[i], d[i + 1], d[i + 2], 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]]);
+    }
+    px.sort((a, b) => a[3] - b[3]);
+    const band = (lo, hi) => { const s = px.slice(Math.floor(px.length * lo), Math.max(Math.floor(px.length * lo) + 1, Math.floor(px.length * hi))), n = s.length; return [0, 1, 2].map(i => s.reduce((t, p) => t + p[i], 0) / n); };
+    return (this.ramps[r] = [band(0, 0.08), band(0.2, 0.35), band(0.45, 0.6), band(0.75, 0.88), band(0.95, 1)]);
+  }
+  // 소품 그림을 지역 색감으로: 밝기는 그대로 두고 색을 배경 색 계단 쪽으로 k만큼 섞음 (그라데이션 맵). 지역마다 한 번 만들어 둠
+  graded(n, im) {
+    const r = this.region ?? 1, key = n + '@' + r; this.grades = this.grades || {};
+    if (this.grades[key]) return this.grades[key];
+    const ramp = this.regionRamp(r); if (!ramp) return im;
+    const k = PROP_GRADE[n], c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight;
+    const x = c.getContext('2d'); x.drawImage(im, 0, 0); const D = x.getImageData(0, 0, c.width, c.height), d = D.data;
+    const lumR = ramp.map(q => 0.3 * q[0] + 0.59 * q[1] + 0.11 * q[2]), lo = lumR[0], hi = lumR[4];
+    for (let i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      const L = 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2], t = Math.max(0, Math.min(0.999, L / 255)) * 4, j = Math.floor(t), f = t - j;
+      const a = ramp[j], b = ramp[Math.min(4, j + 1)], tone = [0, 1, 2].map(q => a[q] + (b[q] - a[q]) * f);
+      const toneL = 0.3 * tone[0] + 0.59 * tone[1] + 0.11 * tone[2] || 1, keep = L / toneL;   // 밝기는 원래대로 (색만 배경 쪽으로)
+      for (let q = 0; q < 3; q++) d[i + q] = Math.max(0, Math.min(255, d[i + q] * (1 - k) + tone[q] * Math.min(1.6, keep) * k)) * DIM;
+    }
+    x.putImageData(D, 0, 0); c.naturalWidth = c.width; c.naturalHeight = c.height; c.complete = true;
+    return (this.grades[key] = c);
+  }
   // 강적 수호 방패: 몸 앞쪽 빛의 육각 방패 (남은 횟수만큼 금이 덜 감)
   drawBarrier(g, w, e) {
     const f = e.face, x = Math.round(f > 0 ? e.x + e.w + 4 : e.x - 10), y = Math.round(e.y + 4), h = Math.max(30, e.h - 8), a = 0.35 + 0.25 * Math.sin(w.t * 0.12);

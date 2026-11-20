@@ -21,12 +21,12 @@ export const SPELL_TAGS = { bolt: ['유도'], lance: ['유도', '관통'], pilla
   meteor: ['조준', '큰 범위', '무적'], ring: ['주변', '탄 지우기', '무적'], ward: ['주변', '완벽 패링 5초', '무적'], spear: ['관통 광선', '무적'],
   chain: ['조준', '최대 3명'], blast: ['조준', '큰 범위', '무적'], heal: ['회복 2'], sanctum: ['주변', '회복 1', '무적'] };
 export const OIL_SPELL = { refined: 'bolt', blue: 'ward', black: 'spear' };
-// 스탯 → 마법: [7 이상, 10]
+// 스탯 → 마법: [14 이상, 20]
 export const STAT_SPELL = { str: ['pillar', 'meteor'], agi: ['lance', 'stars'], wil: ['ward', 'thunder'], lmp: ['ring', 'spear'], vit: ['heal', 'sanctum'], fury: ['chain', 'blast'] };
-// 지금 빌드의 마법: 가장 높은 스탯(7 이상)이 정한다. 동점이면 마지막으로 올린 스탯, 그래도 같으면 표 순서
+// 지금 빌드의 마법: 가장 높은 스탯(14 이상)이 정한다. 동점이면 마지막으로 올린 스탯, 그래도 같으면 표 순서
 export function spellFor(stats, base = 'bolt', lastUp = null) {
   const ids = Object.keys(STAT_SPELL), top = Math.max(...ids.map(k => stats[k]));
-  if (top < 7) return base;
+  if (top < 14) return base;
   const k = ids.filter(k => stats[k] === top).sort((a, b) => (b === lastUp) - (a === lastUp))[0];
-  return STAT_SPELL[k][top >= 10 ? 1 : 0];
+  return STAT_SPELL[k][top >= 20 ? 1 : 0];
 }

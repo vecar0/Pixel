@@ -209,33 +209,33 @@ test('웨이브 적은 리라 옆에 생기지 않고, 0.8초 동안 솟아오�
   steps(w, 50); eq(e.spawnT, 0);
 });
 
-test('스탯: 6종 모두 5에서 시작, 반대 스탯 쌍(힘↔민첩·의지↔등불·생명↔투지), 0~10', () => {
-  const r = newRun(3); ok(Object.values(r.stats).every(v => v === 5));
-  takeTrain(r, 'str'); eq(r.stats.str, 6); eq(r.stats.agi, 4);                          // 반대 스탯(민첩)이 1 내려감
-  for (let i = 0; i < 9; i++) takeTrain(r, 'str'); eq(r.stats.str, 10); eq(r.stats.agi, 0);   // 쌍의 합은 늘 10, 끝에서 멈춤
-  takeTrain(r, 'wil'); eq(r.stats.wil, 6); eq(r.stats.lmp, 4); takeTrain(r, 'fury'); eq(r.stats.fury, 6); eq(r.stats.vit, 4);
-  eq(r.stats.str + r.stats.agi, 10); eq(r.stats.wil + r.stats.lmp, 10); eq(r.stats.vit + r.stats.fury, 10);
+test('스탯: 6종 모두 10에서 시작, 반대 스탯 쌍(힘↔민첩·의지↔등불·생명↔투지), 0~20', () => {
+  const r = newRun(3); ok(Object.values(r.stats).every(v => v === 10));
+  takeTrain(r, 'str'); eq(r.stats.str, 11); eq(r.stats.agi, 9);                         // 반대 스탯(민첩)이 1 내려감
+  for (let i = 0; i < 19; i++) takeTrain(r, 'str'); eq(r.stats.str, 20); eq(r.stats.agi, 0);   // 쌍의 합은 늘 20, 끝에서 멈춤
+  takeTrain(r, 'wil'); eq(r.stats.wil, 11); eq(r.stats.lmp, 9); takeTrain(r, 'fury'); eq(r.stats.fury, 11); eq(r.stats.vit, 9);
+  eq(r.stats.str + r.stats.agi, 20); eq(r.stats.wil + r.stats.lmp, 20); eq(r.stats.vit + r.stats.fury, 20);
 });
-test('스탯은 한 점마다 체감: 힘 1점 = 피해 +12%, 생명 1점 = 최대 체력 +1, 의지 1점 = 완벽 판정 +1프레임', () => {
-  const mk = st => { const r = newRun(1); chooseOath(r, 'parry'); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
-  eq(mk({ vit: 6 }).player.maxHp, 6); eq(mk({ vit: 9 }).player.maxHp, 9); eq(mk({ vit: 2 }).player.maxHp, 2);
-  ok(Math.abs(mk({ str: 6 }).player.mods.atkMul - 1.12) < 1e-9); eq(mk({ wil: 6 }).player.mods.perfectExtra, 1); eq(mk({ wil: 3 }).player.mods.perfectExtra, -2);
+test('스탯 한 점의 효과: 힘 1점 = 피해 +6%, 생명 2점 = 최대 체력 +1, 의지 2점 = 완벽 판정 +1프레임', () => {
+  const mk = st => { const r = newRun(1); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
+  eq(mk({ vit: 11 }).player.maxHp, 5); eq(mk({ vit: 12 }).player.maxHp, 6); eq(mk({ vit: 18 }).player.maxHp, 9); eq(mk({ vit: 4 }).player.maxHp, 2);
+  ok(Math.abs(mk({ str: 11 }).player.mods.atkMul - 1.06) < 1e-9); ok(Math.abs(mk({ str: 12 }).player.mods.atkMul - 1.12) < 1e-9);
+  eq(mk({ wil: 12 }).player.mods.perfectExtra, 1); eq(mk({ wil: 6 }).player.mods.perfectExtra, -2);
 });
-test('스탯 빌드가 마법을 정한다: 7 이상 없으면 기름 마법, 가장 높은 스탯의 7/10 마법, 동점이면 마지막으로 올린 스탯', () => {
+test('스탯 빌드가 마법을 정한다: 14 이상 없으면 기름 마법, 가장 높은 스탯의 14/20 마법, 동점이면 마지막으로 올린 스탯', () => {
   const r = newRun(5, { oil: 'blue' }); eq(runSpell(r), 'ward');
   eq(runSpell(newRun(5)), 'bolt');
-  takeTrain(r, 'str'); eq(runSpell(r), 'ward');                                     // 힘 6: 아직 기름 마법
-  takeTrain(r, 'str'); eq(runSpell(r), 'pillar');                                   // 힘 7 → 화염 기둥
-  takeTrain(r, 'str'); eq(r.stats.str, 8); eq(runSpell(r), 'pillar');               // 힘 8 → 화염 기둥
-  r.stats.agi = 8; r.lastUp = 'agi'; eq(runSpell(r), 'lance');                              // 동점 → 마지막으로 올린 민첩
-  r.stats.str = 10; eq(runSpell(r), 'meteor');                                               // 힘 10 → 운석
+  for (let i = 0; i < 3; i++) takeTrain(r, 'str'); eq(r.stats.str, 13); eq(runSpell(r), 'ward');   // 힘 13: 아직 기름 마법
+  takeTrain(r, 'str'); eq(runSpell(r), 'pillar');                                                // 힘 14 → 화염 기둥
+  r.stats.agi = 14; r.lastUp = 'agi'; eq(runSpell(r), 'lance');                                  // 동점 → 마지막으로 올린 민첩
+  r.stats.str = 20; eq(runSpell(r), 'meteor');                                                   // 힘 20 → 운석
   enterRoom(r, 'combat'); eq(buildRoomWorld(r).player.spells.join(), 'meteor');
 });
-test('스탯 구간 능력: 생명 7 체력+1, 생명 3 체력-1, 의지 10 모든 패링 완벽, 힘 7 3타 검기', () => {
-  const mk = st => { const r = newRun(1); chooseOath(r, 'parry'); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
-  eq(mk({ vit: 7 }).player.maxHp, 7); eq(mk({ vit: 3 }).player.maxHp, 3); eq(mk({}).player.maxHp, 5);
-  ok(mk({ wil: 10 }).player.mods.allPerfect); ok(!mk({ wil: 9 }).player.mods.allPerfect);
-  const w = mk({ str: 7 }); w.enemies.length = 0; w.waves = []; steps(w, 20);
+test('스탯 구간 능력: 생명 14 기름병+1 회복, 6 이하 약점, 의지 20 모든 패링 완벽, 힘 14 3타 검기', () => {
+  const mk = st => { const r = newRun(1); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
+  eq(mk({ vit: 14 }).player.mods.flaskBonus, 1); eq(mk({ vit: 6 }).player.mods.flaskBonus, -1); eq(mk({}).player.maxHp, 5);
+  ok(mk({ wil: 20 }).player.mods.allPerfect); ok(!mk({ wil: 19 }).player.mods.allPerfect);
+  const w = mk({ str: 14 }); w.enemies.length = 0; w.waves = []; steps(w, 20);
   const p = w.player; p.combo = 1; p.comboT = 10; tick(w, I({ attack: true }));
   steps(w, CFG.attack.startupF + 1); ok(w.projectiles.some(b => b.owner === 'player' && b.echo), 'wave');
 });
@@ -257,32 +257,29 @@ test('전투방 출구: 적이 남아 있으면 잠겨서 못 나가고, 다 잡
   w.player.x = ex.x; let out = false; for (let i = 0; i < 3; i++) { tick(w, I()); if (w.events.some(e => e.type === 'exit')) out = true; } ok(out);
 });
 
-test('투지: 높으면 치명타가 나오고(10이면 3배), 7 이상이면 처치 뒤 다음 공격 치명타', () => {
+test('투지: 높으면 치명타(20이면 3배), 14 이상이면 처치 뒤 다음 공격 치명타', () => {
   const mk = st => { const r = newRun(1); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
-  const w = mk({ fury: 10, vit: 0 }); eq(w.player.mods.critMul, 3); ok(w.player.mods.critChance > 0.25); ok(w.player.mods.killCrit);
+  const w = mk({ fury: 20, vit: 0 }); eq(w.player.mods.critMul, 3); ok(w.player.mods.critChance > 0.25); ok(w.player.mods.killCrit);
   eq(mk({}).player.mods.critChance, 0); eq(w.player.maxHp, 1);
-  eq(runSpell(Object.assign(newRun(1), { stats: { ...newRun(1).stats, fury: 7, vit: 3 } })), 'chain');
+  eq(runSpell(Object.assign(newRun(1), { stats: { ...newRun(1).stats, fury: 14, vit: 6 } })), 'chain');
 });
 
-test('공명: 다른 쌍 두 스탯이 7 이상이면 열림, 같은 쌍끼리는 불가', () => {
+test('공명: 다른 쌍 두 스탯이 14 이상이면 열림, 같은 쌍끼리는 불가', () => {
   eq(RESONANCES.length, 12); ok(RESONANCES.every(r => r.a !== r.b));
-  const base = { str: 5, agi: 5, wil: 5, lmp: 5, vit: 5, fury: 5 };
-  eq(resonancesOf({ ...base, str: 7, wil: 7 }).map(r => r.id).join(), 'riposte');
-  eq(resonancesOf({ ...base, str: 7, agi: 3 }).length, 0);
-  eq(resonancesOf({ ...base, str: 8, wil: 8, vit: 7 }).length, 3);
+  const base = { str: 10, agi: 10, wil: 10, lmp: 10, vit: 10, fury: 10 };
+  eq(resonancesOf({ ...base, str: 14, wil: 14 }).map(r => r.id).join(), 'riposte');
+  eq(resonancesOf({ ...base, str: 13, wil: 20 }).length, 0);
+  eq(resonancesOf({ ...base, str: 16, wil: 16, vit: 14 }).length, 3);
 });
-test('공명 효과: 철벽 반격·수호·버팀·따스한 등불', () => {
+test('공명 효과: 철벽 반격·수호·따스한 등불', () => {
   const mk = st => { const r = newRun(1); Object.assign(r.stats, st); enterRoom(r, 'combat'); const w = buildRoomWorld(r); w.enemies.length = 0; w.waves = []; steps(w, 20); return w; };
-  // 수호: 첫 피해는 막고 두 번째는 들어감
-  const w = mk({ wil: 7, lmp: 3, vit: 7, fury: 3 }); const p = w.player, hp = p.hp; ok(p.mods.res.aegis);
+  const w = mk({ wil: 14, lmp: 6, vit: 14, fury: 6 }); const p = w.player, hp = p.hp; ok(p.mods.res.aegis);
   const hit = () => { const src = {}; w.hitboxes.push({ src, owner: null, x: p.x, y: p.y, w: p.w, h: p.h, dmg: 1, parryable: false, dir: -1 }); for (const hb of w.hitboxes) resolveHit(w, hb); w.hitboxes.length = 0; };
   hit(); eq(p.hp, hp); p.iframes = 0; hit(); eq(p.hp, hp - 1);
-  // 철벽 반격: 다음 공격 1.6배
-  const w2 = mk({ str: 7, agi: 3, wil: 7, lmp: 3 }), p2 = w2.player; p2.riposte = true; p2.face = 1;
+  const w2 = mk({ str: 14, agi: 6, wil: 14, lmp: 6 }), p2 = w2.player; p2.riposte = true; p2.face = 1;
   const e = spawnEnemy(w2, 'ghoul', p2.x + p2.w + 2, p2.y); e.update = () => {}; e.maxHp = e.hp = 500; e.poiseMax = false;
   tick(w2, I({ attack: true })); steps(w2, CFG.attack.startupF + 2); eq(500 - e.hp, Math.round(10 * p2.mods.atkMul * 1.6)); ok(!p2.riposte);
-  // 따스한 등불: 마법 3번째에 체력 1
-  const w3 = mk({ lmp: 7, wil: 3, vit: 7, fury: 3 }), p3 = w3.player; p3.hp = 2;
+  const w3 = mk({ lmp: 14, wil: 6, vit: 14, fury: 6 }), p3 = w3.player; p3.hp = 2;
   for (let i = 0; i < 3; i++) { p3.light = 100; p3.state = 'idle'; tick(w3, I({ skill: true })); steps(w3, 40); }
   eq(p3.hp, 3);
 });

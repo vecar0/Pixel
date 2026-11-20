@@ -51,7 +51,7 @@ for (let guard = 0; guard < 2000; guard++) {
       if (await p.evaluate(() => !!document.querySelector('#next'))) { await tap('#next'); await p.waitForTimeout(300); await tap('.pick'); await p.waitForTimeout(300); continue; }
       break;                                                                  // 마지막 보스 → 결과 화면
     }
-    if (md === 'relic' && await p.evaluate(() => !!document.querySelector('[data-up]'))) { await tap('[data-up]:not([disabled])'); await p.waitForTimeout(100); await tap('#train'); }
+    if (md === 'relic' && await p.evaluate(() => !!document.querySelector('[data-up]'))) { while (await p.evaluate(() => !!document.querySelector('[data-up]'))) { await tap('[data-up]:not([disabled])'); await p.waitForTimeout(100); await tap('#train'); await p.waitForTimeout(150); } }
     else if (md === 'relic') await tap('.pick');
     else fail('보상 화면 없이 ' + md + ' ' + JSON.stringify(st));
     await p.waitForTimeout(300);

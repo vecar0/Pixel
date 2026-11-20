@@ -13,7 +13,7 @@ import { startTitleScene } from './titlescene.js';
 installPixelUI();
 import { CFG } from './core/config.js';
 import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js';
-import { STATS, STAT_BY_ID, tierOf, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers } from './core/stats.js';
+import { STATS, STAT_BY_ID, tierOf, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js';
 import { takeTrain, runSpell } from './core/run.js';
 import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js';
 
@@ -87,20 +87,20 @@ const runStat = () => {
     <span class="relics">${run.relics.map(k => icon(k, RELIC_TONE[RELICS[k].tag])).join('')}</span></div>`;
 };
 // 스탯 표: 반대 스탯 3쌍을 한 줄씩 (왼쪽 스탯 ▸ 저울 ◂ 오른쪽 스탯), 지금 구간의 능력/약점
-const TIER_TXT = { t7: '7', t10: '10', low: '약점' };
+const TIER_TXT = { t7: '14', t10: '20', low: '약점' };
 // 한 스탯의 지금 상태: 실제 수치 + (7·10 능력 또는 약점) + 극의 칭호
-const tierLine = s => { const v = run.stats[s.id], T = tierOf(v), extra = T === 'low' ? ` · <b class="bad">약점</b> ${s.low}` : T === 't7' ? ` · <b>7</b> ${s.t7}` : T === 't10' ? ` · <b>극의 「${MASTERY[s.id]}」</b> ${s.t10}` : '';
+const tierLine = s => { const v = run.stats[s.id], T = tierOf(v), extra = T === 'low' ? ` · <b class="bad">약점</b> ${s.low}` : T === 't7' ? ` · <b>14</b> ${s.t7}` : T === 't10' ? ` · <b>극의 「${MASTERY[s.id]}」</b> ${s.t10}` : '';
   return statNumbers(s.id, v) + extra; };
 // 공명 칩: 열린 것은 밝게, 하나만 더 올리면 열리는 것은 흐리게
 function resonanceBlock(st = run.stats) {
-  const on = resonancesOf(st).map(r => r.id), near = RESONANCES.filter(r => !on.includes(r.id) && Math.min(st[r.a], st[r.b]) >= 6 && Math.max(st[r.a], st[r.b]) >= 7);
-  if (!on.length && !near.length) return `<div class="resrow"><span class="rlabel">공명</span><small>서로 다른 쌍의 두 스탯을 7 이상으로 만들면 조합 특성이 열린다</small></div>`;
-  const chip = (r, act) => `<span class="rchip ${act ? 'on' : ''}" title="${r.desc}"><b>${r.name}</b> <small>${STAT_BY_ID[r.a].name}+${STAT_BY_ID[r.b].name}${act ? ' · ' + r.desc : ' 7'}</small></span>`;
+  const on = resonancesOf(st).map(r => r.id), near = RESONANCES.filter(r => !on.includes(r.id) && Math.min(st[r.a], st[r.b]) >= T_ABILITY - 2 && Math.max(st[r.a], st[r.b]) >= T_ABILITY);
+  if (!on.length && !near.length) return `<div class="resrow"><span class="rlabel">공명</span><small>서로 다른 쌍의 두 스탯을 14 이상으로 만들면 조합 특성이 열린다</small></div>`;
+  const chip = (r, act) => `<span class="rchip ${act ? 'on' : ''}" title="${r.desc}"><b>${r.name}</b> <small>${STAT_BY_ID[r.a].name}+${STAT_BY_ID[r.b].name}${act ? ' · ' + r.desc : ' ' + T_ABILITY}</small></span>`;
   return `<div class="resrow"><span class="rlabel">공명</span>${RESONANCES.filter(r => on.includes(r.id)).map(r => chip(r, true)).join('')}${near.map(r => chip(r, false)).join('')}</div>`;
 }
 function pairRow(a, b, sel, st = run.stats) {
   const A = STAT_BY_ID[a], B = STAT_BY_ID[b], va = st[a];
-  const cells = Array.from({ length: 10 }, (_, i) => `<i class="${i < va ? 'l' : 'r'}${i === 4 ? ' mid' : ''}"></i>`).join('');
+  const cells = Array.from({ length: STAT_MAX }, (_, i) => `<i class="${i < va ? 'l' : 'r'}${i === STAT_START - 1 ? ' mid' : ''}"></i>`).join('');   // 20칸 (쌍의 합 20)
   const side = (S, id, dir) => `<button class="sside ${dir} ${sel === id ? 'on' : ''}" data-up="${id}" ${canTrain(run.stats, id) ? '' : 'disabled'}>${icon(S.icon, S.tone)}<b>${S.name}</b><em>${st[id]}</em></button>`;
   return `<div class="spair">${side(A, a, 'L')}<div class="scale t-${A.tone}-${B.tone}">${cells}</div>${side(B, b, 'R')}
     ${sel === undefined ? `<small class="sl">${tierLine(A)}</small><small class="sr">${tierLine(B)}</small>` : ''}</div>`;   // 설명 줄은 일시정지 표에서만 (단련 화면은 아래 미리 보기가 대신)
@@ -120,7 +120,7 @@ function statBlock() {
   return `<div class="stats5">${PAIRS.map(([a, b]) => pairRow(a, b, undefined)).join('')}
     ${resonanceBlock()}
     ${spellCard(runSpell(run))}
-    <div class="sc-map">가장 높은 스탯이 7 이상이면 그 스탯의 마법 (10이면 상위): ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name} ${SPELLS[STAT_SPELL[k][0]].name}/${SPELLS[STAT_SPELL[k][1]].name}`).join(' · ')}</div></div>`;
+    <div class="sc-map">가장 높은 스탯이 14 이상이면 그 스탯의 마법 (20이면 상위): ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name} ${SPELLS[STAT_SPELL[k][0]].name}/${SPELLS[STAT_SPELL[k][1]].name}`).join(' · ')}</div></div>`;
 }
 // 단련 미리 보기: 무엇이 오르고 내리는지, 구간이 바뀌면 생기고 잃는 능력, 마법 변화
 function trainPreview(up) {
@@ -129,7 +129,7 @@ function trainPreview(up) {
   if (tierOf(u1) !== tierOf(u0)) notes.push(tierOf(u1) === 'mid' ? `${U.name} 약점 해소` : `<b>${U.name} ${TIER_TXT[tierOf(u1)]}</b>: ${U[tierOf(u1)]}`);
   if (tierOf(d1) !== tierOf(d0)) notes.push(tierOf(d1) === 'low' ? `<b class="bad">${D.name} 약점</b>: ${D.low}` : `${D.name} ${TIER_TXT[tierOf(d0)]} 능력 잃음`);
   const next = { ...run.stats, [up]: u1, [down]: d1 }, s0 = runSpell(run), s1 = spellFor(next, run.baseSpell, up);
-  if (u1 === 10) notes.push(`<b>극의 「${MASTERY[up]}」</b>`);
+  if (u1 === T_MASTER) notes.push(`<b>극의 「${MASTERY[up]}」</b>`);
   const r0 = resonancesOf(run.stats).map(r => r.id), r1 = resonancesOf(next);
   for (const r of r1) if (!r0.includes(r.id)) notes.push(`<b class="res">공명 「${r.name}」</b>: ${r.desc}`);
   for (const id of r0) if (!r1.some(r => r.id === id)) notes.push(`<b class="bad">공명 「${RESONANCES.find(r => r.id === id).name}」 잃음</b>`);
@@ -137,16 +137,16 @@ function trainPreview(up) {
     <small>${U.name}: ${statNumbers(up, u0)} → <b>${statNumbers(up, u1)}</b></small><small>${D.name}: ${statNumbers(down, d0)} → ${statNumbers(down, d1)}</small>${notes.map(n => `<div class="note">${n}</div>`).join('')}
     ${s1 !== s0 ? spellCard(s1, `마법이 바뀐다 (${SPELLS[s0].name} →)`) : ''}</div>`;
 }
-// 전투방 보상: 스탯 1점 찍기 (반대 스탯이 1 내려감). 엘리트·보스는 각인 3택1
-function rewardScreen(after, sel = null) {
+// 전투방 보상: 스탯 2점 찍기 (한 점씩) (반대 스탯이 1 내려감). 엘리트·보스는 각인 3택1
+function rewardScreen(after, sel = null, left = 2) {   // left: 이번 보상에서 남은 단련 점수
   mode = 'relic'; touch.classList.add('hidden');
   if (!PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b))) return relicScreen(after);
-  screen(`<div class="card statup"><h2>단련 1점</h2><div class="line">한쪽을 올리면 반대쪽이 1 내려간다</div>${runStat()}
+  screen(`<div class="card statup"><h2>단련 ${left}점</h2><div class="line">한쪽을 올리면 반대쪽이 1 내려간다</div>${runStat()}
     <div class="stats5">${PAIRS.map(([a, b]) => pairRow(a, b, sel)).join('')}</div>
     ${sel ? trainPreview(sel) : '<div class="tprev empty">올릴 스탯을 누르세요</div>'}
     <div class="btns"><button class="btn" id="train" ${sel ? '' : 'disabled'}>단련</button></div></div>`);
-  for (const b of ui.querySelectorAll('[data-up]')) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); if (!b.disabled) rewardScreen(after, b.dataset.up); });
-  bind('train', () => { if (sel) { takeTrain(run, sel); after(); } });
+  for (const b of ui.querySelectorAll('[data-up]')) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); if (!b.disabled) rewardScreen(after, b.dataset.up, left); });
+  bind('train', () => { if (!sel) return; takeTrain(run, sel); if (left > 1 && PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b))) rewardScreen(after, null, left - 1); else after(); });
 }
 function takeReward(id, after) { takeRelic(run, id); after(); }
 
@@ -259,7 +259,7 @@ function startPilgrimage() { if (!run || run.relics.length || run.roomIdx) newPi
 function relicScreen(after) {
   mode = 'relic'; touch.classList.add('hidden');
   const offer = relicOffer(run, 3);
-  if (!offer.length) return PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b)) ? rewardScreen(after) : after();   // 각인이 바닥나면 단련 1점으로
+  if (!offer.length) return PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b)) ? rewardScreen(after) : after();   // 각인이 바닥나면 단련 2점으로
   screen(`<div class="card"><h2>각인을 하나 고르세요</h2>${runStat()}<div class="picks">${offer.map(id => relicCard(id)).join('')}</div></div>`);
   bindPicks(id => takeReward(id, after));
 }

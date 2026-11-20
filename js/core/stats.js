@@ -1,19 +1,20 @@
-// 스탯 6종 = 반대 스탯 3쌍. 판마다 모두 5에서 시작, 0~10.
+// 스탯 6종 = 반대 스탯 3쌍. 판마다 모두 10에서 시작, 0~20 (쌍의 합 20).
 // 단련: 한 쌍에서 한쪽을 +1 하면 반대쪽이 -1 (쌍의 합은 늘 10). 7·10에서 능력, 3 이하에서 약점
-export const STAT_MIN = 0, STAT_MAX = 10, STAT_START = 5;
+export const STAT_MIN = 0, STAT_MAX = 20, STAT_START = 10;
+export const T_ABILITY = 14, T_MASTER = 20, T_WEAK = 6;   // 능력 구간 · 극의 · 약점
 
 export const STATS = [
-  { id: 'str', name: '힘', icon: 'sword', tone: 'ember', per: '점마다 공격 피해 ±12%',
+  { id: 'str', name: '힘', icon: 'sword', tone: 'ember', per: '점마다 공격 피해 ±6%',
     t7: '3타에 검기가 나간다', t10: '처형하면 주변 적 자세 +40%', low: '공격 후딜 +4프레임' },
-  { id: 'agi', name: '민첩', icon: 'roll', tone: 'moon', per: '점마다 이동·구르기 ±6%, 무적 ±1프레임',
+  { id: 'agi', name: '민첩', icon: 'roll', tone: 'moon', per: '점마다 이동·구르기 ±3%, 2점마다 무적 ±1프레임',
     t7: '구르기 후딜 없음 (연속 구르기)', t10: '구르기 직후 첫 공격이 치명타', low: '구르기 후딜 +6프레임' },
-  { id: 'wil', name: '의지', icon: 'parry', tone: 'amber', per: '점마다 완벽 패링 판정 ±1프레임, 자세 피해 ±12%',
+  { id: 'wil', name: '의지', icon: 'parry', tone: 'amber', per: '2점마다 완벽 패링 판정 ±1프레임, 점마다 자세 피해 ±6%',
     t7: '완벽 패링한 적이 1.5배 오래 무방비', t10: '모든 패링이 완벽 판정', low: '헛 패링 후딜 +6프레임' },
-  { id: 'lmp', name: '등불', icon: 'ult', tone: 'amber', per: '점마다 마법 피해 ±15%, 빛 획득 ±10%',
+  { id: 'lmp', name: '등불', icon: 'ult', tone: 'amber', per: '점마다 마법 피해 ±7.5%, 빛 획득 ±5%',
     t7: '등불 탄이 두 발', t10: '처치할 때마다 빛 +15', low: '마법 비용 +25%' },
-  { id: 'vit', name: '생명', icon: 'heart', tone: 'red', per: '점마다 최대 체력 ±1',
+  { id: 'vit', name: '생명', icon: 'heart', tone: 'red', per: '2점마다 최대 체력 ±1',
     t7: '기름병 회복 +1', t10: '기름병 +1개', low: '기름병 회복 -1' },
-  { id: 'fury', name: '투지', icon: 'afterglow', tone: 'ember', per: '5 넘는 점마다 치명타 확률 +6%',
+  { id: 'fury', name: '투지', icon: 'afterglow', tone: 'ember', per: '10 넘는 점마다 치명타 확률 +3%',
     t7: '적을 쓰러뜨리면 다음 공격이 치명타', t10: '치명타 피해 3배', low: '처형 피해 -30%' },
 ];
 export const STAT_BY_ID = Object.fromEntries(STATS.map(s => [s.id, s]));
@@ -24,9 +25,9 @@ export const OPP = Object.fromEntries(PAIRS.flatMap(([a, b]) => [[a, b], [b, a]]
 export const startStats = () => Object.fromEntries(STATS.map(s => [s.id, STAT_START]));
 export const clampStat = v => Math.max(STAT_MIN, Math.min(STAT_MAX, Math.round(v)));
 // 구간: 'low' | 'mid' | 't7' | 't10'
-export const tierOf = v => v >= 10 ? 't10' : v >= 7 ? 't7' : v <= 3 ? 'low' : 'mid';
+export const tierOf = v => v >= T_MASTER ? 't10' : v >= T_ABILITY ? 't7' : v <= T_WEAK ? 'low' : 'mid';
 
-// 단련: up +1, 반대 스탯 -1. 이미 끝(10)이면 아무 일도 없음
+// 단련: up +1, 반대 스탯 -1. 이미 끝(20)이면 아무 일도 없음
 export const canTrain = (stats, up) => stats[up] < STAT_MAX && stats[OPP[up]] > STAT_MIN;
 export function train(stats, up) {
   if (!canTrain(stats, up)) return stats;
@@ -36,19 +37,19 @@ export function train(stats, up) {
 
 // 스탯 → 리라 보정값 (p.mods에 합쳐짐)
 export function statMods(s) {
-  const d = k => s[k] - STAT_START, low = k => s[k] <= 3;
+  const d = k => (s[k] - STAT_START) / 2, low = k => s[k] <= T_WEAK, A = k => s[k] >= T_ABILITY, M = k => s[k] >= T_MASTER;   // d: 2점 = 예전 1단계
   return {
-    atkMul: Math.max(0.4, 1 + 0.12 * d('str')), atkLag: low('str') ? 4 : 0, str7: s.str >= 7, str10: s.str >= 10,
-    speedMul: 1 + 0.06 * d('agi'), rollStat: 1 + 0.06 * d('agi'), rollI: d('agi'), rollLag: low('agi') ? 6 : s.agi >= 7 ? -6 : 0, agi10: s.agi >= 10,
-    poiseMul: Math.max(0.4, 1 + 0.12 * d('wil')), perfectExtra: d('wil'), staggerMul: s.wil >= 7 ? 1.5 : 1, allPerfect: s.wil >= 10, whiffLag: low('wil') ? 6 : 0,
-    spellMul: Math.max(0.4, 1 + 0.15 * d('lmp')), lightStat: Math.max(0.5, 1 + 0.1 * d('lmp')), lmp7: s.lmp >= 7, lmp10: s.lmp >= 10, costMul: low('lmp') ? 1.25 : 1,
-    hpBonus: d('vit'), flaskBonus: s.vit >= 7 ? 1 : low('vit') ? -1 : 0, flaskCount: s.vit >= 10 ? 1 : 0,
-    critChance: Math.max(0, 0.06 * d('fury')), killCrit: s.fury >= 7, critMul: s.fury >= 10 ? 3 : 2, furyExec: low('fury') ? 0.7 : 1,
+    atkMul: Math.max(0.4, 1 + 0.12 * d('str')), atkLag: low('str') ? 4 : 0, str7: A('str'), str10: M('str'),
+    speedMul: 1 + 0.06 * d('agi'), rollStat: 1 + 0.06 * d('agi'), rollI: Math.trunc(d('agi')), rollLag: low('agi') ? 6 : A('agi') ? -6 : 0, agi10: M('agi'),
+    poiseMul: Math.max(0.4, 1 + 0.12 * d('wil')), perfectExtra: Math.trunc(d('wil')), staggerMul: A('wil') ? 1.5 : 1, allPerfect: M('wil'), whiffLag: low('wil') ? 6 : 0,
+    spellMul: Math.max(0.4, 1 + 0.15 * d('lmp')), lightStat: Math.max(0.5, 1 + 0.1 * d('lmp')), lmp7: A('lmp'), lmp10: M('lmp'), costMul: low('lmp') ? 1.25 : 1,
+    hpBonus: Math.trunc(d('vit')), flaskBonus: A('vit') ? 1 : low('vit') ? -1 : 0, flaskCount: M('vit') ? 1 : 0,
+    critChance: Math.max(0, 0.06 * d('fury')), killCrit: A('fury'), critMul: M('fury') ? 3 : 2, furyExec: low('fury') ? 0.7 : 1,
     res: Object.fromEntries(resonancesOf(s).map(r => [r.id, true])),   // 공명
   };
 }
 
-// 공명: 서로 다른 쌍의 두 스탯이 모두 7 이상이면 열리는 조합 특성 (쌍 3개 → 조합 12개)
+// 공명: 서로 다른 쌍의 두 스탯이 모두 14 이상이면 열리는 조합 특성 (쌍 3개 → 조합 12개)
 export const RESONANCES = [
   { id: 'riposte',  a: 'str', b: 'wil',  name: '철벽 반격', desc: '완벽 패링 직후 다음 공격 피해 +60%' },
   { id: 'emberEdge',a: 'str', b: 'lmp',  name: '불꽃 칼날', desc: '3타가 적에게 화상 (3초간 초당 3)' },
@@ -63,19 +64,19 @@ export const RESONANCES = [
   { id: 'warmLamp', a: 'lmp', b: 'vit',  name: '따스한 등불', desc: '마법을 3번 쓸 때마다 체력 1 회복' },
   { id: 'wildfire', a: 'lmp', b: 'fury', name: '폭주 등불', desc: '마법도 치명타가 난다 (투지 치명타 확률·배율 적용)' },
 ];
-export const resonancesOf = s => RESONANCES.filter(r => s[r.a] >= 7 && s[r.b] >= 7);
-// 극의: 10에 도달한 스탯의 칭호
+export const resonancesOf = s => RESONANCES.filter(r => s[r.a] >= T_ABILITY && s[r.b] >= T_ABILITY);
+// 극의: 20에 도달한 스탯의 칭호
 export const MASTERY = { str: '파쇄자', agi: '그림자', wil: '철의 의지', lmp: '등불 현자', vit: '불굴', fury: '광전사' };
 // 지금 수치 (구체적인 값). 화면에 '공격 피해 112%'처럼 보여 줌
 export function statNumbers(id, v) {
-  const d = v - STAT_START, pct = x => Math.round(x * 100) + '%';
+  const d = (v - STAT_START) / 2, t = Math.trunc(d), pct = x => Math.round(x * 100) + '%';
   switch (id) {
     case 'str': return `공격 피해 ${pct(Math.max(0.4, 1 + 0.12 * d))}`;
-    case 'agi': return `이동·구르기 ${pct(1 + 0.06 * d)}, 구르기 무적 ${12 + d}프레임`;
-    case 'wil': return `완벽 패링 ${Math.min(12, Math.max(2, 6 + d))}프레임, 자세 피해 ${pct(Math.max(0.4, 1 + 0.12 * d))}`;
+    case 'agi': return `이동·구르기 ${pct(1 + 0.06 * d)}, 구르기 무적 ${12 + t}프레임`;
+    case 'wil': return `완벽 패링 ${Math.min(12, Math.max(2, 6 + t))}프레임, 자세 피해 ${pct(Math.max(0.4, 1 + 0.12 * d))}`;
     case 'lmp': return `마법 피해 ${pct(Math.max(0.4, 1 + 0.15 * d))}, 빛 획득 ${pct(Math.max(0.5, 1 + 0.1 * d))}`;
-    case 'vit': return `최대 체력 ${Math.max(1, 5 + d)}`;
-    case 'fury': return `치명타 확률 ${Math.round(Math.max(0, 6 * d))}%, 치명타 ${v >= 10 ? 3 : 2}배`;
+    case 'vit': return `최대 체력 ${Math.max(1, 5 + t)}`;
+    case 'fury': return `치명타 확률 ${Math.round(Math.max(0, 6 * d))}%, 치명타 ${v >= T_MASTER ? 3 : 2}배`;
   }
   return '';
 }

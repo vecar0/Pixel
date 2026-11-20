@@ -315,3 +315,12 @@ details.statsd summary::before { content: '▸ '; } details.statsd[open] summary
   .card.statup { position: relative; } .card.statup > .btns { position: absolute; right: 14px; top: 8px; margin: 0; }
   .card.statup > .btns .btn { min-height: 38px; padding: 0 10px; font-size: 14px; }
 }
+
+/* 터치 버튼 반투명: 평소엔 게임 화면이 비쳐 보이게, 누르는 순간만 선명 */
+.tb { opacity: .5; transition: opacity .08s; }
+.tb.down { opacity: .95; }
+#b-skill { opacity: .4; } #b-skill.ready { opacity: .7; animation: none; } #b-skill.down { opacity: .95; }
+#b-flask.empty { opacity: .25; }
+#b-pause { opacity: .45; }
+#b-parry { box-shadow: none; }
+#stick { opacity: .2; } #stick.on { opacity: .6; }

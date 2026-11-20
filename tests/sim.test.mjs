@@ -37,20 +37,20 @@ function coyote(k) {
 }
 test('coyote: 떨어진 뒤 5틱째 점프 → 됨', () => ok(coyote(5)));
 test('coyote: 8틱째 → 안 됨', () => ok(!coyote(8)));
-test('attack: 3연타 combo 0,1,2 + 판정은 startup 4틱 뒤 3틱', () => {
-  const w = W(); settle(w); const seen = [];
-  for (let i = 0; i < 60; i++) {
-    tick(w, I({ attack: i === 0 || i === 8 || i === 16 }));
+test('attack: 3연타 combo 0,1,2 + 판정은 startup 뒤 active 동안만', () => {
+  const w = W(); settle(w); const seen = [], A = CFG.attack, gap = A.startupF + A.activeF + 2;
+  for (let i = 0; i < 90; i++) {
+    tick(w, I({ attack: i === 0 || i === gap || i === gap * 2 }));
     const b = attackBox(w.player);
     if (b) seen.push([i, w.player.combo]);
   }
   const combos = [...new Set(seen.map(s => s[1]))];
   eq(JSON.stringify(combos), '[0,1,2]');
-  eq(JSON.stringify(seen.filter(s => s[1] === 0).map(s => s[0])), '[4,5,6]');
+  eq(JSON.stringify(seen.filter(s => s[1] === 0).map(s => s[0])), JSON.stringify(Array.from({ length: A.activeF }, (_, k) => A.startupF + k)));
 });
 test('cancel: 공격 후딜 중 roll → 같은 틱에 roll', () => {
   const w = W(); settle(w);
-  tick(w, I({ attack: true })); steps(w, 7);
+  tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + CFG.attack.activeF);
   eq(w.player.state, 'attack');
   tick(w, I({ roll: true }));
   eq(w.player.state, 'roll');
@@ -65,10 +65,10 @@ test('roll: 22틱에 90~100px, 무적은 2~13틱만', () => {
 test('buffer: 공격 startup 중 parry → 후딜 진입 시 parry 실행', () => {
   const w = W(); settle(w);
   tick(w, I({ attack: true })); tick(w, I({ parry: true }));
-  let got = false; for (let i = 0; i < 8; i++) { tick(w, I()); if (w.player.state === 'parry') got = true; }
+  let got = false; for (let i = 0; i < CFG.player.bufferF; i++) { tick(w, I()); if (w.player.state === 'parry') got = true; }
   ok(got);
 });
-test('buffer: 8틱 넘게 못 쓰면 버려짐', () => {
+test('buffer: 버퍼 시간 넘게 못 쓰면 버려짐', () => {
   const w = W(); settle(w); w.player.flasks = 3; w.player.hp = 3;
   tick(w, I({ flask: true })); tick(w, I({ parry: true }));
   steps(w, 45);

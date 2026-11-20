@@ -73,7 +73,7 @@ test('각인 효과: 화염 칼날 → 3타에 화상 (3초간 초당 3)', () =>
   const r = newRun(1); chooseOath(r, 'parry'); takeRelic(r, 'flame'); enterRoom(r, 'combat');
   const w = buildRoomWorld(r); w.enemies.length = 0; w.waves = []; steps(w, 40);
   const e = spawnEnemy(w, 'ghoul', w.player.x + w.player.w + 2, w.player.y); e.maxHp = e.hp = 500; e.update = () => {};
-  for (const k of [0, 1, 2]) { tick(w, I({ attack: true })); steps(w, 11); e.x = w.player.x + w.player.w + 2; }   // 히트스톱 포함 여유
+  for (const k of [0, 1, 2]) { tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + CFG.attack.activeF + 8); e.x = w.player.x + w.player.w + 2; }   // 히트스톱 포함 여유
   const hp = e.hp; steps(w, 200); eq(hp - e.hp, 9);
 });
 /* ── 지역 2~4 · 새 적 · 보스 · 영구 진행 ── */

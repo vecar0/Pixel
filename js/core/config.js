@@ -11,11 +11,11 @@ export const CFG = {
     speed: 3.2,        // 192px/s
     accelF: 2, decelF: 2,
     jumpMaxH: 96,
-    coyoteF: 6, bufferF: 8,
+    coyoteF: 6, bufferF: 12,
     hp: 5, iframesHurt: 60, hurtStunF: 14,
     w: 22, h: 62,       // 리라 '검은 순례자' 그림(80x85)에 맞춘 몸통 판정
   },
-  attack: { dmg: [10, 10, 18], startupF: 4, activeF: 3, recoveryF: 10, range: 38, comboWindowF: 14, hitstop: [4, 4, 7], push: [4, 4, 6.5], lunge: 2.1 },
+  attack: { dmg: [10, 10, 18], startupF: 7, activeF: 4, recoveryF: 16, range: 38, comboWindowF: 18, hitstop: [4, 4, 7], push: [4, 4, 6.5], lunge: 2.1 },
   parry: {
     perfectF: 6, normalF: 12, whiffF: 18, successRecoverF: 4, reach: 40,
     hitstopPerfect: 8, hitstopNormal: 3, staggerF: 30, staggerPush: 8,

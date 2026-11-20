@@ -8,7 +8,7 @@ import { FxDirector } from './fxmap.js';
 import { iconCanvas } from './icons.js';
 import { bodyShade } from './shade.js';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
-const SLASH = [['melee/sword-slash', 10, 0], ['melee/uppercut', 8, 0], ['melee/spear-sweep', 6, -26]];
+const SLASH = [['melee/sword-slash', 22, 0], ['melee/uppercut', 20, 0], ['melee/spear-sweep', 64, -26]];
 const STEEL = ['#14121c', '#2a2838', '#4a4860', '#7a7890', '#b0aec4', '#dcdae8', '#ffffff'];   // 은빛 칼 (색 과하지 않게)
 const AMBER7 = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], SPARK4 = ['#fff6c8', '#ffd86b', '#ff9a2a', '#e8561d'];
 
@@ -26,7 +26,7 @@ export class Renderer {
   constructor(canvas) {
     this.cv = canvas; this.ctx = canvas.getContext('2d');
     this.dark = document.createElement('canvas'); this.dctx = this.dark.getContext('2d');
-    this.fx = new FxLayer(); this.bgfx = new FxLayer(); this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
+    this.fx = new FxLayer(); this.bgfx = new FxLayer(); this.pfx = new FxLayer(); /* pfx: 리라 베기 (리라 뒤에 그림) */ this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
     this.parts = []; this.texts = [];
     this.ghosts = [];             // 회피 잔상
     this.tail = null;             // 포니테일 스프링
@@ -59,13 +59,13 @@ export class Renderer {
     this.vw = Math.min(CFG.VIEW_W_MAX, Math.max(CFG.VIEW_W, Math.floor(iw / s)));
     this.cv.width = this.vw; this.cv.height = H;
     this.dark.width = this.vw; this.dark.height = H;
-    this.fx.resize(this.vw, H); this.bgfx.resize(this.vw, H);
+    this.fx.resize(this.vw, H); this.bgfx.resize(this.vw, H); this.pfx.resize(this.vw, H);
     this.cv.style.width = Math.round(this.vw * s) + 'px';
     this.cv.style.height = Math.round(H * s) + 'px';
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.bgfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; }
+  reset() { this.fx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; }
 
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
@@ -73,7 +73,7 @@ export class Renderer {
     // 기본 공격: 동작마다 맞는 pixelfx 베기 하나만 (1타 내려베기 · 2타 올려베기 · 3타 가로 휘두르기). 타격 불꽃은 따로 안 띄움
     if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {
       const [id, dx, dy] = SLASH[p.combo] || SLASH[0];
-      this.fx.spawn(id, p.x + p.w / 2 + p.face * dx, feet + dy, { flip: p.face < 0, palette: STEEL, light: 0.15, life: 30 });
+      this.pfx.spawn(id, p.x + p.w / 2 + p.face * dx, feet + dy, { flip: p.face < 0, palette: STEEL, light: 0.15, life: 30 });
     }
     this.dir.events(w); this.dir.tick(w);
     for (const ev of w.events) {
@@ -107,7 +107,7 @@ export class Renderer {
   // 시뮬레이션 1틱마다 (히트스톱 중엔 이펙트도 멈춤)
   stepFx(w) {
     const frozen = w.hitstop > 0;
-    if (!frozen) this.fx.update(1 / CFG.TICK);
+    if (!frozen) { this.fx.update(1 / CFG.TICK); this.pfx.update(1 / CFG.TICK); }
     this.bgfx.update(1 / CFG.TICK);
     this.weather.update(1 / CFG.TICK); this.trans.update(1 / CFG.TICK);
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
@@ -188,6 +188,7 @@ export class Renderer {
     this.drawWarnings(g, w);
     for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
     g.globalAlpha = 1;
+    g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);   // 베기는 적 위·리라 뒤: 리라 몸을 덮지 않음
     this.drawLira(g, w, p);
     for (const b of w.projectiles) {
       if (b._fx) continue;

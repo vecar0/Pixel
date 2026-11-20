@@ -54,7 +54,7 @@ let run = null, mode = 'title', world = createWorld({ room: 'arena' }), acc = 0,
 const lk = window.__lk = { get world() { return world; }, get mode() { return mode; }, get run() { return run; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y), gotoBoss: reg => { setRegion(run, reg); enterRoom(run, 'boss'); play(); } };
 
 function screen(html) { input.clear(); R.hud = !html; ui.innerHTML = html ? `<div class="screen">${html}</div>` : ''; }
-function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); fn(); }); }
+function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); sfx.play('click'); fn(); }); }
 
 function play() {
   world = buildRoomWorld(run); R.runInfo = run; R.region = run.region;
@@ -76,7 +76,7 @@ function newPilgrimage(opts = {}) {
 
 const relicCard = (id, extra = '') => { const r = RELICS[id], t = RELIC_TONE[r.tag] || 'bone';
   return `<button class="pick t-${t}" data-id="${id}"><div class="niche">${icon(id, t)}</div><b>${r.name}</b><span>${r.desc}</span>${extra}</button>`; };
-function bindPicks(fn) { for (const b of ui.querySelectorAll('.pick, [data-id]')) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); if (!b.disabled) fn(b.dataset.id); }); }
+function bindPicks(fn) { for (const b of ui.querySelectorAll('.pick, [data-id]')) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); sfx.play('click'); if (!b.disabled) fn(b.dataset.id); }); }
 const cost = (n, tone = 'amber') => `<em>${icon('ember', tone)}${n}</em>`;
 // 런 상태 띠: 지역 · 방 진행(마름모) · 불씨 · 각인 아이콘
 const runStat = () => {
@@ -87,27 +87,29 @@ const runStat = () => {
     <span class="spells" title="지금 마법">${icon(SPELLS[runSpell(run)].icon, SPELLS[runSpell(run)].tone)}${SPELLS[runSpell(run)].name}</span>
     <span class="relics">${run.relics.map(k => icon(k, RELIC_TONE[RELICS[k].tag])).join('')}</span></div>`;
 };
-// 스탯 표: 반대 스탯 3쌍을 한 줄씩 (왼쪽 스탯 ▸ 저울 ◂ 오른쪽 스탯), 지금 구간의 능력/약점
-
-// 한 스탯의 지금 상태: 실제 수치 + (7·10 능력 또는 약점) + 극의 칭호
-// 한 스탯의 지금 상태: 실제 수치 + 능력 사다리(12·14·16·18·20, 열린 것 밝게) + 붙은 약점
-const tierLine = s => { const v = run.stats[s.id], nx = nextTier(s, v);
-  const ladder = s.tiers.map(([n, d]) => `<i class="tk ${v >= n ? 'on' : ''}" title="${n}: ${d}">${n}</i>`).join('');
-  const weak = weakOn(s, v).map(([n, d]) => ` <b class="bad">약점</b> ${d}`).join('');
-  return `${statNumbers(s.id, v)} <span class="ladder">${ladder}</span>${nx ? ` <small class="nx">다음 ${nx[0]}(${nx[0] - v}점): ${nx[1]}</small>` : ` <b>극의 「${MASTERY[s.id]}」</b>`}${weak}`; };
-// 공명 칩: 열린 것은 밝게, 하나만 더 올리면 열리는 것은 흐리게
+// 스탯 판: 반대 스탯 쌍마다 한 칸(위 스탯 카드 · 20칸 저울 · 아래 스탯 카드). 글은 줄바꿈되어 잘리지 않는다
+// 카드 한 장 = 이름·값·능력 사다리(12~20) / 지금 수치 / 다음 능력 / 약점
+function statCard(S, side, sel, st = run.stats, pick = false) {
+  const v = st[S.id], nx = nextTier(S, v), weak = weakOn(S, v);
+  const ladder = S.tiers.map(([n]) => `<i class="tk ${v >= n ? 'on' : ''}">${n}</i>`).join('');
+  const body = `<div class="sh">${icon(S.icon, S.tone)}<b>${S.name}</b><em>${v}</em><span class="ladder">${ladder}</span></div>
+    <div class="sn">${statNumbers(S.id, v)}</div>
+    ${nx ? `<div class="sx"><b>${nx[0]}</b> <small>(${nx[0] - v}점 더)</small> ${nx[1]}</div>` : `<div class="sx"><b>극의 「${MASTERY[S.id]}」</b></div>`}
+    ${weak.map(([n, d]) => `<div class="sw"><b>약점</b> ${d}</div>`).join('')}`;
+  const cls = `scard ${side} ${sel === S.id ? 'on' : ''}`;
+  return pick ? `<button class="${cls}" data-up="${S.id}" ${canTrain(st, S.id) ? '' : 'disabled'}>${body}</button>` : `<div class="${cls}">${body}</div>`;
+}
+function statGrid(sel, pick) {
+  return `<div class="sgrid">${PAIRS.map(([a, b]) => { const va = run.stats[a];
+    const cells = Array.from({ length: STAT_MAX }, (_, i) => `<i class="${i < va ? 'l' : 'r'}${i === STAT_START - 1 ? ' mid' : ''}"></i>`).join('');
+    return `<div class="scol">${statCard(STAT_BY_ID[a], 'A', sel, run.stats, pick)}<div class="scale2">${cells}</div>${statCard(STAT_BY_ID[b], 'B', sel, run.stats, pick)}</div>`; }).join('')}</div>`;
+}
+// 공명 칩: 열린 것은 밝게(효과 포함), 하나만 더 올리면 열리는 것은 흐리게
 function resonanceBlock(st = run.stats) {
   const on = resonancesOf(st).map(r => r.id), near = RESONANCES.filter(r => !on.includes(r.id) && Math.min(st[r.a], st[r.b]) >= T_ABILITY - 2 && Math.max(st[r.a], st[r.b]) >= T_ABILITY);
-  if (!on.length && !near.length) return `<div class="resrow"><span class="rlabel">공명</span><small>서로 다른 쌍의 두 스탯을 14 이상으로 만들면 조합 특성이 열린다</small></div>`;
-  const chip = (r, act) => `<span class="rchip ${act ? 'on' : ''}" title="${r.desc}"><b>${r.name}</b> <small>${STAT_BY_ID[r.a].name}+${STAT_BY_ID[r.b].name}${act ? ' · ' + r.desc : ' ' + T_ABILITY}</small></span>`;
+  if (!on.length && !near.length) return `<div class="resrow"><span class="rlabel">공명</span><small>다른 쌍의 두 스탯을 모두 14 이상으로 만들면 조합 특성이 열린다</small></div>`;
+  const chip = (r, act) => `<div class="rchip ${act ? 'on' : ''}"><b>${r.name}</b> <small>${STAT_BY_ID[r.a].name}+${STAT_BY_ID[r.b].name}${act ? '' : ' 14'}</small>${act ? `<div>${r.desc}</div>` : ''}</div>`;
   return `<div class="resrow"><span class="rlabel">공명</span>${RESONANCES.filter(r => on.includes(r.id)).map(r => chip(r, true)).join('')}${near.map(r => chip(r, false)).join('')}</div>`;
-}
-function pairRow(a, b, sel, st = run.stats) {
-  const A = STAT_BY_ID[a], B = STAT_BY_ID[b], va = st[a];
-  const cells = Array.from({ length: STAT_MAX }, (_, i) => `<i class="${i < va ? 'l' : 'r'}${i === STAT_START - 1 ? ' mid' : ''}"></i>`).join('');   // 20칸 (쌍의 합 20)
-  const side = (S, id, dir) => `<button class="sside ${dir} ${sel === id ? 'on' : ''}" data-up="${id}" ${canTrain(run.stats, id) ? '' : 'disabled'}>${icon(S.icon, S.tone)}<b>${S.name}</b><em>${st[id]}</em></button>`;
-  return `<div class="spair">${side(A, a, 'L')}<div class="scale t-${A.tone}-${B.tone}">${cells}</div>${side(B, b, 'R')}
-    ${sel === undefined ? `<small class="sl">${tierLine(A)}</small><small class="sr">${tierLine(B)}</small>` : ''}</div>`;   // 설명 줄은 일시정지 표에서만 (단련 화면은 아래 미리 보기가 대신)
 }
 // 마법 카드: 이름 · 빛 소모 · 실제 피해(지금 스탯 반영) · 특성 · 설명 · 착탄까지 걸리는 시간
 function spellCard(id, label = '지금 마법') {
@@ -119,13 +121,7 @@ function spellCard(id, label = '지금 마법') {
     <div class="sc-tags">${(SPELL_TAGS[id] || []).map(t => `<i>${t}</i>`).join('')}</div>
     <div class="sc-desc">${S.desc}${delay}</div></div></div>`;
 }
-function statBlock() {
-  const sp = SPELLS[runSpell(run)];
-  return `<div class="stats5">${PAIRS.map(([a, b]) => pairRow(a, b, undefined)).join('')}
-    ${resonanceBlock()}
-    ${spellCard(runSpell(run))}
-    <div class="sc-map">가장 높은 스탯이 14 이상이면 그 스탯의 마법 (20이면 상위): ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name} ${SPELLS[STAT_SPELL[k][0]].name}/${SPELLS[STAT_SPELL[k][1]].name}`).join(' · ')}</div></div>`;
-}
+const spellMap = () => `<div class="sc-map"><b>마법</b> 가장 높은 스탯이 14 이상이면 그 스탯의 마법, 20이면 상위 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name} ${SPELLS[STAT_SPELL[k][0]].name}/${SPELLS[STAT_SPELL[k][1]].name}`).join(' · ')}</div>`;
 // 단련 미리 보기: 무엇이 오르고 내리는지, 구간이 바뀌면 생기고 잃는 능력, 마법 변화
 function trainPreview(up) {
   const down = OPP[up], U = STAT_BY_ID[up], D = STAT_BY_ID[down], u0 = run.stats[up], u1 = u0 + 1, d0 = run.stats[down], d1 = d0 - 1;
@@ -140,19 +136,19 @@ function trainPreview(up) {
   const r0 = resonancesOf(run.stats).map(r => r.id), r1 = resonancesOf(next);
   for (const r of r1) if (!r0.includes(r.id)) notes.push(`<b class="res">공명 「${r.name}」</b>: ${r.desc}`);
   for (const id of r0) if (!r1.some(r => r.id === id)) notes.push(`<b class="bad">공명 「${RESONANCES.find(r => r.id === id).name}」 잃음</b>`);
-  return `<div class="tprev"><div>${U.name} ${u0} → <strong>${u1}</strong> · ${D.name} ${d0} → ${d1}</div>
-    <small>${U.name}: ${statNumbers(up, u0)} → <b>${statNumbers(up, u1)}</b></small><small>${D.name}: ${statNumbers(down, d0)} → ${statNumbers(down, d1)}</small>${notes.map(n => `<div class="note">${n}</div>`).join('')}
+  return `<div class="tprev"><div class="tp-h">${U.name} ${u0} → <strong>${u1}</strong> · ${D.name} ${d0} → <span class="down">${d1}</span></div>
+    <small>▲ ${statNumbers(up, u1)}</small><small class="down">▼ ${statNumbers(down, d1)}</small>${notes.map(n => `<div class="note">${n}</div>`).join('')}
     ${s1 !== s0 ? spellCard(s1, `마법이 바뀐다 (${SPELLS[s0].name} →)`) : ''}</div>`;
 }
 // 전투방 보상: 스탯 2점 찍기 (한 점씩) (반대 스탯이 1 내려감). 엘리트·보스는 각인 3택1
 function rewardScreen(after, sel = null, left = 2) {   // left: 이번 보상에서 남은 단련 점수
   mode = 'relic'; touch.classList.add('hidden');
   if (!PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b))) return relicScreen(after);
-  screen(`<div class="card statup"><h2>단련 ${left}점</h2><div class="line">한쪽을 올리면 반대쪽이 1 내려간다</div>${runStat()}
-    <div class="stats5">${PAIRS.map(([a, b]) => pairRow(a, b, sel)).join('')}</div>
+  screen(`<div class="card board">${runStat()}<div class="sboard">${statGrid(sel, true)}
+    <div class="spanel"><h2>단련 ${left}점</h2><div class="hint">카드를 눌러 올릴 스탯 선택<br>같은 칸의 반대 스탯은 1 내려간다</div>
     ${sel ? trainPreview(sel) : '<div class="tprev empty">올릴 스탯을 누르세요</div>'}
-    <div class="btns"><button class="btn" id="train" ${sel ? '' : 'disabled'}>단련</button></div></div>`);
-  for (const b of ui.querySelectorAll('[data-up]')) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); if (!b.disabled) rewardScreen(after, b.dataset.up, left); });
+    <div class="btns"><button class="btn" id="train" ${sel ? '' : 'disabled'}>단련</button></div></div></div></div>`);
+  for (const b of ui.querySelectorAll('[data-up]')) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); if (!b.disabled) { sfx.play('click'); rewardScreen(after, b.dataset.up, left); } });
   bind('train', () => { if (!sel) return; takeTrain(run, sel); if (left > 1 && PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b))) rewardScreen(after, null, left - 1); else after(); });
 }
 function takeReward(id, after) { takeRelic(run, id); after(); }
@@ -214,7 +210,7 @@ function unlockScreen() {
     ${UNLOCKS.map(u => { const [ic, t] = look(u), own = save.unlocked.includes(u.id), poor = !own && save.shards < u.cost;
       return `<button class="pick small t-${t}" data-id="${u.id}" ${own || poor ? 'disabled' : ''}><div class="niche">${icon(own || !poor ? ic : 'lock', t)}</div><b>${u.name.replace(/^.*: /, '')}</b><span>${u.desc || (u.relic ? RELICS[u.relic].desc : '')}</span>${own ? '<em>해금됨</em>' : cost('조각 ' + u.cost)}</button>`; }).join('')}
     </div><div class="btns"><button class="btn alt" data-id="back">돌아가기</button></div></div>`);
-  bindPicks(id => { if (id === 'back') return town(); if (buy(save, id)) { persist(); sfx.play('kill'); } unlockScreen(); });
+  bindPicks(id => { if (id === 'back') return town(); if (buy(save, id)) { persist(); sfx.play('heal'); } unlockScreen(); });
 }
 function practiceScreen() {
   mode = 'practice';
@@ -251,7 +247,7 @@ function settingsScreen() {
 function calibrate() {
   mode = 'calibrate'; const beats = [], taps = [], T = 600, t0 = performance.now() + 800;
   screen(`<div class="card"><h2>박자에 맞춰 탭!</h2><div class="line">'틱' 소리가 날 때마다 아무 곳이나 누르세요 (8번)</div><div class="big" id="cnt">준비</div></div>`);
-  for (let i = 0; i < 8; i++) { beats.push(t0 + i * T); setTimeout(() => { sfx.play('telegraph'); const c = $('#cnt'); if (c) c.textContent = i + 1; }, t0 + i * T - performance.now()); }
+  for (let i = 0; i < 8; i++) { beats.push(t0 + i * T); setTimeout(() => { sfx.play('click'); const c = $('#cnt'); if (c) c.textContent = i + 1; }, t0 + i * T - performance.now()); }
   const onTap = e => { taps.push(e.timeStamp || performance.now()); };
   ui.addEventListener('pointerdown', onTap);
   setTimeout(() => {
@@ -345,7 +341,9 @@ function overlay(kind) {
     if (practice) { screen(`<div class="card"><h2>연습 실패</h2><button class="btn" id="again">다시</button><button class="btn alt" id="back">마을로</button></div>`); bind('again', play); return bind('back', town); }
     saveFromWorld(run, world); finish(false);
   } else if (kind === 'pause') {
-    screen(`<div class="card statup pausecard"><h2>잠시 멈춤</h2>${runStat()}${statBlock()}<div class="btns"><button class="btn" id="resume">계속</button><button class="btn alt" id="home">순례 포기</button></div></div>`);
+    screen(`<div class="card board pausecard">${runStat()}<div class="sboard"><div>${statGrid()}${spellMap()}</div>
+      <div class="spanel"><h2>잠시 멈춤</h2>${spellCard(runSpell(run))}${resonanceBlock()}
+      <div class="btns"><button class="btn" id="resume">계속</button><button class="btn alt" id="home">순례 포기</button></div></div></div></div>`);
     bind('resume', resume); bind('home', () => { saveFromWorld(run, world); finish(false); });
   }
 }
@@ -384,13 +382,13 @@ function onEvents(w) {
     else if (ev.type === 'attackHit') { sfx.play(ev.combo === 2 ? 'hit3' : 'hit'); if (navigator.vibrate) navigator.vibrate(ev.combo === 2 ? 18 : 8); }
     else if (ev.type === 'land' && ev.v > 3) sfx.play('land');
     else if (ev.type === 'executeStart') { sfx.play('telegraph'); sfx.play('swing'); if (navigator.vibrate) navigator.vibrate(20); }
-    else if (ev.type === 'execute' && navigator.vibrate) { sfx.play('execute'); navigator.vibrate([40, 30, 60]); }
-    else if (ev.type === 'castStart') sfx.play(ev.spell === 'bolt' ? 'swing' : 'ult');
+    else if (ev.type === 'execute') { sfx.play('execute'); if (navigator.vibrate) navigator.vibrate([40, 30, 60]); }
+    else if (ev.type === 'castStart') sfx.play(ev.spell === 'bolt' ? 'bolt' : 'ult');
     else if (SOUND[ev.type]) sfx.play(SOUND[ev.type]);
     if (ev.type === 'kill' && run) run.kills++;
     if (ev.type === 'interact') { if (ev.kind === 'merchant') shopScreen(); else if (ev.kind === 'campfire') restScreen(); }
     if (ev.type === 'exit') { saveFromWorld(run, w); if (!w.counted) roomCleared(run); leaveRoom(); return; }
-    if (ev.type === 'brazier') sfx.play('execute');
+    if (ev.type === 'brazier') sfx.play('ignite');
   }
   const p = w.player;
   if (p.stateT === 0 && p.state === 'attack') sfx.play('swing');

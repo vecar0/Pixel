@@ -103,7 +103,7 @@ export const runSpell = r => spellFor(r.stats, r.baseSpell, r.lastUp);
 export function applyStats(p, stats) {
   const m = statMods(stats);
   p.stats = { ...stats };
-  p.mods = { ...p.mods, ...m, lightMul: p.mods.lightMul * m.lightStat, rollMul: p.mods.rollMul * m.rollStat, iExtra: p.mods.iExtra + m.rollI };
+  p.mods = { ...p.mods, ...m, lightMul: p.mods.lightMul * m.lightStat, rollMul: p.mods.rollMul * m.rollStat, iExtra: p.mods.iExtra + m.rollI, airJumps: (p.mods.airJumps || 0) + m.airJump };
   p.maxHp = Math.max(1, p.maxHp + m.hpBonus); p.maxFlasks += m.flaskCount;
 }
 
@@ -212,6 +212,7 @@ export function buildRoomWorld(r) {
   if (r.dark >= 5) p.maxFlasks = Math.max(1, p.maxFlasks - 1);   // 어둠 5+: 기름병 -1
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);
   p.flasks = r.flasks == null ? p.maxFlasks : r.flasks;
+  if (p.mods.roomHeal && r.hp != null && p.hp < p.maxHp) { p.hp++; p.roomHealed = true; }   // 생명 16: 새 방 들어갈 때 체력 1
   return w;
 }
 

@@ -5,7 +5,7 @@ import { takeTrain, applyStats, runSpell, genArena, REGIONS, advanceRegion, regi
 import { tick, EMPTY_INPUT } from '../js/core/world.js';
 import { spawnEnemy, ENEMY_DEFS } from '../js/core/enemies.js';
 import { resolveEnemyHit as resolveHit } from '../js/core/combat.js';
-import { resonancesOf, RESONANCES } from '../js/core/stats.js';
+import { resonancesOf, RESONANCES, STATS } from '../js/core/stats.js';
 import { createWorld } from '../js/core/world.js';
 import { defaultSave, buy, relicPool, recordRun, dailySeed, UNLOCKS } from '../js/core/meta.js';
 const I = o => ({ ...EMPTY_INPUT, ...o });
@@ -282,6 +282,19 @@ test('공명 효과: 철벽 반격·수호·따스한 등불', () => {
   const w3 = mk({ lmp: 14, wil: 6, vit: 14, fury: 6 }), p3 = w3.player; p3.hp = 2;
   for (let i = 0; i < 3; i++) { p3.light = 100; p3.state = 'idle'; tick(w3, I({ skill: true })); steps(w3, 40); }
   eq(p3.hp, 3);
+});
+
+test('세밀한 능력 구간: 스탯마다 12·14·16·18·20 다섯 능력, 6·3 두 약점이 실제로 켜진다', () => {
+  for (const st of STATS) { eq(st.tiers.map(t => t[0]).join(), '12,14,16,18,20'); eq(st.weak.map(t => t[0]).join(), '6,3'); }
+  const mk = s2 => { const r = newRun(1); Object.assign(r.stats, s2); enterRoom(r, 'combat'); return buildRoomWorld(r).player; };
+  eq(mk({ str: 12 }).mods.execBonus, 1.25); eq(mk({ str: 16 }).mods.str3Poise, 2); eq(mk({ str: 18 }).mods.rangeMul, 1.25); eq(mk({ str: 3 }).mods.atkMul < mk({ str: 4 }).mods.atkMul * 0.9, true);
+  eq(mk({ agi: 18 }).mods.airJumps, 1); eq(mk({ agi: 16 }).mods.rollI, 3 + 2);   // 2점마다 1프레임(3) + 16 능력(2)
+  eq(mk({ wil: 12 }).mods.parryLight, 5); ok(mk({ wil: 16 }).mods.normalAsPerfect); eq(mk({ wil: 18 }).mods.stunMul, 1.5);
+  eq(mk({ lmp: 12 }).mods.costMul, 0.9); ok(mk({ lmp: 16 }).mods.spellInv); eq(mk({ lmp: 18 }).mods.costMul, 0.8); eq(mk({ lmp: 6 }).mods.costMul, 1.25);
+  eq(mk({ vit: 12 }).mods.flaskSpeed, 0.7); eq(mk({ vit: 3 }).maxFlasks, CFG.flask.charges - 1);
+  eq(mk({ fury: 12 }).mods.critMul, 2.5); eq(mk({ fury: 16 }).mods.critLight, 10); eq(mk({ fury: 18 }).mods.lowHpCrit, 0.2);
+  // 생명 16: 새 방에 들어갈 때 체력 1
+  const r = newRun(2); Object.assign(r.stats, { vit: 16, fury: 4 }); r.hp = 3; enterRoom(r, 'combat'); eq(buildRoomWorld(r).player.hp, 4);
 });
 
 run();

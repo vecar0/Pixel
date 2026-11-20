@@ -13,7 +13,7 @@ import { startTitleScene } from './titlescene.js';
 installPixelUI();
 import { CFG } from './core/config.js';
 import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js';
-import { STATS, STAT_BY_ID, tierOf, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js';
 import { takeTrain, runSpell } from './core/run.js';
 import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js';
 
@@ -63,6 +63,7 @@ function play() {
   if (run.room === 'boss') { R.startCine(ST.boss, `${regionOf(run).name}의 대등을 지키는 자`); R.banner = null; }
   else R.banner = { s: ST[run.room] || '', sub: `${regionOf(run).name} · ${run.roomIdx + 1} / ${run.length}`, t: 150, dur: 150 };
   world.player.lagTicks = Math.max(0, Math.min(6, Math.round(save.settings.offsetMs / 16.7)));   // 타이밍 보정
+  if (world.player.roomHealed) R.healFx(world.player, 1, world.player.hp - 1);                 // 생명 16
   sfx.musicFor(run.region, run.room === 'boss'); acc = 0; slowT = 0; mode = 'play'; screen(''); showTouch(); }
 // 디버그·테스트용: 방 바로 열기
 function setRoom(room) { if (!run) { run = newRun(); } enterRoom(run, room === 'arena' ? 'combat' : room); play(); }
@@ -87,10 +88,13 @@ const runStat = () => {
     <span class="relics">${run.relics.map(k => icon(k, RELIC_TONE[RELICS[k].tag])).join('')}</span></div>`;
 };
 // 스탯 표: 반대 스탯 3쌍을 한 줄씩 (왼쪽 스탯 ▸ 저울 ◂ 오른쪽 스탯), 지금 구간의 능력/약점
-const TIER_TXT = { t7: '14', t10: '20', low: '약점' };
+
 // 한 스탯의 지금 상태: 실제 수치 + (7·10 능력 또는 약점) + 극의 칭호
-const tierLine = s => { const v = run.stats[s.id], T = tierOf(v), extra = T === 'low' ? ` · <b class="bad">약점</b> ${s.low}` : T === 't7' ? ` · <b>14</b> ${s.t7}` : T === 't10' ? ` · <b>극의 「${MASTERY[s.id]}」</b> ${s.t10}` : '';
-  return statNumbers(s.id, v) + extra; };
+// 한 스탯의 지금 상태: 실제 수치 + 능력 사다리(12·14·16·18·20, 열린 것 밝게) + 붙은 약점
+const tierLine = s => { const v = run.stats[s.id], nx = nextTier(s, v);
+  const ladder = s.tiers.map(([n, d]) => `<i class="tk ${v >= n ? 'on' : ''}" title="${n}: ${d}">${n}</i>`).join('');
+  const weak = weakOn(s, v).map(([n, d]) => ` <b class="bad">약점</b> ${d}`).join('');
+  return `${statNumbers(s.id, v)} <span class="ladder">${ladder}</span>${nx ? ` <small class="nx">다음 ${nx[0]}(${nx[0] - v}점): ${nx[1]}</small>` : ` <b>극의 「${MASTERY[s.id]}」</b>`}${weak}`; };
 // 공명 칩: 열린 것은 밝게, 하나만 더 올리면 열리는 것은 흐리게
 function resonanceBlock(st = run.stats) {
   const on = resonancesOf(st).map(r => r.id), near = RESONANCES.filter(r => !on.includes(r.id) && Math.min(st[r.a], st[r.b]) >= T_ABILITY - 2 && Math.max(st[r.a], st[r.b]) >= T_ABILITY);
@@ -126,8 +130,11 @@ function statBlock() {
 function trainPreview(up) {
   const down = OPP[up], U = STAT_BY_ID[up], D = STAT_BY_ID[down], u0 = run.stats[up], u1 = u0 + 1, d0 = run.stats[down], d1 = d0 - 1;
   const notes = [];
-  if (tierOf(u1) !== tierOf(u0)) notes.push(tierOf(u1) === 'mid' ? `${U.name} 약점 해소` : `<b>${U.name} ${TIER_TXT[tierOf(u1)]}</b>: ${U[tierOf(u1)]}`);
-  if (tierOf(d1) !== tierOf(d0)) notes.push(tierOf(d1) === 'low' ? `<b class="bad">${D.name} 약점</b>: ${D.low}` : `${D.name} ${TIER_TXT[tierOf(d0)]} 능력 잃음`);
+  for (const [n, d] of U.tiers) if (u0 < n && u1 >= n) notes.push(`<b>${U.name} ${n}</b>: ${d}`);                    // 새로 열리는 능력
+  for (const [n, d] of U.weak) if (u0 <= n && u1 > n) notes.push(`${U.name} 약점 해소: ${d}`);
+  for (const [n, d] of D.tiers) if (d0 >= n && d1 < n) notes.push(`<b class="bad">${D.name} ${n} 잃음</b>: ${d}`);
+  for (const [n, d] of D.weak) if (d0 > n && d1 <= n) notes.push(`<b class="bad">${D.name} 약점</b>: ${d}`);
+  const nx = nextTier(U, u1); if (nx && !notes.length) notes.push(`<small class="nx">${U.name} 다음 능력 ${nx[0]}까지 ${nx[0] - u1}점: ${nx[1]}</small>`);
   const next = { ...run.stats, [up]: u1, [down]: d1 }, s0 = runSpell(run), s1 = spellFor(next, run.baseSpell, up);
   if (u1 === T_MASTER) notes.push(`<b>극의 「${MASTERY[up]}」</b>`);
   const r0 = resonancesOf(run.stats).map(r => r.id), r1 = resonancesOf(next);

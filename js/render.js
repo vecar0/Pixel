@@ -207,7 +207,7 @@ export class Renderer {
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);   // 베기는 적 위·리라 뒤: 리라 몸을 덮지 않음
     if (!hideChars) this.drawLira(g, w, p);
     if (p.state === 'flask' && !hideChars) {                             // 기름병 마시는 중: 머리 위 초록 원이 차오름
-      const k = Math.min(1, p.stateT / CFG.flask.useF), cx = p.x + p.w / 2, cy = p.y - 30;
+      const k = Math.min(1, p.stateT / (CFG.flask.useF * (p.mods.flaskSpeed || 1))), cx = p.x + p.w / 2, cy = p.y - 30;
       g.fillStyle = 'rgba(13,10,17,.7)'; g.beginPath(); g.arc(cx, cy, 8, 0, Math.PI * 2); g.fill();
       g.strokeStyle = '#7fe08a'; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, 6, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); g.stroke(); g.lineWidth = 1;
       g.drawImage(iconCanvas('flask', 'heal'), Math.round(cx - 6), Math.round(cy - 6));

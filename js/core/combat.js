@@ -16,7 +16,7 @@ export function resolveEnemyHit(w, hb) {
     const perfect = p.stateT < Math.min(PR.normalF, Math.max(2, PR.perfectF + (p.mods.perfectExtra || 0))) + lag || p.blueT > 0 || p.mods.allPerfect;   // 의지: 점마다 ±1프레임   // 결계·의지 10: 모든 패링이 완벽
     hb.src.done = true;
     p.parryOk = true; p.recoverWait = PR.successRecoverF;
-    p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal) * p.mods.lightMul);
+    p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal) * p.mods.lightMul + (perfect ? 0 : p.mods.parryLight || 0));   // 의지 12: 일반 패링 빛 +5
     if (perfect && p.mods.chain) p.chainN = Math.min(5, p.chainN + 1);          // 불씨 연쇄
     const RES = p.mods.res || {};
     if (perfect && RES.riposte) p.riposte = true;                                // 공명 철벽 반격
@@ -27,7 +27,7 @@ export function resolveEnemyHit(w, hb) {
     w.hitstop = Math.max(w.hitstop, perfect ? PR.hitstopPerfect : PR.hitstopNormal);
     if (perfect) { p.perfectParries++; w.shake = 8; }
     const o = hb.owner;
-    if (o && o.poiseMax) addPoise(w, o, (perfect ? PO.perfect : PO.normal) * (p.mods.poiseMul || 1));
+    if (o && o.poiseMax) addPoise(w, o, (perfect || p.mods.normalAsPerfect ? PO.perfect : PO.normal) * (p.mods.poiseMul || 1));   // 의지 16
     if (o && perfect && !o.boss && o.st) {   // 완벽 패링: 일반 적은 공격이 끊기고 튕겨나며 잠깐 무방비
       o.st = 'idle'; o.stT = 0; o.atk = null; o.srcs = []; o.staggerT = Math.round(PR.staggerF * (p.mods.staggerMul || 1));
       o.kvx = Math.sign((o.x + o.w / 2) - (p.x + p.w / 2) || p.face) * PR.staggerPush;
@@ -46,7 +46,7 @@ export function resolveEnemyHit(w, hb) {
     w.events.push({ type: 'aegis', x: p.x + p.w / 2, y: p.y + 20 }); return 'blocked';
   }
   p.hp -= hb.dmg; p.chainN = 0; p.hurtCount = (p.hurtCount || 0) + 1;
-  p.iframes = CFG.player.iframesHurt;
+  p.iframes = Math.round(CFG.player.iframesHurt * (p.mods.hurtIMul || 1));   // 생명 18
   p.buffer = null;
   p.vx = (hb.dir || -p.face) * 1.5; p.vy = -2;
   if (p.hp <= 0) { p.hp = 0; p.state = 'dead'; p.stateT = 0; w.over = true; w.events.push({ type: 'dead', x: p.x + p.w / 2, y: p.y + p.h }); }
@@ -62,7 +62,7 @@ export function addPoise(w, e, frac) {
   e.poiseRegenT = PO.regenDelayF;
   if (e.poise >= 1) {
     // 그로기: 하던 공격은 취소 → 풀린 뒤엔 반드시 새 예고부터 (예고 없는 공격 방지)
-    e.stunT = e.boss ? PO.stunF : PO.mobStunF; e.st = 'idle'; e.stT = 0; e.atk = null; e.srcs = []; e.cd = 40;
+    e.stunT = Math.round((e.boss ? PO.stunF : PO.mobStunF) * ((w.player && w.player.mods.stunMul) || 1)); e.st = 'idle';   // 의지 18 e.stT = 0; e.atk = null; e.srcs = []; e.cd = 40;
     w.events.push({ type: 'stun', x: e.x + e.w / 2, y: e.y });
   }
 }
@@ -111,14 +111,15 @@ export function resolvePlayerAttacks(w) {
       w.events.push({ type: 'executeStart', x: e.x + e.w / 2, y: e.y + e.h / 2 });
       return;
     } else {
-      const RES = p.mods.res || {}, cc = (p.mods.critChance || 0) + (RES.gale && p.galeT > 0 ? 0.35 : 0);
+      const RES = p.mods.res || {}, cc = (p.mods.critChance || 0) + (RES.gale && p.galeT > 0 ? 0.35 : 0) + (p.hp <= p.maxHp / 2 ? p.mods.lowHpCrit || 0 : 0);   // 투지 18
       if (!p.crit && cc) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < cc) p.crit = true; }   // 투지·질풍: 치명타 확률
       p.galeT = 0;
       const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? (p.mods.critMul || 2) : 1) * (p.mods.atkMul || 1)
         * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1);   // 공명 철벽 반격·버팀
       p.riposte = false;
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
-      damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit * (p.mods.poiseMul || 1));
+      damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit * (p.mods.poiseMul || 1) * (p.combo === 2 ? p.mods.str3Poise || 1 : 1));   // 힘 16: 3타 자세 2배
+      if (wasCrit && p.mods.critLight) p.light = Math.min(CFG.light.max, p.light + p.mods.critLight);   // 투지 16
       if (p.combo === 2 && (p.mods.flame || RES.emberEdge)) e.burnT = 180;   // 화염 칼날 각인·공명 불꽃 칼날                       // 화염 칼날
       w.hitstop = Math.max(w.hitstop, CFG.attack.hitstop[p.combo]);
       e.kvx = p.face * CFG.attack.push[p.combo] * (e.boss ? 0.15 : 1);
@@ -213,7 +214,7 @@ export function updateExecute(w) {
   }
   if (t === X.hitF) {
     e.executing = false; e.stunT = 0; e.poise = 0; p.executes = (p.executes || 0) + 1;
-    if (!e.dead) damageEnemy(w, e, e.boss ? Math.round(e.maxHp * PO.executeFrac * p.mods.execMul * (p.mods.furyExec || 1)) : e.hp);
+    if (!e.dead) damageEnemy(w, e, e.boss ? Math.round(e.maxHp * PO.executeFrac * p.mods.execMul * (p.mods.furyExec || 1) * (p.mods.execBonus || 1)) : e.hp);
     w.hitstop = Math.max(w.hitstop, 12); w.shake = 12;
     if (p.mods.str10) for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 320) addPoise(w, o, 0.4);   // 힘 10
     if ((p.mods.res || {}).slayer) { p.light = Math.min(CFG.light.max, p.light + 30); p.crit = true; }   // 공명 처단

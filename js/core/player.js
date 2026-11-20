@@ -24,14 +24,14 @@ export function invulnerable(p) {
   if (p.iframes > 0) return true;
   if (p.state === 'roll') return p.stateT >= RO.iStart && p.stateT <= RO.iEnd + p.mods.iExtra;
   if (p.state === 'execute') return true;                   // 처형 중 무적
-  return p.state === 'cast' && !!CFG.skill[p.spell].inv;   // 큰 마법 시전 중 무적
+  return p.state === 'cast' && (!!CFG.skill[p.spell].inv || !!p.mods.spellInv);   // 등불 16: 모든 마법 시전 중 무적   // 큰 마법 시전 중 무적
 }
 
 export function attackBox(p) {
   if (p.state !== 'attack') return null;
   if (p.stateT < A.startupF || p.stateT >= A.startupF + A.activeF) return null;
-  const x = p.face > 0 ? p.x + p.w : p.x - A.range;
-  return { x, y: p.y + 4, w: A.range, h: p.h - 8 };
+  const rg = Math.round(A.range * (p.mods.rangeMul || 1)), x = p.face > 0 ? p.x + p.w : p.x - rg;   // 힘 18: 공격 범위
+  return { x, y: p.y + 4, w: rg, h: p.h - 8 };
 }
 
 // 지금 이 행동을 시작할 수 있나
@@ -109,7 +109,7 @@ export function updatePlayer(w, inp) {
   }
   if (p.galeT > 0) p.galeT--;
   if (p.state === 'hurt' && t >= P.hurtStunF) setState(p, 'idle');
-  if (p.state === 'flask' && t >= CFG.flask.useF) {
+  if (p.state === 'flask' && t >= Math.round(CFG.flask.useF * (p.mods.flaskSpeed || 1))) {   // 생명 12: 빨리 마심
     const hp0 = p.hp; p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, CFG.flask.heal + (p.mods.flaskBonus || 0)));
     w.events.push({ type: 'heal', amount: p.hp - hp0, from: hp0, x: p.x + p.w / 2, y: p.y + p.h }); setState(p, 'idle');
   }

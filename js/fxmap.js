@@ -122,7 +122,7 @@ export class FxDirector {
       case 'block': P('impacts/shield-block', ev.x, ev.y + 20, { palette: LILAC, light: 0.3 }, 2); break;
       case 'blink': P('arcane/blink-out', ev.x, ev.y + 26, { palette: VIOLET, light: 0.3 }, 2); break;
       case 'enemyParry': P('impacts/parry', ev.x, ev.y + 40, { palette: VIOLET, light: 0.3 }, 3); break;
-      case 'flask': P('nature/healing-bloom', ev.x, ev.y, { light: 0.3 }, 2); break;
+      case 'heal': P('holy/heal', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: p.face < 0, life: 110, light: 0.4 }, 3); break;   // 몸을 타고 오르는 회복 빛
       case 'castStart': if (CFG_INV[ev.spell]) P('holy/sunburst', 0, 0, { follow: p, dy: -10, life: 26, light: 0.3, palette: ev.spell === 'ward' ? ICE : ev.spell === 'spear' ? VIOLET : AMBER }, 3); break;
       case 'skill': {                                                      // 등불 마법: 마법마다 pixelfx 이펙트 하나 (착탄형은 표적 자리에)
         const gy = ev.tx != null ? groundAt(w, ev.tx - 10, 20) : feet;

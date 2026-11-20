@@ -74,6 +74,8 @@ export class Sfx {
       case 'slam': this.tone(70, 0.4, 'sine', 0.7, 0.6); this.noise(0.25, 0.4, 300); break;
       case 'ult': this.noise(0.6, 0.4, 900, 0.7); this.tone(160, 0.6, 'sawtooth', 0.25, 2); break;
       case 'telegraph': this.tone(880, 0.05, 'square', 0.06); break;
+      case 'heal':      // 맑게 올라가는 세 음 (회복)
+        this.tone(660, 0.18, 'triangle', 0.22); this.tone(880, 0.18, 'triangle', 0.22, 0, 0.08); this.tone(1320, 0.32, 'sine', 0.2, 0, 0.16); break;
     }
   }
 }

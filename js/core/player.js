@@ -101,7 +101,10 @@ export function updatePlayer(w, inp) {
   if (p.state === 'parry' && (p.parryOk ? t >= PR.normalF : t >= PR.normalF + PR.whiffF + (p.mods.whiffLag || 0))) setState(p, 'idle');
   if (p.state === 'roll' && t >= RO.totalF + RO.endLagF + (p.mods.rollLag || 0)) { if (p.mods.agi10) p.crit = true; setState(p, 'idle'); }   // 민첩 10: 구르기 직후 치명타
   if (p.state === 'hurt' && t >= P.hurtStunF) setState(p, 'idle');
-  if (p.state === 'flask' && t >= CFG.flask.useF) { w.events.push({ type: 'flask', x: p.x + p.w / 2, y: p.y + p.h }); p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, CFG.flask.heal + (p.mods.flaskBonus || 0))); setState(p, 'idle'); }
+  if (p.state === 'flask' && t >= CFG.flask.useF) {
+    const hp0 = p.hp; p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, CFG.flask.heal + (p.mods.flaskBonus || 0)));
+    w.events.push({ type: 'heal', amount: p.hp - hp0, from: hp0, x: p.x + p.w / 2, y: p.y + p.h }); setState(p, 'idle');
+  }
   if (p.state === 'cast') {
     const S = CFG.skill[p.spell];
     if (t === S.fireF) w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face });

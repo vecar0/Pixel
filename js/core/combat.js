@@ -164,10 +164,11 @@ export function resolveSkill(w, ev) {
   } else if (ev.spell === 'chain') {                                  // 앞쪽 가까운 적부터 n명
     live.filter(e => Math.sign(e.x + e.w / 2 - cx) === p.face && Math.abs(e.x + e.w / 2 - cx) <= S.range)
       .sort((a, b) => Math.abs(a.x - cx) - Math.abs(b.x - cx)).slice(0, S.n).forEach(e => spellHit(w, e, Math.round(S.dmg * M), S.poise * PM, 'chain'));
-  } else if (ev.spell === 'heal') {
-    p.hp = Math.min(p.maxHp, p.hp + S.heal);
-  } else if (ev.spell === 'sanctum') {
-    p.hp = Math.min(p.maxHp, p.hp + S.heal);
+  } else if (ev.spell === 'heal' || ev.spell === 'sanctum') {
+    const hp0 = p.hp; p.hp = Math.min(p.maxHp, p.hp + S.heal);
+    w.events.push({ type: 'heal', amount: p.hp - hp0, from: hp0, x: cx, y: p.y + p.h, spell: true });
+  }
+  if (ev.spell === 'sanctum') {
     for (const e of live) if (Math.abs(e.x + e.w / 2 - cx) <= S.radius + e.w / 2 && Math.abs(e.y + e.h / 2 - (p.y + p.h / 2)) < 120) spellHit(w, e, Math.round(S.dmg * M), S.poise * PM, 'sanctum');
   } else if (ev.spell === 'spear') {
     const x0 = p.face > 0 ? p.x + p.w : p.x - S.len, x1 = x0 + S.len;

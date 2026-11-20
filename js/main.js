@@ -8,6 +8,8 @@ import { spawnEnemy } from './core/enemies.js';
 import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js';
 import { ENEMY_DEFS } from './core/enemies.js';
 import { icon, RELIC_TONE } from './icons.js';
+import { installPixelUI, roundBtn } from './pixelui.js';
+installPixelUI();
 import { CFG } from './core/config.js';
 import { SPELLS, STAT_SPELL, spellFor } from './core/spells.js';
 import { STATS, STAT_BY_ID, tierOf, PAIRS, OPP, canTrain } from './core/stats.js';
@@ -34,7 +36,8 @@ function syncTouch() {
     if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + `<small>${SPELLS[sp].name.replace('등불 ', '')}</small>` : '<small>빈 칸</small>'; }
     if (!sp) { b.style.setProperty('--fill', '0%'); b.classList.remove('ready'); return; }
     const cost = Math.round(CFG.skill[sp].cost * (p.mods.costMul || 1));
-    b.style.setProperty('--fill', Math.min(100, p.light / cost * 100) + '%'); b.classList.toggle('ready', p.light >= cost);
+    const f = Math.round(Math.min(1, p.light / cost) * 12) / 12;            // 빛이 비용만큼 차오르는 픽셀 원 (12단계)
+    b.style.setProperty('--img', `url(${roundBtn('#ffb347', { fill: f })})`); b.classList.toggle('ready', p.light >= cost);
   });
   const f = $('#b-flask'); f.querySelector('b').textContent = p.flasks; f.classList.toggle('empty', p.flasks <= 0);
 }
@@ -255,9 +258,12 @@ function restScreen() {
     <button class="pick door t-heal" data-id="oil"><div class="niche">${icon('flask', 'heal')}</div><b>기름을 채운다</b><span>기름병 가득 (${p.flasks} → ${p.maxFlasks})</span></button></div>
     <div class="btns"><button class="btn alt" data-id="back">그냥 지나간다</button></div></div>`);
   bindPicks(id => {
+    const hp0 = p.hp;
     if (id === 'heal') p.hp = Math.min(p.maxHp, p.hp + 2); else if (id === 'oil') p.flasks = p.maxFlasks;
     if (id !== 'back') fire.used = true;
     resume();
+    if (id === 'heal') { R.healFx(p, p.hp - hp0, hp0); R.dir.events({ events: [{ type: 'heal' }], player: p, t: world.t }); sfx.play('heal'); }
+    if (id === 'oil') { R.say(`기름병을 채웠다 (${p.flasks}개)`); sfx.play('heal'); }
   });
 }
 // 상점(상인 앞에서): 여러 번 살 수 있고, 닫으면 방으로 돌아감. 각인은 산 즉시 적용
@@ -330,7 +336,7 @@ function regionIntro() {
 }
 function resume() { mode = 'play'; screen(''); showTouch(); last = performance.now(); acc = 0; }
 
-const SOUND = { hurt: 'hurt', kill: 'kill', execute: 'execute', slam: 'slam', telegraph: 'telegraph' };
+const SOUND = { hurt: 'hurt', kill: 'kill', execute: 'execute', slam: 'slam', telegraph: 'telegraph', heal: 'heal' };
 function onEvents(w) {
   for (const ev of w.events) {
     if (ev.type === 'parry') {

@@ -30,7 +30,7 @@ jobs:
       - name: Collect site files
         run: |
           mkdir _site
-          cp -r index.html manifest.webmanifest icon.png .nojekyll css js fonts assets _site/
+          cp -r index.html manifest.webmanifest icon.png icon-192.png icon-512.png icon-maskable-512.png .nojekyll css js fonts assets _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with: { path: _site }

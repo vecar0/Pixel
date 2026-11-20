@@ -209,9 +209,10 @@ export function resolveSkill(w, ev) {
 }
 // 지연 마법 착탄: 그 자리 반경 안의 적
 export function landSkill(w, d) {
+  w.events.push({ type: 'spellLand', spell: d.spell, x: d.x, r: d.r });     // 착탄 순간 연출용
   for (const e of liveOf(w)) if (Math.abs(e.x + e.w / 2 - d.x) <= d.r + e.w / 2 && (d.y0 == null || (e.y + e.h > d.y0 && e.y < d.y1))) spellHit(w, e, d.dmg, d.poise, d.spell);
-  w.shake = Math.max(w.shake, d.spell === 'meteor' ? 10 : 5);
-  if (d.spell === 'meteor' || d.spell === 'thunder' || d.spell === 'smite') w.hitstop = Math.max(w.hitstop, 4);
+  w.shake = Math.max(w.shake, d.spell === 'meteor' || d.spell === 'blast' ? 12 : 7);
+  if (d.spell === 'meteor' || d.spell === 'thunder' || d.spell === 'smite' || d.spell === 'blast') w.hitstop = Math.max(w.hitstop, 5);
 }
 
 // 처형 모션: 적 옆으로 파고들고, hitF에 벤다. 일반 적은 즉사, 보스는 최대 체력의 15%(×각인·투지)

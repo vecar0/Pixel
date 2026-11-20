@@ -28,7 +28,7 @@ export class Renderer {
   constructor(canvas) {
     this.cv = canvas; this.ctx = canvas.getContext('2d');
     this.dark = document.createElement('canvas'); this.dctx = this.dark.getContext('2d');
-    this.fx = new FxLayer(); this.bgfx = new FxLayer(); this.pfx = new FxLayer(); /* pfx: 리라 베기 (리라 뒤에 그림) */ this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
+    this.fx = new FxLayer(); this.mfx = new FxLayer(2) /* 마법 이펙트: 2배 굵은 픽셀 (캐릭터 크기에 맞춤) */; this.bgfx = new FxLayer(); this.pfx = new FxLayer(); /* pfx: 리라 베기 (리라 뒤에 그림) */ this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
     this.parts = []; this.texts = [];
     this.ghosts = [];             // 회피 잔상
     this.tail = null;             // 포니테일 스프링
@@ -61,13 +61,13 @@ export class Renderer {
     this.vw = Math.min(CFG.VIEW_W_MAX, Math.max(CFG.VIEW_W, Math.floor(iw / s)));
     this.cv.width = this.vw; this.cv.height = H;
     this.dark.width = this.vw; this.dark.height = H;
-    this.fx.resize(this.vw, H); this.bgfx.resize(this.vw, H); this.pfx.resize(this.vw, H);
+    this.fx.resize(this.vw, H); this.mfx.resize(this.vw, H); this.bgfx.resize(this.vw, H); this.pfx.resize(this.vw, H);
     this.cv.style.width = Math.round(this.vw * s) + 'px';
     this.cv.style.height = Math.round(H * s) + 'px';
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; }
+  reset() { this.fx.clear(); this.mfx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; }
 
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
@@ -113,7 +113,7 @@ export class Renderer {
   // 시뮬레이션 1틱마다 (히트스톱 중엔 이펙트도 멈춤)
   stepFx(w) {
     const frozen = w.hitstop > 0;
-    if (!frozen) { this.fx.update(1 / CFG.TICK); this.pfx.update(1 / CFG.TICK); }
+    if (!frozen) { this.fx.update(1 / CFG.TICK); this.mfx.update(1 / CFG.TICK); this.pfx.update(1 / CFG.TICK); }
     this.bgfx.update(1 / CFG.TICK);
     this.weather.update(1 / CFG.TICK); this.trans.update(1 / CFG.TICK);
     if (this.irisMode) { this.irisClock += IRIS_SPEED / CFG.TICK; if (this.irisMode === 'open' && this.irisClock >= 2.2) this.irisMode = null; }
@@ -226,7 +226,7 @@ export class Renderer {
     }
     g.restore();
 
-    this.fx.draw(g, camX, sx, sy);
+    this.fx.draw(g, camX, sx, sy); this.mfx.draw(g, camX, sx, sy);
 
     // 떠오르는 글자
     g.textAlign = 'center'; g.font = 'bold 12px Galmuri11, monospace';
@@ -481,13 +481,13 @@ export class Renderer {
   }
 
   // pixelfx actor: 상태 이펙트가 감쌀 실루엣 (서 있는 프레임 기준, 발이 원점)
-  actorOf(ent) {
+  actorOf(ent, k = 1) {
     if (ent === this.lastW?.player || ent.relics) {
       const f = this.anims?.idle?.[0];
-      return f && f.img.naturalWidth ? actorFromImage(f.img, f.ax, f.ay) : actorFromImage(this.liraImg, 43, 85);
+      return f && f.img.naturalWidth ? actorFromImage(f.img, f.ax, f.ay, k) : actorFromImage(this.liraImg, 43, 85, k);
     }
     const f = this.enemyFrame({ t: 0 }, { kind: ent.kind, st: 'idle', vx: 0, x: 0 }, ENEMY_DEFS[ent.kind]);
-    return f ? actorFromImage(f.img, f.ax, f.ay) : undefined;
+    return f ? actorFromImage(f.img, f.ax, f.ay, k) : undefined;
   }
   // 적 그림 (Higgsfield → 픽셀 격자). 원본은 왼쪽을 봄
   enemyFrame(w, e, d) {

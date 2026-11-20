@@ -13,8 +13,9 @@ function load(id) {
 }
 
 class Layer {
-  constructor() { this.list = []; this.pending = []; this.cv = document.createElement('canvas'); this.ctx = this.cv.getContext('2d'); this.n = 0; this.dirty = true; this.has = false; this.cam = 0; }
-  resize(w, h) { this.frame = createFrame(w, h); this.img = new ImageData(w, h); this.cv.width = w; this.cv.height = h; }
+  // k: 픽셀 배율. 2면 이펙트를 절반 해상도로 그려 2배로 키운다 (캐릭터 크기에 맞는 굵은 픽셀)
+  constructor(k = 1) { this.k = k; this.list = []; this.pending = []; this.cv = document.createElement('canvas'); this.ctx = this.cv.getContext('2d'); this.n = 0; this.dirty = true; this.has = false; this.cam = 0; }
+  resize(w, h) { w = Math.ceil(w / this.k); h = Math.ceil(h / this.k); this.frame = createFrame(w, h); this.img = new ImageData(w, h); this.cv.width = w; this.cv.height = h; }
   clear() { this.list.length = 0; this.pending.length = 0; this.has = false; }
 
   // id: 'impacts/hit-spark' 처럼 분류/이름. opts.follow: {x,y,w,h,dead?} 객체를 따라감, opts.dx/dy: 따라갈 때 오프셋
@@ -34,9 +35,9 @@ class Layer {
   add(m, x, y, opts) {
     const { life, follow, dx = 0, dy = 0, key, skip, speed, ...rest } = opts;
     for (const k in rest) if (rest[k] === undefined) delete rest[k];   // undefined가 이펙트 기본값을 덮지 않게
-    const fx = createFx(m, { x: Math.round(x), y: Math.round(y), seed: (Math.random() * 1e6) | 0, ...rest });
+    const k = this.k, fx = createFx(m, { x: Math.round(x / k), y: Math.round(y / k), seed: (Math.random() * 1e6) | 0, ...rest });
     if (skip) fx.update((m.meta.duration || 1) * skip);   // 화면 전환: 덮인 상태에서 시작해 걷히는 절반만
-    fx.speed = speed || 1; fx.life = life ?? Infinity; fx.follow = follow; fx.dx = dx; fx.dy = dy; fx.key = key;
+    fx.speed = speed || 1; fx.life = life ?? Infinity; fx.follow = follow; fx.dx = dx; fx.dy = dy; fx.key = key;   // dy: 이펙트 픽셀 단위
     this.list.push(fx); this.dirty = true;
     return fx;
   }
@@ -48,7 +49,7 @@ class Layer {
       const t = fx.follow;
       if (t) {
         if (t.dead || t.gone) fx.stop();
-        else { fx.options.x = Math.round(t.x + (t.w || 0) / 2 + fx.dx); fx.options.y = Math.round(t.y + (t.h || 0) / 2 + fx.dy); }
+        else { fx.options.x = Math.round((t.x + (t.w || 0) / 2 + fx.dx) / this.k); fx.options.y = Math.round((t.y + (t.h || 0) / 2) / this.k + fx.dy); }
       }
     }
     this.list = this.list.filter(fx => !fx.done());
@@ -59,9 +60,10 @@ class Layer {
 export class FxLayer extends Layer {
   draw(g, camX, dx, dy) {
     if (!this.list.length) { this.has = false; return; }
-    if (++this.n % 2 && !this.dirty && this.has) { g.drawImage(this.cv, dx + this.cam - Math.round(camX), dy); return; }
+    const k = this.k, put = () => { g.save(); g.imageSmoothingEnabled = false; g.drawImage(this.cv, dx + this.cam * k - Math.round(camX), dy, this.cv.width * k, this.cv.height * k); g.restore(); };
+    if (++this.n % 2 && !this.dirty && this.has) { put(); return; }
     this.dirty = false;
-    const f = this.frame; f.ox = Math.round(camX); f.oy = 0; this.cam = f.ox;
+    const f = this.frame; f.ox = Math.round(camX / k); f.oy = 0; this.cam = f.ox;
     clearFrame(f);
     let x0 = f.w, y0 = f.h, x1 = 0, y1 = 0;
     for (const fx of this.list) {
@@ -74,7 +76,7 @@ export class FxLayer extends Layer {
     compositeRect(f, this.img.data, x0, y0, x1, y1);
     this.ctx.clearRect(0, 0, f.w, f.h);
     this.ctx.putImageData(this.img, 0, 0, x0, y0, x1 - x0, y1 - y0);
-    g.drawImage(this.cv, dx, dy); this.has = true;
+    this.has = true; put();
   }
 }
 
@@ -115,18 +117,18 @@ function compositeRect(f, out, x0, y0, x1, y1) {
 // 상태이상(화상·기절·분노)·소멸 이펙트가 기본 더미 대신 실제 스프라이트 모양을 감싸게 한다.
 // ax, ay: 이미지 안에서 발 위치(이펙트 원점). 이미지당 한 번만 계산해 캐시
 const actors = new WeakMap();
-export function actorFromImage(img, ax, ay) {
+export function actorFromImage(img, ax, ay, k = 1) {     // k: 배율 레이어용으로 1/k 크기 실루엣
   if (!img || !img.naturalWidth) return undefined;
-  let a = actors.get(img); if (a) return a;
-  const w = img.naturalWidth, h = img.naturalHeight, c = document.createElement('canvas');
-  c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+  let byK = actors.get(img); if (!byK) actors.set(img, byK = {}); if (byK[k]) return byK[k];
+  const w = Math.ceil(img.naturalWidth / k), h = Math.ceil(img.naturalHeight / k), c = document.createElement('canvas');
+  c.width = w; c.height = h; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, w, h); ax /= k; ay /= k;
   const d = x.getImageData(0, 0, w, h).data, mask = new Uint8Array(w * h), px = new Uint32Array(w * h);
-  let top = h;
+  let top = h, a;
   for (let i = 0; i < w * h; i++) if (d[i * 4 + 3] > 96) {
     mask[i] = 1; px[i] = rgb(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]);
     top = Math.min(top, (i / w) | 0);
   }
   const ox = -Math.round(ax), oy = -Math.round(ay);
   a = { mask: { w, h, data: mask }, pixels: px, x: ox, y: oy, w, h, k: 2, head: [0, oy + top], chest: [0, Math.round(oy + top + (ay - top) * 0.35)] };
-  actors.set(img, a); return a;
+  byK[k] = a; return a;
 }

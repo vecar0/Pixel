@@ -38,6 +38,18 @@ const SPAWN = { ghoul: 'spawn/summon-rise', moth: 'spawn/poof', spearman: 'water
 const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['melee/claw-swipe', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['melee/hammer-smash', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
   bellBoss: ['melee/heavy-cleave', DUST], spider: ['melee/claw-swipe', LILAC], shadow: ['melee/sword-slash', VIOLET], saint: ['melee/spear-sweep', CYAN] };
 const DEATH = { ghoul: ['spawn/poof', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/splash'], priest: ['water/wave-crash'], shellguard: ['ice/ice-shatter', LILAC], assassin: ['explosions/implosion', VIOLET] };
+// 착탄 순간 2단 연출 (마법 레이어, 2배 굵은 픽셀): [이펙트, 옵션] 여러 개 + 화면 번쩍 세기
+const LAND = {
+  pillar:  [[['impacts/ground-slam', { palette: AMBER }], ['fire/fire-ring', { light: 0.3 }]], 0.35],
+  tornado: [[['impacts/hit-spark', { palette: AMBER, height: 30 }]], 0.15],
+  meteor:  [[['explosions/big-explosion', { palette: AMBER, light: 0.6 }], ['nature/quake', { palette: DUST }]], 0.8],
+  stars:   [[['ice/frost-nova', { light: 0.35 }]], 0.2],
+  smite:   [[['holy/sunburst', { palette: GOLD, dy: -40, life: 50 }]], 0.6],
+  thunder: [[['lightning/thunderclap', { light: 0.5 }]], 0.7],
+  blast:   [[['explosions/implosion', { palette: VIOLET, light: 0.5 }], ['nature/quake', { palette: VIOLET }]], 0.7],
+  spikes:  [[['ice/frost-nova', { light: 0.3 }]], 0.3],
+  thorns:  [[['nature/healing-bloom', { light: 0.35 }]], 0.25],
+};
 const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
 
 export const ALL_IDS = [...new Set([
@@ -56,7 +68,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['melee/heavy-cleave', 'explosions/implosion', 'arcane/magic-circle-cast', 'arcane/spell-charge', 'arcane/mana-burst', 'ice/ice-shatter', 'fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'ice/icicle-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'fire/fire-tornado', 'ice/ice-spikes', 'holy/smite', 'nature/thorns', 'shadow/life-steal', 'lightning/chain-lightning', 'lightning/zap-hit', 'shadow/dark-explosion', 'holy/heal-aoe', 'explosions/small-explosion', 'ice/snowflake-burst', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['melee/heavy-cleave', 'explosions/implosion', 'arcane/magic-circle-cast', 'arcane/spell-charge', 'arcane/mana-burst', 'ice/ice-shatter', 'fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'fire/fire-tornado', 'ice/ice-spikes', 'holy/smite', 'nature/thorns', 'shadow/life-steal', 'lightning/chain-lightning', 'lightning/zap-hit', 'shadow/dark-explosion', 'holy/heal-aoe', 'explosions/small-explosion', 'ice/snowflake-burst', 'lightning/thunderclap', 'explosions/plasma-explosion', 'holy/sunburst', 'nature/healing-bloom', 'holy/feather-burst', 'explosions/big-explosion', 'explosions/implosion', 'nature/quake', 'impacts/ground-slam', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -79,6 +91,8 @@ export class FxDirector {
   //  2) 같은 이펙트가 가까운 자리(28px)에서 6틱 안에 또 나오면 생략 (다단히트·연타)
   //  3) 화면에 전투 이펙트가 많으면(12개+) 중요도 낮은 것부터 생략
   //  4) 몸에 감기는 반복 이펙트(분노·게이지 가득)는 쓰지 않고 HUD로 보여 준다
+  // 마법 이펙트: 마법 전용 레이어(배율 k)에 띄운다
+  spell(id, x, y, opts = {}) { this.R.mfx.spawn(id, x, y, opts); }
   put(id, x, y, opts = {}, prio = 1) {
     const F = this.R.fx, t = this.t;
     if (prio < 3 && F.list.length >= 12) return;
@@ -101,9 +115,10 @@ export class FxDirector {
       case 'attackHit':
         if (big) break;                                                   // 처형·완벽 패링 순간엔 그 연출만
         // 기본 공격은 베기 이펙트 하나로 끝 (타격 불꽃을 따로 얹지 않음). 유도탄은 맞은 자리에서 터짐
-        if (ev.spell === 'bolt') P('impacts/hit-spark', ev.x, ev.y + 20, { height: 20, flip: ev.face > 0, palette: AMBER, life: 30, light: 0.5 }, 2);
-        else if (ev.spell === 'lance') P('ice/snowflake-burst', ev.x, ev.y + 10, { life: 40, light: 0.4 }, 2);
-        else if (ev.spell === 'chain') P('lightning/zap-hit', ev.x, ev.y, { flip: ev.face < 0, life: 40, light: 0.45 }, 2);
+        if (ev.spell === 'bolt') this.spell('impacts/hit-spark', ev.x, ev.y + 20, { height: 12, flip: ev.face > 0, palette: AMBER, life: 30, light: 0.55 });
+        else if (ev.spell === 'lance') this.spell('ice/snowflake-burst', ev.x, ev.y + 10, { life: 40, light: 0.45 });
+        else if (ev.spell === 'chain') this.spell('lightning/zap-hit', ev.x, ev.y, { flip: ev.face < 0, life: 40, light: 0.5 });
+        else if (ev.spell === 'drain') this.spell('impacts/hit-spark', ev.x, ev.y + 20, { height: 12, flip: ev.face > 0, palette: BLOOD, life: 30, light: 0.5 });
         P('ui/damage-quiet', ev.x + ev.face * 6, ev.y - 22, { text: String(ev.dmg), palette: ev.crit
           ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
@@ -136,23 +151,30 @@ export class FxDirector {
         break;
       }
       case 'skill': {                                                      // 등불 마법: 마법마다 고유 이펙트 (착탄형은 표적 자리에)
-        const gy = ev.tx != null ? groundAt(w, ev.tx - 10, 20) : feet, f = ev.face < 0, sp = ev.spell, hx = p.x + p.w / 2 + p.face * 10;
-        if (sp === 'pillar') P('fire/flame-pillar', ev.tx, gy, { life: 110, light: 0.45 }, 3);
-        else if (sp === 'tornado') P('fire/fire-tornado', ev.tx, gy, { life: 100, light: 0.45 }, 3);
-        else if (sp === 'meteor') P('fire/meteor', ev.tx, gy, { life: 150, light: 0.5, flip: f }, 3);
-        else if (sp === 'spikes') P('ice/ice-spikes', hx, feet, { flip: f, life: 90, light: 0.4 }, 3);
-        else if (sp === 'stars') [0, -70, 70].forEach((ox, i) => P('ice/icicle-fall', ev.tx + ox * p.face, groundAt(w, ev.tx + ox * p.face - 10, 20), { life: 100, light: 0.35, skip: Math.max(0, 0.25 - i * 0.13) }, 3));
-        else if (sp === 'thunder') P('lightning/lightning-strike', ev.tx, gy, { life: 110, light: 0.5 }, 3);
-        else if (sp === 'smite') P('holy/smite', ev.tx, gy, { life: 120, light: 0.5 }, 3);
-        else if (sp === 'ring') P('fire/fire-ring', ev.x, feet, { life: 80, light: 0.45 }, 3);
-        else if (sp === 'ward') { P('ice/frost-nova', ev.x, feet, { life: 60, light: 0.35 }, 3); P('holy/divine-shield', 0, 0, { follow: p, dy: p.h / 2, life: 300, key: 'blue', light: 0.25, palette: ICE }, 3); }
-        else if (sp === 'spear') P('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: f, life: 40, light: 0.45, palette: VIOLET }, 3);
-        else if (sp === 'chain') P('lightning/chain-lightning', p.x + p.w / 2, feet, { flip: f, actor: R.actorOf(p), skip: 0.4, life: 60, light: 0.45 }, 3);
-        else if (sp === 'drain') P('shadow/life-steal', p.x + p.w / 2, feet, { flip: f, actor: R.actorOf(p), life: 80, light: 0.4 }, 3);
-        else if (sp === 'blast') P('shadow/dark-explosion', ev.tx, gy, { life: 130, light: 0.5 }, 3);
-        else if (sp === 'heal') P('holy/heal', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: f, life: 110, light: 0.3 }, 3);
-        else if (sp === 'thorns') P('nature/thorns', hx, feet, { flip: f, life: 90, light: 0.35 }, 3);
-        else if (sp === 'sanctum') { P('holy/holy-pillar', ev.x, feet, { life: 120, light: 0.45 }, 3); P('holy/heal-aoe', ev.x, feet, { palette: GOLD, life: 100, light: 0.3 }, 3); }
+        const M = this.spell.bind(this), gy = ev.tx != null ? groundAt(w, ev.tx - 10, 20) : feet, f = ev.face < 0, sp = ev.spell, hx = p.x + p.w / 2 + p.face * 10;
+        if (sp === 'pillar') M('fire/flame-pillar', ev.tx, gy, { life: 110, light: 0.45 });
+        else if (sp === 'tornado') M('fire/fire-tornado', ev.tx, gy, { life: 100, light: 0.45 });
+        else if (sp === 'meteor') M('fire/meteor', ev.tx, gy, { life: 150, light: 0.5, flip: f });
+        else if (sp === 'spikes') M('ice/ice-spikes', hx, feet, { flip: f, life: 90, light: 0.4 });
+        else if (sp === 'stars') M('arcane/star-fall', ev.tx, gy, { palette: ICE, life: 110, light: 0.45 });   // 얼음빛 별(고드름)이 쏟아짐
+        else if (sp === 'thunder') M('lightning/lightning-strike', ev.tx, gy, { life: 110, light: 0.5 });
+        else if (sp === 'smite') M('holy/smite', ev.tx, gy, { life: 120, light: 0.5 });
+        else if (sp === 'ring') { M('fire/fire-ring', ev.x, feet, { life: 80, light: 0.5 }); M('explosions/plasma-explosion', ev.x, feet, { palette: AMBER, life: 60, light: 0.5 }); R.flash = Math.max(R.flash, 0.6); }
+        else if (sp === 'ward') { M('ice/frost-nova', ev.x, feet, { life: 60, light: 0.45 }); M('ice/snowflake-burst', ev.x, feet - 30, { life: 60, light: 0.35 }); R.flash = Math.max(R.flash, 0.35); M('holy/divine-shield', 0, 0, { follow: p, dy: p.h / 2 / R.mfx.k, life: 300, key: 'blue', light: 0.25, palette: ICE }); }
+        else if (sp === 'spear') { M('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: f, life: 50, light: 0.55, palette: VIOLET }); M('arcane/mana-burst', hx, feet, { palette: VIOLET, life: 50, light: 0.5 }); R.flash = Math.max(R.flash, 0.5); }
+        else if (sp === 'chain') R.flash = Math.max(R.flash, 0.4), M('lightning/chain-lightning', p.x + p.w / 2, feet, { flip: f, actor: R.actorOf(p, R.mfx.k), skip: 0.4, life: 60, light: 0.45 });
+        else if (sp === 'drain') R.flash = Math.max(R.flash, 0.3), M('shadow/life-steal', p.x + p.w / 2, feet, { flip: f, actor: R.actorOf(p, R.mfx.k), life: 80, light: 0.4 });
+        else if (sp === 'blast') M('shadow/dark-explosion', ev.tx, gy, { life: 130, light: 0.5 });
+        else if (sp === 'heal') { P('holy/heal', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: f, life: 110, light: 0.35 }, 3); M('holy/heal-aoe', p.x + p.w / 2, feet, { palette: GOLD, life: 90, light: 0.35 }); R.flash = Math.max(R.flash, 0.3); }   // 몸을 감싸는 빛이라 1배 (리라 실루엣과 겹침)
+        else if (sp === 'thorns') M('nature/thorns', hx, feet, { flip: f, life: 90, light: 0.35 });
+        else if (sp === 'sanctum') { M('holy/holy-pillar', ev.x, feet, { life: 120, light: 0.5 }); M('holy/heal-aoe', ev.x, feet, { palette: GOLD, life: 100, light: 0.35 }); M('holy/feather-burst', ev.x, feet - 40, { palette: GOLD, life: 80, light: 0.3 }); R.flash = Math.max(R.flash, 0.5); }
+        break;
+      }
+      case 'spellLand': {                                                  // 착탄 순간: 폭발·충격파 + 화면 번쩍
+        const L = LAND[ev.spell]; if (!L) break;
+        const gy = groundAt(w, ev.x - 10, 20);
+        for (const [id, o] of L[0]) this.spell(id, ev.x, gy, { life: 90, light: 0.45, ...o });
+        R.flash = Math.max(R.flash, L[1]);
         break;
       }
       case 'land': if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;
@@ -170,7 +192,7 @@ export class FxDirector {
       if (b.echo) F.spawn('projectiles/energy-disc', 0, 0, { follow: b, palette: AMBER, flip: b.vx < 0 });
       else if (b.wave) F.spawn(b.src?.kind === 'saint' ? 'water/wave-crash' : 'impacts/ground-slam', 0, 0, { follow: b, dy: 6, palette: b.src?.kind === 'saint' ? undefined : DUST, light: 0.5 });
       else if (b.shard) F.spawn('ice/ice-crystal', 0, 0, { follow: b, palette: LILAC });
-      else if (b.bolt && BOLT[b.bolt]) F.spawn(BOLT[b.bolt][0], 0, 0, { follow: b, flip: b.vx < 0, ...BOLT[b.bolt][1] });
+      else if (b.bolt && BOLT[b.bolt]) (b.owner === 'player' ? R.mfx : F).spawn(BOLT[b.bolt][0], 0, 0, { follow: b, flip: b.vx < 0, ...BOLT[b.bolt][1] });   // 리라 마법탄은 2배 레이어
     }
     // 오브젝트: 열린 출구엔 포탈, 보스방 화로는 충전되면 불이 붙고 쓰면 꺼짐
     (w.props || []).forEach((o, i) => {

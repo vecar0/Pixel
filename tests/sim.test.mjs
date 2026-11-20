@@ -177,17 +177,17 @@ test('등불 탄: 빛 20, 날아가 맞힘 / 빛 부족하면 시전 안 됨', (
 });
 test('얼음 창은 여러 적을 꿰뚫고, 흑염 창은 앞쪽 일직선만', () => {
   const w = W(); settle(w); w.player.face = 1;
-  const a = makeDummy(w, { hp: 100 }); a.x = w.player.x + 100;
-  const b = makeDummy(w, { hp: 100 }); b.x = w.player.x + 200;
-  const c = makeDummy(w, { hp: 100, behind: true });
-  cast(w, 'lance'); steps(w, 60); const L = CFG.skill.lance.dmg; eq(a.hp, 100 - L); eq(b.hp, 100 - L);
-  cast(w, 'spear'); steps(w, 30); const SP = CFG.skill.spear.dmg; eq(a.hp, 100 - L - SP); eq(b.hp, 100 - L - SP); eq(c.hp, 100);
+  const a = makeDummy(w, { hp: 300 }); a.x = w.player.x + 100;
+  const b = makeDummy(w, { hp: 300 }); b.x = w.player.x + 200;
+  const c = makeDummy(w, { hp: 300, behind: true });
+  cast(w, 'lance'); steps(w, 60); const L = CFG.skill.lance.dmg; eq(a.hp, 300 - L); eq(b.hp, 300 - L);
+  cast(w, 'spear'); steps(w, 30); const SP = CFG.skill.spear.dmg; eq(a.hp, 300 - L - SP); eq(b.hp, 300 - L - SP); eq(c.hp, 300);
 });
-test('치유의 빛은 체력 2, 성광 기둥은 주변 피해 + 체력 1', () => {
-  const w = W(); settle(w); w.player.hp = 2;
-  const d = makeDummy(w, { hp: 100 });
-  cast(w, 'heal'); steps(w, 30); eq(w.player.hp, 4);
-  cast(w, 'sanctum'); steps(w, 30); eq(w.player.hp, 5); eq(d.hp, 100 - CFG.skill.sanctum.dmg);
+test('치유의 빛·성광 기둥: 정한 만큼 회복, 성광 기둥은 주변 피해도', () => {
+  const w = W(); settle(w); w.player.hp = 1; w.player.maxHp = 10;
+  const d = makeDummy(w, { hp: 300 });
+  cast(w, 'heal'); steps(w, 30); eq(w.player.hp, 1 + CFG.skill.heal.heal);
+  cast(w, 'sanctum'); steps(w, 30); eq(w.player.hp, 1 + CFG.skill.heal.heal + CFG.skill.sanctum.heal); eq(d.hp, 300 - CFG.skill.sanctum.dmg);
 });
 test('유도: 등불 탄은 위쪽에 떠 있는 적도 쫓아가 맞히고, 뒤쪽 적만 있으면 돌아서 쏜다', () => {
   const w = W(); settle(w); w.player.face = 1;

@@ -5,7 +5,7 @@ export const SPELLS = {
   lance:   { name: '얼음 창',   icon: 'sword',       tone: 'moon',  fx: 'ice/ice-lance',            desc: '얼음 창을 던진다. 적을 쫓아가며 여러 적을 꿰뚫는다' },
   pillar:  { name: '화염 기둥', icon: 'ult',         tone: 'ember', fx: 'fire/flame-pillar',        desc: '가장 가까운 적 발밑이 갈라지며 불기둥이 솟는다' },
   thunder: { name: '낙뢰',      icon: 'afterglow',   tone: 'moon',  fx: 'lightning/lightning-strike', desc: '가장 가까운 적에게 벼락이 떨어져 자세를 크게 무너뜨린다' },
-  stars:   { name: '고드름 비', icon: 'afterglow',   tone: 'moon',  fx: 'ice/icicle-fall',          desc: '앞쪽 넓은 땅에 고드름 셋이 떨어져 여럿을 한꺼번에 친다' },
+  stars:   { name: '고드름 비', icon: 'afterglow',   tone: 'moon',  fx: 'arcane/star-fall',         desc: '앞쪽 넓은 땅에 얼음 별이 세 차례 쏟아져 여럿을 한꺼번에 친다' },
   meteor:  { name: '운석',      icon: 'ember',       tone: 'ember', fx: 'fire/meteor',              desc: '가장 가까운 적에게 운석이 떨어져 크게 폭발한다' },
   ring:    { name: '불꽃 고리', icon: 'ult',         tone: 'ember', fx: 'fire/fire-ring',           desc: '리라 주변으로 불꽃이 퍼지고, 날아오던 적 탄을 모두 지운다' },
   ward:    { name: '푸른 결계', icon: 'parry',       tone: 'moon',  fx: 'holy/divine-shield',       desc: '주변을 얼리고, 5초 동안 모든 패링이 완벽 판정이 된다' },

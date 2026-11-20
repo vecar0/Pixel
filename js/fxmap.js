@@ -81,7 +81,7 @@ export class FxDirector {
       for (const o of w.props) {
         if (o.kind === 'campfire') { R.fx.spawn('fire/campfire', o.x, 300, { light: 0.5 }); for (const d of [-110, 110]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
         if (o.kind === 'merchant') { R.bgfx.spawn('fire/brazier', o.x + 90, 300, { light: 0.35 }); R.bgfx.spawn('fire/candle', o.x - 100, 300, { light: 0.3 }); }
-        if (o.kind === 'altar') { R.fx.spawn('fire/brazier', o.x, 246, { light: 0.55 }); for (const d of [-70, 70]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
+        if (o.kind === 'altar') { R.fx.spawn('fire/brazier', o.x, 250, { light: 0.55 }); for (const d of [-70, 70]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
       }
     }
     R.trans.clear(); if (!boss) R.iris(w, 'open');   // 방 입장: 리라를 중심으로 아이리스가 열림 (보스방은 등장 연출이 대신)
@@ -185,7 +185,7 @@ export class FxDirector {
       case 'veilUp': { const b = w.enemies.find(e => e.boss); if (b) R.fx.spawn('holy/divine-shield', 0, 0, { follow: b, dy: b.h / 2, key: 'veil', light: 0.35, palette: CYAN }); break; }
       case 'veilBreak': R.fx.stopKey('veil'); this.spell('water/wave-crash', ev.x, ev.y + 40, { life: 70, light: 0.5 }); this.spell('impacts/crit-hit', ev.x, ev.y + 20, { life: 50, light: 0.5 }); break;
       case 'mirrorReflect': this.spell('ice/snowflake-burst', ev.x, ev.y, { life: 50, light: 0.5 }); this.spell('impacts/hit-spark', ev.x, ev.y + 16, { height: 16, palette: CYAN, life: 30, light: 0.5 }); this.spell('lightning/zap-hit', ev.bx, ev.by, { life: 40, light: 0.5 }); break;
-      case 'beaconLit': R.fx.spawn('fire/brazier', ev.x, 246, { light: 0.55, key: 'beacon' + ev.x }); this.spell('impacts/hit-spark', ev.x, 246, { height: 10, palette: AMBER, life: 30, light: 0.5 }); break;
+      case 'beaconLit': R.fx.spawn('fire/brazier', ev.x, 250, { light: 0.55, key: 'beacon' + ev.x }); this.spell('impacts/hit-spark', ev.x, 250, { height: 10, palette: AMBER, life: 30, light: 0.5 }); break;
       case 'beaconOut': R.fx.stopKey('beacon' + ev.x); break;
       case 'exposed': P('impacts/hit-spark', ev.x, ev.y + 30, { height: 20, palette: GOLD, life: 30, light: 0.4 }, 2); break;
       case 'land': if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;

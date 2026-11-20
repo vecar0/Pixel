@@ -455,7 +455,7 @@ export class Renderer {
     } else if (o.kind === 'beacon' && this.img('beacon')) {               // 빛의 등대: 돌 받침 + 쇠 그릇 (켜지면 불꽃은 fxmap)
       const im = this.img('beacon'), x = Math.round(o.x - im.naturalWidth / 2);
       g.drawImage(im, x, 300 - im.naturalHeight);
-      if (o.litT <= 0) { const pulse = 0.5 + 0.5 * Math.sin(w.t * 0.12); g.fillStyle = `rgba(255,179,71,${0.25 + 0.4 * pulse})`; g.fillRect(Math.round(o.x) - 2, 244, 4, 3); }
+      if (o.litT <= 0) { const pulse = 0.5 + 0.5 * Math.sin(w.t * 0.12); g.fillStyle = `rgba(255,179,71,${0.25 + 0.4 * pulse})`; g.fillRect(Math.round(o.x) - 2, 248, 4, 3); }
     }
   }
   // 대종 (보스 위에 그림): 천장에 매달림 → 떨어짐(바닥에 붉은 그림자 예고) → 가둠 → 다시 올라감
@@ -465,7 +465,7 @@ export class Renderer {
     const G = { dropF: 40, riseF: 50 }, top = 8, ground = 300 - im.naturalHeight + 4;
     let y = top;
     if (bell.st === 'drop') { const k = bell.t / G.dropF; y = top + (ground - top) * Math.max(0, (k - 0.55) / 0.45) ** 2;
-      const a = 0.25 + 0.5 * k; g.fillStyle = `rgba(255,79,94,${a * 0.35})`; g.fillRect(bell.x - 78, 296, 156, 4); g.strokeStyle = `rgba(255,79,94,${a})`; g.strokeRect(bell.x - 78 + 0.5, 294.5, 156, 6); }   // 떨어질 자리
+      const a = 0.25 + 0.5 * k; g.fillStyle = `rgba(255,79,94,${a * 0.35})`; g.fillRect(bell.x - 66, 296, 132, 4); g.strokeStyle = `rgba(255,79,94,${a})`; g.strokeRect(bell.x - 66 + 0.5, 294.5, 132, 6); }   // 떨어질 자리
     else if (bell.st === 'down') y = ground;
     else if (bell.st === 'rise') y = ground + (top - ground) * Math.min(1, bell.t / G.riseF);
     const yy = Math.round(y + (bell.st === 'up' ? Math.sin(w.t * 0.03) * 2 : 0));

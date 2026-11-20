@@ -165,11 +165,11 @@ export function genArena(r) {
   while (px < W - 200) {
     const pw = 100 + ((R() * 90) | 0), prev = plats[plats.length - 1];
     const base = baseAt(px, pw), under = base < 300;
-    let y = base - 78 - ((R() * 14) | 0);                                   // 낮은 층: 바닥에서 바로 점프
-    if (under) y = base - 80 - ((R() * 8) | 0);                            // 언덕 위: 언덕에서 점프해 닿는 높이 (더 높은 층)
+    let y = base - 96 - ((R() * 12) | 0);                                   // 낮은 층: 바닥에서 바로 점프 (머리 위로 넉넉히, 점프 112로 닿음)
+    if (under) y = base - 96 - ((R() * 8) | 0);                            // 언덕 위: 언덕에서 점프해 닿는 높이 (더 높은 층)
     else if (prev && prev.y > 200 && R() < 0.45) {                          // 낮은 발판 바로 옆에 붙여 높은 층 (계단)
       px = prev.x + prev.w + 30 + ((R() * 40) | 0);
-      y = prev.y - 50 - ((R() * 12) | 0);
+      y = Math.max(96, prev.y - 56 - ((R() * 12) | 0));
     }
     plats.push({ x: px, y, w: pw, h: 8 });
     px += pw + 90 + ((R() * 200) | 0);
@@ -188,11 +188,11 @@ export function buildRoomWorld(r) {
     const W = 960;
     w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }] });
     w.haven = type;
-    w.props = [{ kind: type === 'shop' ? 'merchant' : 'campfire', x: 480, used: false }, { kind: 'exit', x: W - 70 }];
+    w.props = [{ kind: type === 'shop' ? 'merchant' : 'campfire', x: 480, used: false }, { kind: 'exit', x: W - 200 }];
   } else {
     const A = genArena(r);
     w = createWorld({ room: 'arena', solids: A.solids, width: A.width, hpMul });
-    w.props = [{ kind: 'exit', x: A.width - 60, locked: true }];       // 출구: 적을 다 잡으면 열림
+    w.props = [{ kind: 'exit', x: A.width - 200, locked: true }];      // 출구: 적을 다 잡으면 열림 (오른쪽 끝 버튼 아래에 가리지 않게 안쪽으로)
     w.bgOff = A.bgOff;
     const lvl = r.roomIdx;                         // 뒤로 갈수록 적이 늘어난다
     const xs = () => 480 + ((rand(r) * (w.width - 600)) | 0);

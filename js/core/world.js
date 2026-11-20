@@ -12,10 +12,10 @@ const walls = W => [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360
 const plat = (x, y, w = 120) => ({ x, y, w, h: 8, oneWay: true });
 const hill = (x, w, h) => ({ x, y: 300 - h, w, h });
 export const BOSS_ARENAS = {
-  bellBoss: { width: 1600, solids: [...walls(1600), hill(80, 200, 34), hill(1320, 200, 34), plat(330, 206), plat(1150, 206)], spawn: { x: 320, y: 230 } },   // 묘지 예배당: 양쪽 무덤 언덕 (가운데 위는 대종)
-  saint:    { width: 1600, solids: [...walls(1600), hill(200, 260, 44), hill(1140, 260, 44), plat(560, 200), plat(920, 200), plat(740, 136, 120)], spawn: { x: 520, y: 230 } },    // 침수 성당: 양쪽 제단 (물이 차면 피난처)
-  spider:   { width: 1600, solids: [...walls(1600), hill(660, 280, 26), plat(220, 220), plat(420, 160), plat(1060, 160), plat(1260, 220), plat(740, 110, 120)], spawn: { x: 120, y: 230 } },   // 유리 광산: 가운데 바위 둔덕, 계단식 발판
-  shadow:   { width: 1600, solids: [...walls(1600), plat(420, 206), plat(620, 156), plat(860, 156), plat(1060, 206)], spawn: { x: 120, y: 230 } },   // 무너진 성소: 가운데 높은 발판 둘
+  bellBoss: { width: 1600, solids: [...walls(1600), hill(80, 200, 34), hill(1320, 200, 34), plat(330, 194), plat(1150, 194)], spawn: { x: 320, y: 230 } },   // 묘지 예배당: 양쪽 무덤 언덕 (가운데 위는 대종)
+  saint:    { width: 1600, solids: [...walls(1600), hill(200, 260, 44), hill(1140, 260, 44), plat(560, 192), plat(920, 192), plat(740, 120, 120)], spawn: { x: 520, y: 230 } },    // 침수 성당: 양쪽 제단 (물이 차면 피난처)
+  spider:   { width: 1600, solids: [...walls(1600), hill(660, 280, 26), plat(220, 196), plat(420, 140), plat(1060, 140), plat(1260, 196), plat(740, 100, 120)], spawn: { x: 120, y: 230 } },   // 유리 광산: 가운데 바위 둔덕, 계단식 발판
+  shadow:   { width: 1600, solids: [...walls(1600), plat(420, 194), plat(620, 140), plat(860, 140), plat(1060, 194)], spawn: { x: 120, y: 230 } },   // 무너진 성소: 가운데 높은 발판 둘
 };
 export const EMPTY_INPUT = Object.freeze({
   left: false, right: false, down: false, jumpHeld: false,
@@ -69,7 +69,7 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
 export const INTERACT_R = 56;
 export function nearProp(w) {
   const p = w.player, cx = p.x + p.w / 2;
-  return (w.props || []).find(o => ['merchant', 'campfire', 'altar', 'keeper', 'board'].includes(o.kind) && Math.abs(o.x - cx) < INTERACT_R) || null;
+  return (w.props || []).find(o => ['merchant', 'campfire', 'altar', 'keeper', 'board', 'rack'].includes(o.kind) && Math.abs(o.x - cx) < INTERACT_R) || null;
 }
 // 오브젝트: 상인·모닥불은 공격 버튼으로 이용, 출구는 열려 있으면 닿는 순간 나감 (전투방은 적을 다 잡아야 열림)
 function propInput(w, inp) {

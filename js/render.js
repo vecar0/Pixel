@@ -27,7 +27,7 @@ const MAX_PARTICLES = 400;
 
 // 배경과 색감을 맞출 소품 (값 = 배경 색 쪽으로 섞는 정도). 수정·불빛처럼 스스로 빛나는 건 약하게
 const PROP_GRADE = { urn: 0.5, spikes: 0.45, vent: 0.45, lever: 0.4, gate: 0.5, chest: 0.4, 'chest-open': 0.35, mover: 0.5, bell: 0.45, chain: 0.5, post: 0.5,
-  mirror: 0.2, beacon: 0.5, shrine: 0.45, keeper: 0.25, board: 0.45, scarecrow: 0.4, merchant: 0.2 };   // 인물(등대지기·상인)은 약하게
+  mirror: 0.2, beacon: 0.5, shrine: 0.45, rack: 0.4, lamp: 0.45, 'deco-barrels': 0.45, 'deco-cart': 0.45, 'deco-bench': 0.45, keeper: 0.25, board: 0.45, scarecrow: 0.4, merchant: 0.2 };   // 인물(등대지기·상인)은 약하게
 const DIM = 0.92;                                                       // 소품은 배경보다 아주 조금 어둡게 (어둠 속에 놓인 느낌)
 const bellOf = w => (w.props || []).find(o => o.kind === 'bell') || {};
 const PHASE2_TITLE = { bellBoss: ['2막 · 무너지는 종탑', '천장에서 잔해가 떨어진다 · 대종이 더 빨리 다시 걸린다'], saint: ['2막 · 차오르는 물', '낮은 바닥에선 느려진다 · 양쪽 제단 위로'],
@@ -420,6 +420,7 @@ export class Renderer {
   drawProps(g, w) {
     if (!this.merchantImg) { this.merchantImg = new Image(); this.merchantImg.src = 'assets/merchant.png'; }
     const near = nearProp(w);
+    for (const d of w.decor || []) { const im = this.img(d.img); if (im) g.drawImage(im, Math.round(d.x - im.naturalWidth / 2), 300 - im.naturalHeight + 1); }   // 마을 장식 (상호작용 없음, 소품 뒤)
     for (const o of w.props) {
       if (o.kind === 'merchant' && this.img('merchant')) {
         const im = this.img('merchant'), gl = g.createRadialGradient(o.x - 20, 250, 4, o.x - 20, 250, 70);
@@ -443,7 +444,7 @@ export class Renderer {
       this.drawGimmickProp(g, w, o);
       const show = o.kind === 'exit' ? pcx > o.x - 260 : gim ? Math.abs(o.x - pcx) < 90 : o.kind === 'bell' ? false : o === near;
       if (!show) continue;
-      const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : o.kind === 'altar' ? 180 : o.kind === 'keeper' ? 192 : o.kind === 'board' ? 218 : 214, txt = o.kind === 'exit' || gim || o.used ? label : `공격 버튼  ${label}`;
+      const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : o.kind === 'altar' ? 180 : o.kind === 'keeper' ? 192 : o.kind === 'board' ? 218 : o.kind === 'rack' ? 222 : 214, txt = o.kind === 'exit' || gim || o.used ? label : `공격 버튼  ${label}`;
       g.font = '10px Galmuri9, monospace'; g.textBaseline = 'middle'; g.textAlign = 'center';
       const tw = g.measureText(txt).width + 14, bob = Math.round(Math.sin(w.t * 0.1) * 2), lx = Math.max(tw / 2 + 4, Math.min(w.width - tw / 2 - 4, o.x));   // 벽 가까이선 화면 안으로
       g.fillStyle = 'rgba(13,10,17,.8)'; g.fillRect(Math.round(lx - tw / 2), y - 8 + bob, Math.round(tw), 16);
@@ -573,7 +574,7 @@ export class Renderer {
       const im = this.img('mirror'), x = Math.round(o.x - im.naturalWidth / 2), grow = o.cd > 0 ? 0.15 + 0.6 * (1 - o.cd / 900) : 1, h = Math.round(im.naturalHeight * grow);
       if (o.cd <= 0) { const gl = g.createRadialGradient(o.x, 260, 4, o.x, 260, 50); gl.addColorStop(0, 'rgba(120,220,255,0.22)'); gl.addColorStop(1, 'rgba(120,220,255,0)'); g.fillStyle = gl; g.fillRect(o.x - 50, 210, 100, 90); }
       g.globalAlpha = o.cd > 0 ? 0.55 : 1; g.drawImage(im, 0, im.naturalHeight - h, im.naturalWidth, h, x, 300 - h, im.naturalWidth, h); g.globalAlpha = 1;
-    } else if ((o.kind === 'keeper' || o.kind === 'board') && this.img(o.kind)) {   // 마을: 등대지기 · 게시판
+    } else if ((o.kind === 'keeper' || o.kind === 'board' || o.kind === 'rack') && this.img(o.kind)) {   // 마을: 등대지기 · 게시판
       const im = this.img(o.kind); g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight + 1);
     } else if (o.kind === 'altar' && this.img('shrine')) {                 // 마을 순례 제단: 등대 모양 돌 제단 (꼭대기 그릇에 늘 불)
       const im = this.img('shrine'); g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight + 1);
@@ -657,8 +658,9 @@ export class Renderer {
       if (!s.oneWay) continue;
       g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(s.x + 3, s.y + th - top + 1, s.w - 6, 4);           // 그림자
       for (let x = s.x; x < s.x + s.w; x += gw) { const ww = Math.min(gw, s.x + s.w - x); g.drawImage(G, 0, 0, ww, th, x, s.y - top, ww, th); }
-      g.fillStyle = 'rgba(8,6,14,0.25)'; g.fillRect(s.x, s.y + 3, s.w, th - top - 3);               // 옆면은 살짝 어둡게
-      g.fillStyle = '#e8dcc0'; g.globalAlpha = 0.45; g.fillRect(s.x + 1, s.y, s.w - 2, 1); g.globalAlpha = 1;   // 윗면 테두리: 바닥 언덕과 같은 정도로 은은하게
+      g.fillStyle = 'rgba(8,6,14,0.32)'; g.fillRect(s.x, s.y - top, s.w, th);                       // 발판 전체를 바닥 톤으로 한 단계 어둡게 (공중이라 빛을 덜 받음)
+      g.fillStyle = 'rgba(8,6,14,0.25)'; g.fillRect(s.x, s.y + 3, s.w, th - top - 3);               // 옆면은 살짝 더 어둡게
+      g.fillStyle = '#e8dcc0'; g.globalAlpha = 0.3; g.fillRect(s.x + 1, s.y, s.w - 2, 1); g.globalAlpha = 1;   // 윗면 테두리: 은은하게
       g.fillStyle = '#120e16'; g.fillRect(s.x, s.y - 1, 1, th - top + 2); g.fillRect(s.x + s.w - 1, s.y - 1, 1, th - top + 2);   // 양 끝 윤곽
     }
   }

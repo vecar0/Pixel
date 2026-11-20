@@ -38,10 +38,11 @@ function syncTouch() {
     if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + `<small>${SPELLS[sp].name.replace('등불 ', '')}</small>` : '<small>빈 칸</small>'; }
     if (!sp) { b.style.setProperty('--fill', '0%'); b.classList.remove('ready'); return; }
     const cost = Math.round(CFG.skill[sp].cost * (p.mods.costMul || 1));
-    const f = Math.round(Math.min(1, p.light / cost) * 12) / 12;            // 빛이 비용만큼 차오르는 픽셀 원 (12단계)
-    b.style.setProperty('--img', `url(${roundBtn('#ffb347', { fill: f })})`); b.classList.toggle('ready', p.light >= cost);
+    const f = Math.min(1, p.light / cost);                                  // 빛이 비용만큼 차오르는 테두리 (원형 게이지)
+    b.style.setProperty('--p', (f * 100).toFixed(1)); b.classList.toggle('ready', p.light >= cost);
   });
   const f = $('#b-flask'); f.querySelector('b').textContent = p.flasks; f.classList.toggle('empty', p.flasks <= 0);
+  f.style.setProperty('--p', (Math.min(1, p.flasks / Math.max(1, p.maxFlasks)) * 100).toFixed(1));   // 남은 기름병 = 테두리 게이지
 }
 
 // 저장 (등불 조각·해금·기록·설정)
@@ -268,22 +269,26 @@ function title() {
 }
 // 등대 마을: 왼쪽은 리라와 기록, 오른쪽은 출발 · 조정 · 메뉴
 // 마을: 걸어 다니는 방. 왼쪽부터 등대지기의 창고(해금) · 허수아비(연습 상대) · 순례 제단(출발 준비) · 모닥불(기록·연습장·설정), 오른쪽 끝 길 = 순례 준비
-const TOWN_W = 1500;
+const TOWN_W = 1700;
+// 마을 장식 (상호작용 없음): 통·상자 더미 · 가로등 · 손수레 · 벤치와 화분 — 빈 곳을 채워 사람 사는 동네처럼
+const TOWN_DECO = [['deco-barrels', 120], ['lamp', 200], ['deco-bench', 420], ['lamp', 610], ['deco-cart', 760], ['lamp', 1000], ['deco-barrels', 1190], ['deco-bench', 1390], ['lamp', 1460]];
 function buildTown() {
-  const W = TOWN_W, w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }], spawn: { x: 140, y: 240 } });
-  w.haven = 'town'; w.town = true;
+  const W = TOWN_W, w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }], spawn: { x: 60, y: 240 } });
+  w.haven = 'town'; w.town = true; w.decor = TOWN_DECO.map(([img, x]) => ({ img, x }));
+  // 기능은 하나씩: 이야기 · 보스 연습 · 준비(어둠·기름) · 기록과 오늘의 시련 · 쉬기(설정) · 출발
   w.props = [
     { kind: 'keeper', x: 300, label: '등대지기 (이야기)' },
-    { kind: 'altar', x: 860, label: '순례 제단 (어둠·기름·출발)' },
-    { kind: 'board', x: 1070, label: '게시판 (기록)' },
-    { kind: 'campfire', x: 1270, label: '모닥불 (연습장·설정)' },
-    { kind: 'exit', x: W - 70, label: '순례 길 →' },
+    { kind: 'rack', x: 520, label: '연습장 (보스 연습)' },
+    { kind: 'altar', x: 900, label: '순례 제단 (어둠·기름)' },
+    { kind: 'board', x: 1100, label: '게시판 (기록·오늘의 시련)' },
+    { kind: 'campfire', x: 1290, label: '모닥불 (설정)' },
+    { kind: 'exit', x: W - 200, label: '순례 길 → 출발' },
   ];
   townDummy(w);
   return w;
 }
 function townDummy(w) {   // 허수아비: 공격하지 않는 연습 상대 (쓰러지면 다시 선다)
-  const e = spawnEnemy(w, 'ghoul', 560, 300 - ENEMY_DEFS.ghoul.h - 2, { hpMul: 30 });
+  const e = spawnEnemy(w, 'ghoul', 680, 300 - ENEMY_DEFS.ghoul.h - 2, { hpMul: 30 });
   e.cd = 1e9; e.speed = 0; e.dummy = true; e.spawnT = 0;
 }
 function town() {
@@ -293,7 +298,7 @@ function town() {
     world = buildTown(); run = null; R.runInfo = null; R.region = 0;
     R.reset(); R.dir.preloadRegion(1); R.dir.enterRoom(world, 1, false);
     R.banner = { s: '등대 마을', sub: '오른쪽 끝이 순례 길', t: 170, dur: 170 };
-    R.say('창고 · 허수아비 · 제단 · 모닥불 앞에서 공격 버튼', 240);
+    R.say('등대지기·연습장·제단·게시판·모닥불 앞에서 공격 버튼 · 오른쪽 길로 출발', 260);
   }
   world.exited = false;
   if (world.player.x > TOWN_W - 140) world.player.x = TOWN_W - 160;
@@ -302,40 +307,31 @@ function town() {
 // 모닥불: 기록·연습장·설정
 function campMenu() {
   mode = 'camp'; touch.classList.add('hidden');
-  screen(`<div class="card"><h2>모닥불</h2><div class="quote">불가에 앉아 지난 순례를 떠올린다</div><div class="menu">
-    <button class="row-btn" data-id="records">${icon('afterglow', 'bone')}<span><b>기록</b><small>최고 어둠 · 보스 처치</small></span></button>
-    <button class="row-btn" data-id="practice">${icon('combat', 'bone')}<span><b>연습장</b><small>보스와 연습 (기록 안 됨)</small></span></button>
+  screen(`<div class="card"><h2>모닥불</h2><div class="quote">불가에 앉아 잠시 쉰다</div><div class="menu">
     <button class="row-btn" data-id="settings">${icon('wick', 'bone')}<span><b>설정</b><small>타이밍 보정 · 소리</small></span></button>
     <button class="row-btn" data-id="title">${icon('pause', 'bone')}<span><b>타이틀로</b><small>처음 화면</small></span></button>
     </div><div class="btns"><button class="btn alt" data-id="back">닫기</button></div></div>`);
   bindPicks(id => { if (id === 'back') town(); else if (id === 'records') recordsScreen(); else if (id === 'practice') practiceScreen(); else if (id === 'settings') settingsScreen(); else if (id === 'title') { world = null; title(); } });
 }
-function prepScreen() {   // 순례 준비: 어둠·기름 고르고 출발 (마을의 등불 제단·오른쪽 길)
+function prepScreen() {   // 순례 제단: 어둠 단계·랜턴 기름 고르기 (출발은 오른쪽 길, 오늘의 시련은 게시판)
   mode = 'prep'; touch.classList.add('hidden');
   const d = dailySeed(), dailyDone = save.daily[d.key], oils = oilsOwned(save), oi = Math.max(0, oils.indexOf(save.oil)), r = save.records;
   screen(`<div class="town">
-    <div class="hero"><h2>순례 준비</h2><img class="lira" alt="리라" src="assets/lira-idle.png">
+    <div class="hero"><h2>순례 제단</h2><img class="lira" alt="리라" src="assets/lira-idle.png">
       <div class="shards">${icon('afterglow', 'amber')}최고 점수 ${save.records.bestScore || 0}</div>
       <div class="stats">순례 ${r.runs}회 · 귀환 ${r.wins}회<br>완벽 패링 누적 ${r.perfectTotal}</div></div>
     <div class="acts">
-      <button class="btn go" data-id="go">${icon('parry', 'bone')}순례를 떠난다</button>
+      <div class="line">고른 설정으로 오른쪽 끝 길에서 출발합니다</div>
       <div class="tune">
         ${chip('dark', `어둠 ${save.dark}`, save.dark ? DARK_RULES[save.dark] : '기본 난이도', save.dark > 0, save.dark < DARK_MAX)}
         ${chip('oil', `랜턴 기름: ${OILS[save.oil].name}`, OILS[save.oil].desc, oi > 0, oi < oils.length - 1)}
       </div>
-      <div class="menu">
-        <button class="row-btn" data-id="daily">${icon('boss', 'amber')}<span><b>오늘의 시련</b><small>${dailyDone ? '오늘 도전함 · 재도전은 기록만' : '모두 같은 조합 · 하루 한 번'}</small></span></button>
-        <button class="row-btn" data-id="back">${icon('wick', 'bone')}<span><b>마을로 돌아가기</b><small>창고·허수아비·모닥불</small></span></button>
-      </div>
+      <div class="btns"><button class="btn" data-id="back">정했다</button></div>
     </div></div>`);
   const step = (id, fn) => { bind(id + '-p', () => { fn(-1); persist(); prepScreen(); }); bind(id + '-n', () => { fn(1); persist(); prepScreen(); }); };
   step('dark', k => { save.dark = Math.max(0, Math.min(DARK_MAX, save.dark + k)); });   // 어둠 단계는 처음부터 모두
   step('oil', k => { save.oil = oils[Math.max(0, Math.min(oils.length - 1, oi + k))]; });
-  bindPicks(id => {
-    if (id === 'go') { newPilgrimage(); startPilgrimage(); }
-    else if (id === 'daily') { newPilgrimage({ seed: d.seed, daily: true }); save.daily[d.key] = true; persist(); startPilgrimage(); }
-    else if (id === 'back') town();
-  });
+  bindPicks(id => { if (id === 'back') town(); });
 }
 function practiceScreen() {
   mode = 'practice';
@@ -347,12 +343,13 @@ function practiceScreen() {
 }
 function recordsScreen() {
   mode = 'records'; const r = save.records;
-  screen(`<div class="card"><h2>기록</h2>
+  screen(`<div class="card"><h2>게시판</h2><div class="quote">순례자들의 기록과 오늘의 시련이 붙어 있다</div>
     <div class="tally"><span><b>${r.bestDark < 0 ? '-' : r.bestDark}</b>최고 어둠</span><span><b>${r.fastest ? (r.fastest / 60 / 60).toFixed(1) + '분' : '-'}</b>최단 귀환</span><span><b>${r.perfectTotal}</b>완벽 패링</span><span><b>${r.challenges}</b>도전 성공</span></div>
     <div class="picks">${REGIONS.map(g => { const n = save.bossKills[g.boss] || 0, nh = r.noHitBosses.includes(g.boss);
       return `<div class="pick door small ${n ? 't-amber' : ''}" style="cursor:default"><div class="niche">${icon(n ? 'boss' : 'lock', n ? 'amber' : 'bone')}</div><b>${n ? ENEMY_DEFS[g.boss].name : '???'}</b><span>처치 ${n}${nh ? ' · 무피격' : ''}</span></div>`; }).join('')}</div>
-    <button class="btn" id="back">돌아가기</button></div>`);
+    <div class="btns"><button class="btn" id="daily">${icon('boss', 'amber')}오늘의 시련 ${save.daily[dailySeed().key] ? '(재도전 · 기록만)' : '도전'}</button><button class="btn alt" id="back">돌아가기</button></div></div>`);
   bind('back', town);
+  bind('daily', () => { const d = dailySeed(); newPilgrimage({ seed: d.seed, daily: true }); save.daily[d.key] = true; persist(); startPilgrimage(); });
 }
 // 설정: 타이밍 보정 (박자 탭으로 측정) · 소리
 function settingsScreen() {
@@ -534,8 +531,8 @@ function onEvents(w) {
     if (ev.type === 'ventFire') sfx.play('ult');
     if (w.tutorial && tut) tutEvent(ev);
     if (w.town) {                                                         // 마을
-      if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'keeper') talk('keeper', town); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'board') recordsScreen(); else if (ev.kind === 'campfire') campMenu(); }
-      if (ev.type === 'exit') prepScreen();
+      if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'keeper') talk('keeper', town); else if (ev.kind === 'rack') practiceScreen(); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'board') recordsScreen(); else if (ev.kind === 'campfire') campMenu(); }
+      if (ev.type === 'exit') { newPilgrimage(); startPilgrimage(); }   // 오른쪽 길 = 출발 (제단에서 고른 설정으로)
       continue;
     }
     if (ev.type === 'interact') { if (ev.kind === 'merchant') { if (run && !run.metMerchant) { run.metMerchant = true; talk('merchant', shopScreen); } else shopScreen(); } else if (ev.kind === 'campfire') restScreen(); }

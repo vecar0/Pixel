@@ -123,10 +123,10 @@ export function populateArena(w, lvl, idx, rnd, tutorial = false) {
   }
   // 움직이는 발판: 지역 3부터 (높은 곳의 항아리로)
   if (lvl >= 3) {
-    const x0 = Math.round(W * 0.35), s = { x: x0, y: 196, w: 72, h: 8, oneWay: true, mover: true };
+    const x0 = Math.round(W * 0.35), s = { x: x0, y: 192, w: 72, h: 8, oneWay: true, mover: true };
     w.solids.push(s); L.movers.push({ solid: s, x0, x1: x0 + 220, dir: 1 });
-    L.urns.push({ x: x0 + 260, y: 196 - 70 - LV.urn.h, w: LV.urn.w, h: LV.urn.h, loot: 'light', high: true });
-    w.solids.push({ x: x0 + 250, y: 126, w: 60, h: 8, oneWay: true });   // 높은 선반 (움직이는 발판으로만 닿음)
+    L.urns.push({ x: x0 + 260, y: 120 - LV.urn.h, w: LV.urn.w, h: LV.urn.h, loot: 'light', high: true });
+    w.solids.push({ x: x0 + 250, y: 120, w: 60, h: 8, oneWay: true });   // 높은 선반 (움직이는 발판으로만 닿음)
   }
   // 레버와 철문: 지역 2부터 절반 확률 (지역 4는 항상). 방 왼쪽 끝 작은 방에 보물 상자
   // 철문 판정은 천장까지 (위로 넘어가지 못하게), 그림은 아래 140px

@@ -47,11 +47,10 @@ await check('마을: 걸어서 창고·제단·모닥불·허수아비, 오른�
   await p.keyboard.press('j'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), 'talk');   // 등대지기: 이야기만 (해금 상점 없음)
   for (let k = 0; k < 8 && await p.evaluate(() => window.__lk.mode) === 'talk'; k++) { await p.locator('#tnext').dispatchEvent('pointerup'); await p.waitForTimeout(120); }
   eq(await p.evaluate(() => window.__lk.mode), 'town');
-  await at('altar', 'prep'); await at('board', 'records'); await at('campfire', 'camp');
+  await at('rack', 'practice'); await at('altar', 'prep'); await at('board', 'records'); await at('campfire', 'camp');
   ok(await p.evaluate(() => window.__lk.world.enemies.some(e => e.dummy)), 'dummy');
   await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(300);
-  eq(await p.evaluate(() => window.__lk.mode), 'prep');
-  await p.locator('[data-id=go]').dispatchEvent('pointerup'); await p.waitForTimeout(300); eq(await p.evaluate(() => window.__lk.mode), 'intro');
+  eq(await p.evaluate(() => window.__lk.mode), 'intro');   // 오른쪽 길 = 바로 출발
 });
 await check('첫 순례 튜토리얼: 이동 → 점프 → 항아리 → 불씨 → (적 등장) 패링 단계', PC, async p => {
   await p.keyboard.press('Enter'); await p.waitForTimeout(1200); await p.keyboard.press('Enter'); await p.waitForTimeout(300); await p.keyboard.press('Enter'); await p.waitForTimeout(1500);

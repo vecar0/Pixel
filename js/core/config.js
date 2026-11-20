@@ -10,7 +10,7 @@ export const CFG = {
   player: {
     speed: 3.2,        // 192px/s
     accelF: 2, decelF: 2,
-    jumpMaxH: 96,
+    jumpMaxH: 112,
     coyoteF: 6, bufferF: 12,
     hp: 5, iframesHurt: 60, hurtStunF: 14,
     w: 22, h: 62,       // 리라 '검은 순례자' 그림(80x85)에 맞춘 몸통 판정

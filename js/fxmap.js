@@ -17,6 +17,7 @@ const palOf = sp => ({ bolt: AMBER, wisps: AMBER, pillar: AMBER, tornado: AMBER,
 const HIT = ['#1a0e06', '#3a2410', '#6a4420', '#9a6a34', '#c4955a', '#e0bc88', '#f0dcb8'];   // 기본 타격: 흰빛 없는 톤
 const ICE = ['#081a2a', '#10345a', '#1e5a8c', '#3a8cc8', '#7ac0f0', '#c0e8ff', '#ffffff'];
 const BLOOD = ['#14040a', '#3a0a14', '#6a101c', '#a01824', '#d42a30', '#ff5a50', '#ff9a8a', '#ffe6de'];
+const NO_IRON = [0, 0, 0, 0, 0];                                        // 화로 불만 (쇠 받침대는 그리지 않음 — 제단·등대 그림에 이미 그릇이 있음)
 const DUST = ['#1c1610', '#33281c', '#4f3f2c', '#6e5a40', '#927a58', '#b89f78', '#dcc8a2'];
 
 // 지역별 배경 생물·불빛 (월드 고정 위치의 반복 이펙트) + 화면 날씨
@@ -82,7 +83,7 @@ export class FxDirector {
         if (o.kind === 'campfire') { R.fx.spawn('fire/campfire', o.x, 300, { light: 0.5 }); for (const d of [-110, 110]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
         if (o.kind === 'merchant') { R.bgfx.spawn('fire/brazier', o.x + 90, 300, { light: 0.35 }); R.bgfx.spawn('fire/candle', o.x - 100, 300, { light: 0.3 }); }
         if (o.kind === 'keeper' || o.kind === 'board') R.bgfx.spawn('fire/candle', o.x + (o.kind === 'keeper' ? -60 : 40), 300, { light: 0.3 });
-        if (o.kind === 'altar') { R.fx.spawn('fire/brazier', o.x, 214, { light: 0.55 }); for (const d of [-70, 70]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
+        if (o.kind === 'altar') { R.fx.spawn('fire/brazier', o.x, 238, { light: 0.55, iron: NO_IRON }); for (const d of [-70, 70]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
       }
     }
     R.trans.clear(); if (!boss) R.iris(w, 'open');   // 방 입장: 리라를 중심으로 아이리스가 열림 (보스방은 등장 연출이 대신)
@@ -198,7 +199,7 @@ export class FxDirector {
       case 'veilUp': { const b = w.enemies.find(e => e.boss); if (b) R.fx.spawn('holy/divine-shield', 0, 0, { follow: b, dy: b.h / 2, key: 'veil', light: 0.35, palette: CYAN }); break; }
       case 'veilBreak': R.fx.stopKey('veil'); this.spell('water/wave-crash', ev.x, ev.y + 40, { life: 70, light: 0.5 }); this.spell('impacts/crit-hit', ev.x, ev.y + 20, { life: 50, light: 0.5 }); break;
       case 'mirrorReflect': this.spell('ice/snowflake-burst', ev.x, ev.y, { life: 50, light: 0.5 }); this.spell('impacts/hit-spark', ev.x, ev.y + 16, { height: 16, palette: CYAN, life: 30, light: 0.5 }); this.spell('lightning/zap-hit', ev.bx, ev.by, { life: 40, light: 0.5 }); break;
-      case 'beaconLit': R.fx.spawn('fire/brazier', ev.x, 255, { light: 0.55, key: 'beacon' + ev.x }); this.spell('impacts/hit-spark', ev.x, 255, { height: 10, palette: AMBER, life: 30, light: 0.5 }); break;
+      case 'beaconLit': R.fx.spawn('fire/brazier', ev.x, 280, { light: 0.55, key: 'beacon' + ev.x, iron: NO_IRON }); this.spell('impacts/hit-spark', ev.x, 255, { height: 10, palette: AMBER, life: 30, light: 0.5 }); break;
       case 'beaconOut': R.fx.stopKey('beacon' + ev.x); break;
       case 'phase2': if (ev.kind === 'saint') for (const dx of [-500, -250, 0, 250, 500]) this.spell('water/wave-crash', ev.x + dx, 300, { life: 80, light: 0.4 });   // 물이 밀려든다
         this.spell('explosions/implosion', ev.x, ev.y + 40, { palette: ev.kind === 'saint' ? CYAN : ev.kind === 'spider' ? LILAC : ev.kind === 'shadow' ? VIOLET : AMBER, life: 90, light: 0.5 }); this.spell('nature/quake', ev.x, 300, { palette: DUST, life: 100, light: 0.3 }); break;

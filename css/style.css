@@ -474,3 +474,25 @@ button.scard:disabled { opacity: .45; cursor: default; }
 /* 눌린 버튼: 그림은 한 장만 (이전엔 배경 크기가 풀려 작은 원이 바둑판처럼 반복돼 보였음) */
 .tb.down { background-size: 100% 100%; background-repeat: no-repeat; background-position: center; }
 #tcv { object-fit: cover; }
+
+/* ── 터치 버튼 v3: 테두리 없는 반투명 원 + 아이콘. 마법·기름병만 테두리 게이지(얼마나 찼는지) ── */
+#touch { --u: clamp(38px, 10.5vh, 54px); }
+.tb, .tb.down { background: radial-gradient(circle, rgba(13,10,17,.42) 0 66%, rgba(13,10,17,0) 70%) !important; border: 0 !important; box-shadow: none !important; image-rendering: auto; opacity: .78; }
+.tb.down { background: radial-gradient(circle, rgba(255,179,71,.28) 0 66%, rgba(13,10,17,0) 70%) !important; opacity: 1; transform: scale(.93); }
+.tb .ico { filter: drop-shadow(0 1px 0 #000); }
+.tb small { color: rgba(236,227,211,.75); text-shadow: 0 1px 0 #000; }
+#b-skill, #b-flask { --p: 0; --c: #ffb347;
+  background: radial-gradient(circle, rgba(13,10,17,.62) 0 60%, transparent 61%), conic-gradient(var(--c) calc(var(--p) * 1%), rgba(236,227,211,.16) 0) !important; opacity: .9; }
+#b-flask { --c: #7fe08a; }
+#b-skill.ready { box-shadow: 0 0 10px rgba(255,179,71,.55) !important; opacity: 1; animation: none; }
+#b-flask.empty { opacity: .45; }
+/* 배치: 오른쪽 아래 공격 중심 · 그 왼쪽 위로 마법 → 아래 기름병 */
+#b-attack { width: calc(var(--u) * 1.45); height: calc(var(--u) * 1.45); right: var(--r0); bottom: var(--b0); }
+#b-roll { width: var(--u); height: var(--u); right: calc(var(--r0) + var(--u) * 1.55); bottom: var(--b0); }
+#b-parry { width: calc(var(--u) * 1.2); height: calc(var(--u) * 1.2); right: calc(var(--r0) + var(--u) * 1.35); bottom: calc(var(--b0) + var(--u) * 1.05); }
+#b-jump { width: var(--u); height: var(--u); right: calc(var(--r0) + var(--u) * .2); bottom: calc(var(--b0) + var(--u) * 1.55); }
+#b-skill { width: var(--u); height: var(--u); right: calc(var(--r0) + var(--u) * 2.75); bottom: calc(var(--b0) + var(--u) * 1.15); top: auto; }
+#b-flask { width: calc(var(--u) * .86); height: calc(var(--u) * .86); right: calc(var(--r0) + var(--u) * 2.82); bottom: var(--b0); top: auto; }
+#b-flask b { right: -2px; bottom: -2px; }
+#b-pause { background: radial-gradient(circle, rgba(13,10,17,.42) 0 66%, transparent 70%) !important; }
+#stick { opacity: .22 !important; } #stick.on { opacity: .75 !important; }

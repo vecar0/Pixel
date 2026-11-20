@@ -223,7 +223,6 @@ export class Renderer {
     g.globalCompositeOperation = 'source-over';
 
     g.save(); g.translate(ox, oy);
-    if (bd) this.drawPlatforms(g, w);                                     // 발판: 어둠 위에 선명하게 (밟을 수 있는 면)
     if (w.props) this.drawProps(g, w);                                    // 쉼터 오브젝트 (상인 등)
     if (w.level) this.drawLevel(g, w);                                    // 항아리·가시·분출구·발판·레버·철문·상자
     const hideChars = this.irisBusy() || (this.cine && this.cine.hideLira);
@@ -412,6 +411,7 @@ export class Renderer {
         } else for (let x = s.x - ((s.x % gw) + gw) % gw; x < s.x + s.w; x += gw) g.drawImage(G, x, s.y - top);
       }
     }
+    this.drawPlatforms(g, w);                                            // 발판도 바닥과 같은 층 (같은 어둠·같은 선명도)
     g.restore();
     return true;
   }
@@ -658,8 +658,7 @@ export class Renderer {
       g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(s.x + 3, s.y + th - top + 1, s.w - 6, 4);           // 그림자
       for (let x = s.x; x < s.x + s.w; x += gw) { const ww = Math.min(gw, s.x + s.w - x); g.drawImage(G, 0, 0, ww, th, x, s.y - top, ww, th); }
       g.fillStyle = 'rgba(8,6,14,0.25)'; g.fillRect(s.x, s.y + 3, s.w, th - top - 3);               // 옆면은 살짝 어둡게
-      g.fillStyle = '#e8dcc0'; g.globalAlpha = 0.75; g.fillRect(s.x + 1, s.y, s.w - 2, 1);          // 윗면 테두리
-      g.globalAlpha = 0.35; g.fillRect(s.x + 1, s.y + 1, s.w - 2, 1); g.globalAlpha = 1;
+      g.fillStyle = '#e8dcc0'; g.globalAlpha = 0.45; g.fillRect(s.x + 1, s.y, s.w - 2, 1); g.globalAlpha = 1;   // 윗면 테두리: 바닥 언덕과 같은 정도로 은은하게
       g.fillStyle = '#120e16'; g.fillRect(s.x, s.y - 1, 1, th - top + 2); g.fillRect(s.x + s.w - 1, s.y - 1, 1, th - top + 2);   // 양 끝 윤곽
     }
   }

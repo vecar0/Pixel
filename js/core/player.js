@@ -2,7 +2,7 @@
 import { CFG } from './config.js';
 import { statMods, startStats } from './stats.js';
 
-const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll;
+const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, SP = CFG.spin;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
 
 
@@ -24,10 +24,15 @@ export function invulnerable(p) {
   if (p.iframes > 0) return true;
   if (p.state === 'roll') return p.stateT >= RO.iStart && p.stateT <= RO.iEnd + p.mods.iExtra;
   if (p.state === 'execute') return true;                   // 처형 중 무적
+  if (p.state === 'spin') return p.stateT <= SP.iEnd;          // 반격 회전 베기: 도는 동안 무적
   return p.state === 'cast' && (!!CFG.skill[p.spell].inv || !!p.mods.spellInv);   // 등불 16: 모든 마법 시전 중 무적   // 큰 마법 시전 중 무적
 }
 
 export function attackBox(p) {
+  if (p.state === 'spin') {                                      // 회전 베기: 몸 양쪽을 한 번에
+    if (p.stateT < SP.hitF || p.stateT >= SP.hitF + SP.activeF) return null;
+    return { x: p.x - SP.range, y: p.y + 2, w: p.w + SP.range * 2, h: p.h - 4 };
+  }
   if (p.state !== 'attack') return null;
   if (p.stateT < A.startupF || p.stateT >= A.startupF + A.activeF) return null;
   const rg = Math.round(A.range * (p.mods.rangeMul || 1)), x = p.face > 0 ? p.x + p.w : p.x - rg;   // 힘 18: 공격 범위
@@ -57,6 +62,7 @@ function start(w, p, action, inp) {
       if (p.state !== 'idle' && p.state !== 'run') setState(p, 'jump');
       return true;
     case 'attack': {
+      if (p.counterT > 0 && p.onGround) { p.counterT = 0; p.swing++; setState(p, 'spin'); w.events.push({ type: 'spinStart', x: p.x + p.w / 2, y: p.y + p.h }); return true; }   // 완벽 패링 직후 = 반격 회전 베기
       if (!p.onGround && p.airAttacked) return false;
       const chain = (p.state === 'attack') || p.comboT > 0;
       p.combo = chain ? (p.combo + 1) % 3 : 0;
@@ -90,6 +96,8 @@ export function updatePlayer(w, inp) {
   if (p.dropT > 0) p.dropT--;
   if (p.blueT > 0) p.blueT--;
   if (p.comboT > 0) p.comboT--;
+  if (p.counterT > 0) p.counterT--;
+  if (p.execChainT > 0 && --p.execChainT === 0) p.execChain = 0;
 
   // 새 입력 → 버퍼 (마지막 입력 우선)
   for (const a of ACTIONS) if (inp[a]) p.buffer = { action: a, t: P.bufferF };
@@ -99,6 +107,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'attack' && p.combo === 2 && t === A.startupF && p.mods.str7)          // 힘 7: 3타 검기
     w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 24, y: p.y + 18, w: 24, h: 14, vx: p.face * 6, vy: 0, pdmg: Math.round(8 * p.mods.atkMul), owner: 'player', life: 32, echo: true, src: {} });
   if (p.state === 'attack' && t >= A.startupF + A.activeF + A.recoveryF + (p.mods.atkLag || 0)) { p.comboT = A.comboWindowF; setState(p, 'idle'); }
+  if (p.state === 'spin' && t >= SP.totalF) { p.comboT = 0; setState(p, 'idle'); }
   if (p.state === 'parry' && (p.parryOk ? t >= PR.normalF : t >= PR.normalF + PR.whiffF + (p.mods.whiffLag || 0))) setState(p, 'idle');
   if (p.state === 'roll' && t >= RO.totalF + RO.endLagF + (p.mods.rollLag || 0)) {
     const RES = p.mods.res || {};

@@ -2,7 +2,7 @@
 import { hitGimmick, gimmickDamageMul } from './gimmick.js';
 import { hitLevel } from './level.js';
 import { CFG } from './config.js';
-import { ENEMY_DEFS } from './enemies.js';
+import { ENEMY_DEFS, ELITE } from './enemies.js';
 import { attackBox, invulnerable, overlap } from './player.js';
 
 const PR = CFG.parry, PO = CFG.poise;
@@ -24,6 +24,8 @@ export function resolveEnemyHit(w, hb) {
     p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal) * p.mods.lightMul + (perfect ? 0 : p.mods.parryLight || 0));   // 의지 12: 일반 패링 빛 +5
     if (perfect && p.mods.chain) p.chainN = Math.min(5, p.chainN + 1);          // 불씨 연쇄
     const RES = p.mods.res || {};
+    if (perfect) p.counterT = CFG.spin.window;
+    if (perfect && hb.owner && hb.owner.barrier > 0) breakBarrier(w, hb.owner);       // 완벽 패링은 강적 방패를 한 번에 깸                                   // 반격 기회: 이 안에 공격하면 회전 베기
     if (perfect && RES.riposte) p.riposte = true;                                // 공명 철벽 반격
     if (perfect && RES.retribute) p.crit = true;                                 // 공명 응징
     if (perfect && p.mods.echo) w.projectiles.push({                           // 반향: 앞으로 검기
@@ -61,6 +63,11 @@ export function resolveEnemyHit(w, hb) {
   return 'hit';
 }
 
+export function breakBarrier(w, e) {
+  e.barrier = 0; e.barrierCd = ELITE.barrierRegenF; e.staggerT = ELITE.breakStaggerF; e.st = 'idle'; e.atk = null; e.srcs = [];
+  addPoise(w, e, 0.35); w.hitstop = Math.max(w.hitstop, 8); w.shake = Math.max(w.shake, 8);
+  w.events.push({ type: 'barrierBreak', x: e.x + e.w / 2, y: e.y + e.h / 2 });
+}
 export function addPoise(w, e, frac) {
   if (!e.poiseMax || e.stunT > 0) return;
   e.poise = Math.min(1, e.poise + frac * (e.poiseRes || 1));
@@ -85,7 +92,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
     e.hp = 0; e.dead = true;
     w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill * w.player.mods.lightMul + (w.player.mods.lmp10 ? 15 : 0));   // 등불 10: 처치마다 빛 +15
     if (w.player.mods.killCrit) w.player.crit = true;                   // 투지 7: 처치하면 다음 공격 치명타
-    w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss, elite: !!e.elite, dummy: !!e.dummy });
+    w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss, elite: !!e.elite, dummy: !!e.dummy || !!e.decoy, decoy: !!e.decoy });
   }
   return dmg;
 }
@@ -94,16 +101,21 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
 export function resolvePlayerAttacks(w) {
   const p = w.player, box = attackBox(p);
   if (!box) return;
-  if (p.stateT === CFG.attack.startupF) { hitGimmick(w, box); hitLevel(w, box); }   // 보스 기믹·항아리·레버·상자 (휘두를 때 한 번)              // 보스방 기믹 오브젝트 (휘두를 때 한 번)
+  if (p.stateT === (p.state === 'spin' ? CFG.spin.hitF : CFG.attack.startupF)) { hitGimmick(w, box); hitLevel(w, box); }   // 보스 기믹·항아리·레버·상자 (휘두를 때 한 번)              // 보스방 기믹 오브젝트 (휘두를 때 한 번)
   for (const e of w.enemies) {
     if (e.dead || e.spawnT > 0 || e.hitBy === p.swing || !overlap(box, e)) continue;
     e.hitBy = p.swing;
     const front = Math.sign((p.x + p.w / 2) - (e.x + e.w / 2)) === e.face;
-    if (e.shield && front && e.st !== 'active' && e.stunT <= 0) {       // 갑각 파수꾼: 정면 방패
+    if (e.shield && front && e.st !== 'active' && e.stunT <= 0 && p.state !== 'spin') {   // 회전 베기는 방패를 넘긴다       // 갑각 파수꾼: 정면 방패
       w.hitstop = Math.max(w.hitstop, 3); p.vx = -p.face * 2; e.poise = Math.min(1, e.poise + 0);
       w.events.push({ type: 'block', x: e.face > 0 ? e.x + e.w : e.x, y: e.y + e.h / 2 }); continue;
     }
-    if (e.counter && !e.exposed && front && e.st === 'idle' && e.stunT <= 0) {   // 빛 속에선 반격 못 함        // 흑염의 순례자: 리라의 공격을 패링
+    if (e.barrier > 0 && front && p.state !== 'spin') {                // 강적 수호 방패: 정면은 막힘, 3번 맞으면 깨짐 (회전 베기는 넘김)
+      e.barrier--; w.hitstop = Math.max(w.hitstop, 4); p.vx = -p.face * 2;
+      if (e.barrier <= 0) breakBarrier(w, e); else w.events.push({ type: 'barrierHit', x: e.face > 0 ? e.x + e.w : e.x, y: e.y + e.h / 2, left: e.barrier });
+      continue;
+    }
+    if (e.counter && !e.exposed && p.state !== 'spin' && front && e.st === 'idle' && e.stunT <= 0) {   // 빛 속에선 반격 못 함        // 흑염의 순례자: 리라의 공격을 패링
       w.seed = (w.seed * 1664525 + 1013904223) >>> 0;
       if (w.seed / 4294967296 < 0.4) {
         w.hitstop = Math.max(w.hitstop, 6); w.shake = 6;
@@ -127,13 +139,15 @@ export function resolvePlayerAttacks(w) {
         * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1);   // 공명 철벽 반격·버팀
       p.riposte = false;
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
-      const dealt = damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit * (p.mods.poiseMul || 1) * (p.combo === 2 ? p.mods.str3Poise || 1 : 1));   // 힘 16: 3타 자세 2배
+      const spin = p.state === 'spin', SPN = CFG.spin, side = Math.sign((e.x + e.w / 2) - (p.x + p.w / 2)) || p.face;
+      const base = spin ? SPN.dmg : CFG.attack.dmg[p.combo], pz = spin ? SPN.poise : PO.hit * (p.combo === 2 ? p.mods.str3Poise || 1 : 1);   // 힘 16: 3타 자세 2배
+      const dealt = damageEnemy(w, e, Math.round(base * mul), pz * (p.mods.poiseMul || 1));
       if (wasCrit && p.mods.critLight) p.light = Math.min(CFG.light.max, p.light + p.mods.critLight);   // 투지 16
       if (p.combo === 2 && (p.mods.flame || RES.emberEdge)) e.burnT = 180;   // 화염 칼날 각인·공명 불꽃 칼날                       // 화염 칼날
-      w.hitstop = Math.max(w.hitstop, CFG.attack.hitstop[p.combo]);
-      e.kvx = p.face * CFG.attack.push[p.combo] * (e.boss ? 0.15 : 1);
-      if (p.combo === 2) w.shake = Math.max(w.shake, 6);
-      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: p.combo, face: p.face, dmg: dealt, crit: !!wasCrit });
+      w.hitstop = Math.max(w.hitstop, spin ? SPN.hitstop : CFG.attack.hitstop[p.combo]);
+      e.kvx = (spin ? side * 7 : p.face * CFG.attack.push[p.combo]) * (e.boss ? 0.15 : 1);
+      if (p.combo === 2 || spin) w.shake = Math.max(w.shake, spin ? 8 : 6);
+      w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: spin ? 2 : p.combo, face: spin ? side : p.face, dmg: dealt, crit: !!wasCrit, spin });
     }
   }
 }
@@ -227,6 +241,13 @@ export function updateExecute(w) {
     if (p.mods.str10) for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 320) addPoise(w, o, 0.4);   // 힘 10
     if ((p.mods.res || {}).slayer) { p.light = Math.min(CFG.light.max, p.light + 30); p.crit = true; }   // 공명 처단
     w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
+    // 연속 처형: 5초 안에 다음 처형 → 단계마다 빛 +20, 3연속부터 체력 1 (점수도 단계만큼)
+    p.execChain = p.execChainT > 0 ? (p.execChain || 1) + 1 : 1; p.execChainT = X.chainF;
+    if (p.execChain >= 2) {
+      p.light = Math.min(CFG.light.max, p.light + X.chainLight * (p.execChain - 1));
+      if (p.execChain >= 3 && p.hp < p.maxHp) { const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); }
+      w.events.push({ type: 'execChain', n: p.execChain, x: e.x + e.w / 2, y: e.y });
+    }
     p.execTarget = null;
   }
 }

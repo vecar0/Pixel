@@ -5,7 +5,7 @@ import { Input } from './input.js';
 import { Sfx } from './sfx.js';
 import { stepLoop } from './loop.js';
 import { spawnEnemy } from './core/enemies.js';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js';
 import { ENEMY_DEFS } from './core/enemies.js';
 import { icon, RELIC_TONE } from './icons.js';
 import { installPixelUI, roundBtn } from './pixelui.js';
@@ -71,10 +71,12 @@ function play() {
 const TALK = {
   keeper: { name: '등대지기 노라', img: 'assets/keeper.png', lines: [
     ['등대의 불이 꺼진 지 오래야.', '네 등불로 네 개의 대등을 다시 켜 주렴.'],
-    ['불씨 조각을 모아 오면', '창고 물건을 내어 주지. 기름도, 각인도.'],
+    ['기름은 제단에서 골라 가렴.', '청유는 결계, 흑유는 검은 광선으로 시작하지.'],
     ['허수아비로 손을 풀고 가렴.', '패링은 적이 번쩍이는 그 순간이 전부야.'],
     ['어둠이 깊을수록 보상도 크다네.', '자신이 생기면 제단에서 어둠을 올려 봐.'],
     ['방마다 목표 시간이 있어.', '빨리 정리하면 불씨를 더 얹어 주지.'],
+    ['완벽하게 막아 낸 직후 바로 베어 봐.', '몸을 돌리며 양쪽을 한꺼번에 베는 반격이 나간단다.'],
+    ['쓰러진 적을 연달아 처형하면', '등불이 그만큼 더 밝아지지.'],
   ] },
   merchant: { name: '떠돌이 상인', img: 'assets/merchant.png', lines: [
     ['오, 손님이군. 불씨만 있으면 뭐든 내주지.'],
@@ -129,7 +131,7 @@ function setRoom(room) { if (!run) { run = newRun(); } enterRoom(run, room === '
 function start() { run = newRun(); enterRoom(run, 'combat'); bossesKilled = []; practice = false; play(); R.irisMode = null; R.trans.clear(); }   // 테스트용 빠른 시작: 전환 연출 생략
 function newPilgrimage(opts = {}) {
   bossesKilled = []; practice = false;
-  run = newRun(opts.seed, { dark: save.dark, pool: relicPool(save), oil: save.oil, shortcut: (save.bossKills.bellBoss || 0) >= 3, daily: !!opts.daily, tutorial: !save.records.runs && !save.tutorialDone });   // 첫 순례 = 튜토리얼 방
+  run = newRun(opts.seed, { dark: save.dark, pool: relicPool(save), oil: save.oil, shortcut: false, daily: !!opts.daily, tutorial: !save.records.runs && !save.tutorialDone });   // 첫 순례 = 튜토리얼 방
 }
 
 const relicCard = (id, extra = '') => { const r = RELICS[id], t = RELIC_TONE[r.tag] || 'bone';
@@ -271,7 +273,7 @@ function buildTown() {
   const W = TOWN_W, w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }], spawn: { x: 140, y: 240 } });
   w.haven = 'town'; w.town = true;
   w.props = [
-    { kind: 'keeper', x: 300, label: '등대지기의 창고 (해금)' },
+    { kind: 'keeper', x: 300, label: '등대지기 (이야기)' },
     { kind: 'altar', x: 860, label: '순례 제단 (어둠·기름·출발)' },
     { kind: 'board', x: 1070, label: '게시판 (기록)' },
     { kind: 'campfire', x: 1270, label: '모닥불 (연습장·설정)' },
@@ -290,7 +292,7 @@ function town() {
   if (!world || !world.town) {
     world = buildTown(); run = null; R.runInfo = null; R.region = 0;
     R.reset(); R.dir.preloadRegion(1); R.dir.enterRoom(world, 1, false);
-    R.banner = { s: '등대 마을', sub: `등불 조각 ${save.shards} · 오른쪽 끝이 순례 길`, t: 170, dur: 170 };
+    R.banner = { s: '등대 마을', sub: '오른쪽 끝이 순례 길', t: 170, dur: 170 };
     R.say('창고 · 허수아비 · 제단 · 모닥불 앞에서 공격 버튼', 240);
   }
   world.exited = false;
@@ -300,10 +302,9 @@ function town() {
 // 모닥불: 기록·연습장·설정
 function campMenu() {
   mode = 'camp'; touch.classList.add('hidden');
-  const has = id => save.unlocked.includes(id);
   screen(`<div class="card"><h2>모닥불</h2><div class="quote">불가에 앉아 지난 순례를 떠올린다</div><div class="menu">
     <button class="row-btn" data-id="records">${icon('afterglow', 'bone')}<span><b>기록</b><small>최고 어둠 · 보스 처치</small></span></button>
-    ${has('practice') ? `<button class="row-btn" data-id="practice">${icon('combat', 'bone')}<span><b>연습장</b><small>쓰러뜨린 보스와 다시</small></span></button>` : ''}
+    <button class="row-btn" data-id="practice">${icon('combat', 'bone')}<span><b>연습장</b><small>보스와 연습 (기록 안 됨)</small></span></button>
     <button class="row-btn" data-id="settings">${icon('wick', 'bone')}<span><b>설정</b><small>타이밍 보정 · 소리</small></span></button>
     <button class="row-btn" data-id="title">${icon('pause', 'bone')}<span><b>타이틀로</b><small>처음 화면</small></span></button>
     </div><div class="btns"><button class="btn alt" data-id="back">닫기</button></div></div>`);
@@ -312,15 +313,14 @@ function campMenu() {
 function prepScreen() {   // 순례 준비: 어둠·기름 고르고 출발 (마을의 등불 제단·오른쪽 길)
   mode = 'prep'; touch.classList.add('hidden');
   const d = dailySeed(), dailyDone = save.daily[d.key], oils = oilsOwned(save), oi = Math.max(0, oils.indexOf(save.oil)), r = save.records;
-  const has = id => save.unlocked.includes(id);
   screen(`<div class="town">
     <div class="hero"><h2>순례 준비</h2><img class="lira" alt="리라" src="assets/lira-idle.png">
-      <div class="shards">${icon('ember', 'amber')}등불 조각 ${save.shards}</div>
+      <div class="shards">${icon('afterglow', 'amber')}최고 점수 ${save.records.bestScore || 0}</div>
       <div class="stats">순례 ${r.runs}회 · 귀환 ${r.wins}회<br>완벽 패링 누적 ${r.perfectTotal}</div></div>
     <div class="acts">
       <button class="btn go" data-id="go">${icon('parry', 'bone')}순례를 떠난다</button>
       <div class="tune">
-        ${chip('dark', `어둠 ${save.dark}`, save.dark ? DARK_RULES[save.dark] : '기본 난이도', save.dark > 0, save.dark < save.darkUnlocked)}
+        ${chip('dark', `어둠 ${save.dark}`, save.dark ? DARK_RULES[save.dark] : '기본 난이도', save.dark > 0, save.dark < DARK_MAX)}
         ${chip('oil', `랜턴 기름: ${OILS[save.oil].name}`, OILS[save.oil].desc, oi > 0, oi < oils.length - 1)}
       </div>
       <div class="menu">
@@ -329,7 +329,7 @@ function prepScreen() {   // 순례 준비: 어둠·기름 고르고 출발 (마
       </div>
     </div></div>`);
   const step = (id, fn) => { bind(id + '-p', () => { fn(-1); persist(); prepScreen(); }); bind(id + '-n', () => { fn(1); persist(); prepScreen(); }); };
-  step('dark', k => { save.dark = Math.max(0, Math.min(save.darkUnlocked, save.dark + k)); });
+  step('dark', k => { save.dark = Math.max(0, Math.min(DARK_MAX, save.dark + k)); });   // 어둠 단계는 처음부터 모두
   step('oil', k => { save.oil = oils[Math.max(0, Math.min(oils.length - 1, oi + k))]; });
   bindPicks(id => {
     if (id === 'go') { newPilgrimage(); startPilgrimage(); }
@@ -337,19 +337,10 @@ function prepScreen() {   // 순례 준비: 어둠·기름 고르고 출발 (마
     else if (id === 'back') town();
   });
 }
-function unlockScreen() {
-  mode = 'unlock';
-  const look = u => u.relic ? [u.relic, RELIC_TONE[RELICS[u.relic].tag]] : u.oil ? ['oil', u.oil === 'blue' ? 'moon' : 'ember'] : ['combat', 'bone'];
-  screen(`<div class="card"><h2>등대지기의 창고</h2><div class="gain">${icon('ember', 'amber')}등불 조각 ${save.shards}</div><div class="picks">
-    ${UNLOCKS.map(u => { const [ic, t] = look(u), own = save.unlocked.includes(u.id), poor = !own && save.shards < u.cost;
-      return `<button class="pick small t-${t}" data-id="${u.id}" ${own || poor ? 'disabled' : ''}><div class="niche">${icon(own || !poor ? ic : 'lock', t)}</div><b>${u.name.replace(/^.*: /, '')}</b><span>${u.desc || (u.relic ? RELICS[u.relic].desc : '')}</span>${own ? '<em>해금됨</em>' : cost('조각 ' + u.cost)}</button>`; }).join('')}
-    </div><div class="btns"><button class="btn alt" data-id="back">돌아가기</button></div></div>`);
-  bindPicks(id => { if (id === 'back') return town(); if (buy(save, id)) { persist(); sfx.play('heal'); } unlockScreen(); });
-}
 function practiceScreen() {
   mode = 'practice';
-  const bosses = REGIONS.filter(g => save.bossKills[g.boss]);
-  screen(`<div class="card"><h2>연습장</h2><div class="line">기록되지 않는 연습. 패턴을 익히세요</div><div class="picks">
+  const bosses = REGIONS;   // 처음부터 모든 보스 연습 가능
+  screen(`<div class="card"><h2>연습장</h2><div class="line">기록되지 않는 연습. 패턴과 기믹을 익히세요</div><div class="picks">
     ${bosses.map(g => `<button class="pick door t-ember" data-id="${g.id}"><div class="niche">${icon('boss', 'ember')}</div><b>${ENEMY_DEFS[g.boss].name}</b><span>${g.name}</span></button>`).join('') || '<div class="line">아직 쓰러뜨린 보스가 없다. 지역 보스를 쓰러뜨리면 여기서 다시 싸울 수 있다</div>'}
     </div><div class="btns"><button class="btn alt" data-id="back">돌아가기</button></div></div>`);
   bindPicks(id => { if (id === 'back') return town(); newPilgrimage(); setRegion(run, +id); enterRoom(run, 'boss'); practice = true; play(); });
@@ -498,7 +489,6 @@ function finish(won) {
     <div class="line">${Object.entries(run.scoreLog || {}).map(([k, v]) => `${SCORE_NAME[k] || k} ${v}`).join(' · ')} · 최고 점수 ${save.records.bestScore || 0}</div>
     ${runStat()}
     <div class="line">이번 판 도전 '${ch.name}': ${run.challengeDone ? '성공' : '실패'}</div>
-    <div class="gain">${icon('ember', 'amber')}등불 조각 +${gain} (보유 ${save.shards})${won && save.darkUnlocked > run.dark ? ' · 어둠 ' + save.darkUnlocked + ' 해금' : ''}</div>
     <div class="btns"><button class="btn" id="again">다시 순례</button><button class="btn alt" id="home">마을로</button></div></div>`);
   bind('again', () => { newPilgrimage(); startPilgrimage(); }); bind('home', town);
 }
@@ -531,6 +521,11 @@ function onEvents(w) {
     if (ev.type === 'kill' && run) { run.kills++; if (!ev.dummy) addScore(ev.boss ? 'boss' : 'kill', ev.boss ? 500 : ev.elite ? 50 : 10); }
     if (ev.type === 'parry' && ev.perfect) addScore('parry', 25);
     if (ev.type === 'execute') addScore('execute', 40);
+    if (ev.type === 'execChain') { addScore('execute', 40 * ev.n); sfx.play('heal'); }
+    if (ev.type === 'spinStart') { sfx.play('swing'); sfx.play('hit3'); if (navigator.vibrate) navigator.vibrate(25); }
+    if (ev.type === 'barrierHit') sfx.play('parryNormal');
+    if (ev.type === 'barrierBreak') sfx.play('execute');
+    if (ev.type === 'mirage') sfx.play('roll');
     if (ev.type === 'pickup') { if (ev.kind === 'ember' && run) { run.embers++; addScore('ember', 5); } sfx.play(ev.kind === 'ember' ? 'click' : 'heal'); }
     if (ev.type === 'chestOpen') { addScore('chest', 100); sfx.play('ignite'); }
     if (ev.type === 'chestEmbers' && run) { run.embers += ev.n; R.say(`보물 상자 — 불씨 +${ev.n}`); }
@@ -539,7 +534,7 @@ function onEvents(w) {
     if (ev.type === 'ventFire') sfx.play('ult');
     if (w.tutorial && tut) tutEvent(ev);
     if (w.town) {                                                         // 마을
-      if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'keeper') talk('keeper', unlockScreen); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'board') recordsScreen(); else if (ev.kind === 'campfire') campMenu(); }
+      if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'keeper') talk('keeper', town); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'board') recordsScreen(); else if (ev.kind === 'campfire') campMenu(); }
       if (ev.type === 'exit') prepScreen();
       continue;
     }

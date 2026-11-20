@@ -49,7 +49,10 @@ export const ELITE_MODS = {
   swift: { name: '가속', desc: '빠르고 쉴 틈이 적다' },
   split: { name: '분열', desc: '쓰러지면 나방 둘이 나온다' },
   iron:  { name: '강철', desc: '체력이 높고 자세가 잘 무너지지 않는다' },
+  shield: { name: '수호 방패', desc: '정면 공격을 막는 빛의 방패 (3번 맞거나 완벽 패링하면 깨지고 크게 비틀거림)' },
+  mirage: { name: '분신', desc: '자기와 똑같은 분신 둘을 만든다 (분신은 한 방, 빛 테두리가 있는 쪽이 진짜)' },
 };
+export const ELITE = { barrier: 3, barrierRegenF: 600, breakStaggerF: 100, mirageF: 480, decoys: 2 };
 
 export function rng(w) {           // 결정적 난수 (월드에 상태 저장)
   w.seed = (w.seed * 1664525 + 1013904223) >>> 0;
@@ -77,6 +80,23 @@ export function makeElite(e, mod) {
   e.hp = e.maxHp = Math.round(e.maxHp * (mod === 'iron' ? 3.5 : 2.5));
   if (mod === 'swift') { e.speed *= 1.6; e.cdMul = 0.5; }
   if (mod === 'iron') e.poiseRes = 0.6;
+  if (mod === 'shield') { e.barrier = e.barrierMax = ELITE.barrier; e.barrierCd = 0; }   // 수호 방패
+  if (mod === 'mirage') e.mirageT = 40;                                                // 분신: 곧 첫 분신
+}
+// 강적 기믹 매 틱: 방패 재생, 분신 만들기 (분신은 체력 1, 나방처럼 한 방)
+export function updateElite(w, e) {
+  if (e.barrierMax && e.barrier <= 0 && --e.barrierCd <= 0) { e.barrier = e.barrierMax; w.events.push({ type: 'barrierUp', x: e.x + e.w / 2, y: e.y }); }
+  if (e.mods && e.mods.includes('mirage') && !e.decoy && e.stunT <= 0 && --e.mirageT <= 0) {
+    e.mirageT = ELITE.mirageF;
+    const alive = w.enemies.filter(o => o.master === e && !o.dead).length;
+    for (let k = alive; k < ELITE.decoys; k++) {
+      const x = Math.max(40, Math.min(w.width - 40 - e.w, e.x + (k ? 1 : -1) * (90 + 30 * k)));
+      const d = spawnEnemy(w, e.kind, x, e.y, { hpMul: 1, emerge: true });
+      d.hp = d.maxHp = 1; d.decoy = true; d.master = e; d.poiseMax = false;
+      w.events.push({ type: 'mirage', x: x + e.w / 2, y: e.y + e.h / 2 });
+    }
+  }
+  if (e.decoy && (!e.master || e.master.dead)) { e.dead = true; w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, decoy: true, dummy: true }); }   // 진짜가 쓰러지면 분신도 사라짐
 }
 
 // 공격 템포: 예고·후딜에 CFG.enemy.tempo 배율 (판정 길이는 그대로)

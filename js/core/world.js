@@ -3,7 +3,7 @@ import { CFG } from './config.js';
 import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js';
 import { updateLevel, dropPickups } from './level.js';
 import { createPlayer, updatePlayer, overlap } from './player.js';
-import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite } from './enemies.js';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js';
 import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js';
 import { ACTIONS } from './player.js';
 
@@ -138,6 +138,8 @@ export function tick(w, inp) {
     if (e.roarT > 0) { e.roarT--; e.vx = 0; continue; }                   // 2막 포효 중: 멈춤·무적
     if (e.burnT > 0 && --e.burnT % 60 === 0) { damageEnemy(w, e, 3); if (e.dead) continue; }   // 화상
     updatePoise(e);
+    if (e.elite || e.decoy) updateElite(w, e);
+    if (e.dead) continue;
     if (e.stunT > 0) continue;
     updateEnemy(w, e);
   }
@@ -148,7 +150,7 @@ export function tick(w, inp) {
 
   resolvePlayerAttacks(w);
   for (const hb of w.hitboxes) if (resolveEnemyHit(w, hb) === 'hit' && hb.hazard) { w.player.vy = -6.5; w.player.onGround = false; }   // 가시·불기둥: 맞으면 튕겨 오름
-  for (const ev of w.events) if (ev.type === 'kill' && !ev.boss && !ev.dummy) dropPickups(w, ev.x, ev.y, ev.elite ? 5 : 1 + (ev.x | 0) % 2);   // 처치: 불씨 1~2 (엘리트 5)
+  for (const ev of w.events) if (ev.type === 'kill' && !ev.boss && !ev.dummy && !ev.decoy) dropPickups(w, ev.x, ev.y, ev.elite ? 5 : 1 + (ev.x | 0) % 2);   // 처치: 불씨 1~2 (엘리트 5)
   for (const e of w.enemies) if (e.dead && e.mods && e.mods.includes('split'))   // 분열: 나방 둘
     for (const k of [-1, 1]) spawnEnemy(w, 'moth', e.x + k * 20, e.y - 10, { hpMul: w.hpMul });
   w.enemies = w.enemies.filter(e => !e.dead);

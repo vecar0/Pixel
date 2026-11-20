@@ -4,7 +4,7 @@ import { CFG } from '../js/core/config.js';
 import { damageEnemy } from '../js/core/combat.js';
 import { createWorld, tick } from '../js/core/world.js';
 import { invulnerable, attackBox } from '../js/core/player.js';
-import { ENEMY_DEFS, spawnEnemy } from '../js/core/enemies.js';
+import { ENEMY_DEFS, spawnEnemy, makeElite } from '../js/core/enemies.js';
 import { I, steps, FLAT, makeDummy } from './helpers.mjs';
 import { stepLoop } from '../js/loop.js';
 import { GIMMICK } from '../js/core/gimmick.js';
@@ -392,6 +392,36 @@ test('레벨 배치: 지역이 깊을수록 가시·분출구가 늘고, 지역 
   ok(t.tutorial && t.holdWaves, 'tutorial'); eq(t.level.spikes.length + t.level.vents.length, 0); ok(t.level.urns.length >= 3);
   const r4 = newRun(9); setRegion(r4, 4); enterRoom(r4, 'combat'); r4.roomIdx = 2; const w4 = buildRoomWorld(r4);
   ok(w4.level.vents.length >= 1, 'vents'); ok(w4.level.movers.length === 1, 'mover'); ok(w4.level.chests.length === 1, 'chest');
+});
+/* ── 콤보 손맛 · 강적 기믹 ── */
+test('반격 회전 베기: 완벽 패링 직후 공격 → 양쪽 적을 한 번에, 도는 동안 무적', () => {
+  const { w, res } = parryAt(3); eq(res, 'perfect'); ok(w.player.counterT > 0, 'window');
+  const back = makeDummy(w, { hp: 300, behind: true }), front = makeDummy(w, { hp: 300 });
+  steps(w, 2); tick(w, I({ attack: true })); let spun = false, inv = false; for (let i = 0; i < 14; i++) { tick(w, I()); if (w.player.state === 'spin') { spun = true; inv = inv || invulnerable(w.player); } } ok(spun, 'spin'); ok(inv, 'invuln');
+  steps(w, CFG.spin.totalF + 12); ok(back.hp < 300 && front.hp < 300, 'both sides ' + back.hp + ' ' + front.hp);
+  const w2 = W(); settle(w2); tick(w2, I({ attack: true })); eq(w2.player.state, 'attack');   // 평소엔 그냥 공격
+});
+test('연속 처형: 5초 안에 두 번째 처형이면 빛 +20, 세 번째면 체력 +1', () => {
+  const w = W(); settle(w); w.player.hp = 3; w.player.maxHp = 6; w.player.light = 0;
+  for (let k = 0; k < 3; k++) {
+    const d = makeDummy(w, { hp: 50, poise: true }); d.stunT = 120; d.poise = 1;
+    tick(w, I({ attack: true })); steps(w, 90);
+  }
+  eq(w.player.execChain, 3); ok(w.player.light >= 60, 'light ' + w.player.light); eq(w.player.hp, 4);
+});
+test('강적 수호 방패: 정면 공격 3번이면 깨져 비틀거림, 그 전엔 피해 없음', () => {
+  const w = W(); settle(w); w.player.face = 1;
+  const e = spawnEnemy(w, 'ghoul', w.player.x + 30, w.player.y, {}); e.spawnT = 0; e.cd = 1e9; e.face = -1; makeElite(e, 'shield'); e.speed = 0;
+  const hp = e.hp; for (let k = 0; k < 2; k++) { tick(w, I({ attack: true })); steps(w, 40); }
+  eq(e.hp, hp); eq(e.barrier, 1); tick(w, I({ attack: true })); steps(w, 12); eq(e.barrier, 0); ok(e.staggerT > 0 || e.stunT > 0, 'stagger');
+  tick(w, I({ attack: true })); steps(w, 20); ok(e.hp < hp, 'damage after break');
+});
+test('강적 분신: 분신 둘을 만들고, 분신은 한 방, 진짜가 쓰러지면 분신도 사라짐', () => {
+  const w = W(); settle(w);
+  const e = spawnEnemy(w, 'ghoul', w.player.x + 300, w.player.y, {}); e.spawnT = 0; e.cd = 1e9; makeElite(e, 'mirage'); e.speed = 0;
+  steps(w, 60); const decoys = w.enemies.filter(o => o.decoy); eq(decoys.length, 2);
+  damageEnemy(w, decoys[0], 5); ok(decoys[0].dead, 'one hit');
+  damageEnemy(w, e, 99999); steps(w, 3); eq(w.enemies.filter(o => o.decoy && !o.dead).length, 0);
 });
 function bossWorld(force) {
   const w = createWorld({ room: 'boss' }); w.player.x = 520; steps(w, 30); w.player.hp = 99;   // 평평한 바닥 위

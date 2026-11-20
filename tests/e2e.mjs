@@ -43,7 +43,11 @@ await check('마을: 걸어서 창고·제단·모닥불·허수아비, 오른�
     for (let k = 0; k < 8 && await p.evaluate(() => window.__lk.mode) === 'talk'; k++) { await p.locator('#tnext').dispatchEvent('pointerup'); await p.waitForTimeout(120); }   // 등대지기 대화
     eq(await p.evaluate(() => window.__lk.mode), want);
     await p.locator('[data-id=back], #back').first().dispatchEvent('pointerup'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), 'town'); };
-  await at('keeper', 'unlock'); await at('altar', 'prep'); await at('board', 'records'); await at('campfire', 'camp');
+  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'keeper').x - 30; }); await p.waitForTimeout(200);
+  await p.keyboard.press('j'); await p.waitForTimeout(250); eq(await p.evaluate(() => window.__lk.mode), 'talk');   // 등대지기: 이야기만 (해금 상점 없음)
+  for (let k = 0; k < 8 && await p.evaluate(() => window.__lk.mode) === 'talk'; k++) { await p.locator('#tnext').dispatchEvent('pointerup'); await p.waitForTimeout(120); }
+  eq(await p.evaluate(() => window.__lk.mode), 'town');
+  await at('altar', 'prep'); await at('board', 'records'); await at('campfire', 'camp');
   ok(await p.evaluate(() => window.__lk.world.enemies.some(e => e.dummy)), 'dummy');
   await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(300);
   eq(await p.evaluate(() => window.__lk.mode), 'prep');

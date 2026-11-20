@@ -159,7 +159,7 @@ test('청유: 푸른 결계 후 5초간 늦은 패링도 완벽', () => {
 });
 test('영구 진행: 조각으로 해금, 해금 각인이 풀에 들어감, 클리어 시 어둠 단계 해금', () => {
   const s = defaultSave(); s.shards = 10;
-  ok(buy(s, 'relic:wings')); ok(relicPool(s).includes('wings')); ok(!buy(s, 'relic:wings'));
+  ok(relicPool(s).includes('wings') && relicPool(s).includes('flame'), 'all relics from start');   // 해금 없음: 처음부터 전부
   const r = newRun(1); r.shards = 9;
   const gain = recordRun(s, r, { won: true, bossesKilled: ['bellBoss'] });
   ok(gain >= 11); eq(s.darkUnlocked, 1); eq(s.bossKills.bellBoss, 1);

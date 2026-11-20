@@ -1,4 +1,4 @@
-// 영구 진행 (등대 마을): 등불 조각으로 "선택지"만 해금. 영구 스탯 강화는 없다 (기획서 10장)
+// 기록·설정 저장. 해금·영구 강화는 없다: 모든 각인·기름·어둠 단계·연습장을 처음부터 쓸 수 있다 (처음부터 온전한 재미)
 export const SAVE_KEY = 'lantern-keeper-v1';
 export const START_RELICS = ['echo', 'shadow', 'executioner', 'vigor', 'oil', 'chain'];
 export const UNLOCKS = [
@@ -22,8 +22,9 @@ export function defaultSave() {
     daily: {}, settings: { offsetMs: 0, sound: true, music: true } };
 }
 
-export const relicPool = s => [...START_RELICS, ...UNLOCKS.filter(u => u.kind === 'relic' && s.unlocked.includes(u.id)).map(u => u.relic)];
-export const oilsOwned = s => ['refined', ...UNLOCKS.filter(u => u.kind === 'oil' && s.unlocked.includes(u.id)).map(u => u.oil)];
+export const relicPool = () => [...START_RELICS, ...UNLOCKS.filter(u => u.kind === 'relic').map(u => u.relic)];   // 모든 각인이 처음부터
+export const oilsOwned = () => Object.keys(OILS);                                                                    // 모든 기름이 처음부터
+export const DARK_MAX = 10;
 
 export function buy(s, id) {
   const u = UNLOCKS.find(u => u.id === id);

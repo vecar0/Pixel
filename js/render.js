@@ -88,6 +88,10 @@ export class Renderer {
       else if (ev.type === 'execute') { this.flash = 0.8; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!', life: 60 }); }
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
+      else if (ev.type === 'spinStart') { this.pfx.spawn('melee/spin-slash', ev.x, ev.y, { palette: AMBER7, light: 0.5, life: 40 }); this.flash = Math.max(this.flash, 0.5); this.zoom = 0.6; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '반격!', life: 45 }); }
+      else if (ev.type === 'execChain') { this.texts.push({ x: ev.x, y: ev.y - 60, t: 0, s: `연속 처형 ×${ev.n}`, life: 70 }); this.flash = Math.max(this.flash, 0.6); }
+      else if (ev.type === 'barrierBreak') { this.texts.push({ x: ev.x, y: ev.y - 50, t: 0, s: '방패 깨짐!', life: 60 }); this.flash = Math.max(this.flash, 0.6); }
+      else if (ev.type === 'barrierHit') this.texts.push({ x: ev.x, y: ev.y - 30, t: 0, s: `막힘 (${ev.left})`, life: 30 });
       else if (ev.type === 'bellTrap') { this.flash = 0.9; this.texts.push({ x: ev.x, y: ev.y - 90, t: 0, s: '갇혔다!', life: 70 }); }
       else if (ev.type === 'bellMiss') this.texts.push({ x: ev.x, y: 200, t: 0, s: '빗나감', life: 40 });
       else if (ev.type === 'veilUp') this.say('물의 장막 — 물창을 완벽 패링해 되돌려라');
@@ -228,12 +232,13 @@ export class Renderer {
     const hasBeacon = (w.props || []).some(o => o.kind === 'beacon');
     const trapped = bellOf(w).st === 'down' && bellOf(w).trapped;           // 대종에 갇힌 보스는 종 안 (그리지 않음). 허수아비는 그림 + 맞으면 흔들림
     if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; this.drawEnemy(g, w, e); g.globalAlpha = 1; }   // 어둠 속 그림자는 흐릿하게
+    for (const e of w.enemies) if (e.barrier > 0 && !e.dead) this.drawBarrier(g, w, e);   // 강적 수호 방패
     if (w.props) this.drawGimmickFront(g, w);                             // 대종은 보스 위에 (가둠)
     this.drawWarnings(g, w);
     for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
     g.globalAlpha = 1;
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);   // 베기는 적 위·리라 뒤: 리라 몸을 덮지 않음
-    if (!hideChars) this.drawLira(g, w, p);
+    if (!hideChars) this.drawLira(g, w, p.state === 'spin' && p.stateT < CFG.spin.hitF + CFG.spin.activeF + 4 ? { ...p, face: (p.stateT >> 2) & 1 ? -p.face : p.face } : p);   // 회전 베기: 좌우로 빠르게 돌아봄
     if (p.state === 'flask' && !hideChars) {                             // 기름병 마시는 중: 머리 위 초록 원이 차오름
       const k = Math.min(1, p.stateT / (CFG.flask.useF * (p.mods.flaskSpeed || 1))), cx = p.x + p.w / 2, cy = p.y - 30;
       g.fillStyle = 'rgba(13,10,17,.7)'; g.beginPath(); g.arc(cx, cy, 8, 0, Math.PI * 2); g.fill();
@@ -253,11 +258,7 @@ export class Renderer {
       const B = this.beamBack, a = B.t / 14, x0 = Math.min(B.x0, B.x1), wd = Math.abs(B.x1 - B.x0); B.t--;
       g.fillStyle = `rgba(150,230,255,${0.7 * a})`; g.fillRect(x0, B.y - 9, wd, 18); g.fillStyle = `rgba(255,255,255,${a})`; g.fillRect(x0, B.y - 3, wd, 6);
     }
-    if (w.water != null && w.water < 299) {                               // 성녀 2막: 차오른 물 (반투명 + 출렁이는 수면)
-      const top = w.water, x0 = Math.max(0, camX - 20), x1 = Math.min(w.width, camX + vw + 20);
-      g.fillStyle = 'rgba(40,110,150,0.42)'; g.fillRect(x0, top, x1 - x0, 300 - top + 2);
-      g.fillStyle = 'rgba(170,230,255,0.7)'; for (let x = Math.floor(x0 / 8) * 8; x < x1; x += 8) g.fillRect(x, Math.round(top + Math.sin(x * 0.05 + w.t * 0.08) * 1.5), 6, 2);
-    }
+    if (w.water != null && w.water < 299) this.drawWater(g, w, camX, vw);   // 성녀 2막: 차오른 물 (픽셀 물)
     if (this.debug) {
       g.strokeStyle = '#0f0'; for (const h of w.hitboxes) g.strokeRect(h.x + 0.5, h.y + 0.5, h.w, h.h);
       const ab = attackBox(p); if (ab) { g.strokeStyle = '#ff0'; g.strokeRect(ab.x + 0.5, ab.y + 0.5, ab.w, ab.h); }
@@ -448,6 +449,42 @@ export class Renderer {
     }
   }
   img(n) { this.imgs = this.imgs || {}; let im = this.imgs[n]; if (!im) { im = this.imgs[n] = new Image(); im.src = `assets/${n}.png`; } return im.complete && im.naturalWidth ? im : null; }
+  // 강적 수호 방패: 몸 앞쪽 빛의 육각 방패 (남은 횟수만큼 금이 덜 감)
+  drawBarrier(g, w, e) {
+    const f = e.face, x = Math.round(f > 0 ? e.x + e.w + 4 : e.x - 10), y = Math.round(e.y + 4), h = Math.max(30, e.h - 8), a = 0.35 + 0.25 * Math.sin(w.t * 0.12);
+    g.fillStyle = `rgba(140,220,255,${a * 0.5})`; g.fillRect(x, y + 4, 6, h - 8);
+    g.fillStyle = `rgba(200,245,255,${a + 0.2})`; g.fillRect(x + (f > 0 ? 4 : 0), y + 4, 2, h - 8); g.fillRect(x + 1, y + 2, 4, 2); g.fillRect(x + 1, y + h - 4, 4, 2);
+    for (let k = e.barrier; k < (e.barrierMax || 3); k++) { g.fillStyle = 'rgba(20,40,60,0.9)'; g.fillRect(x + 1, y + 10 + k * (h / 4), 4, 1); g.fillRect(x + 3, y + 11 + k * (h / 4), 2, 2); }   // 금
+  }
+  // 픽셀 물: 2px 기둥마다 출렁이는 수면 → 반짝이는 수면선·거품 · 깊이별 3단 띠(그라데이션 없이) · 일렁이는 빛(커스틱) · 떠오르는 기포
+  // 언덕(제단) 위처럼 바닥이 수면보다 높은 곳은 물이 없다
+  drawWater(g, w, camX, vw) {
+    const t = w.t, top = w.water, x0 = Math.max(0, Math.floor((camX - 8) / 2) * 2), x1 = Math.min(w.width, camX + vw + 8);
+    const hash = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+    const floorAt = x => { let y = 300; for (const s of w.solids) if (!s.oneWay && s.h > 8 && s.y >= 180 && x >= s.x && x < s.x + s.w) y = Math.min(y, s.y); return y; };
+    const rise = Math.min(1, (300 - top) / 38);
+    for (let x = x0; x < x1; x += 2) {
+      const bottom = floorAt(x + 1);
+      const wave = Math.sin(x * 0.045 + t * 0.055) * 1.6 + Math.sin(x * 0.13 - t * 0.09) * 0.8 + Math.sin(x * 0.021 + t * 0.03) * 1.2;
+      const h = Math.round(top + wave * rise);
+      if (bottom <= h + 1) continue;                                      // 마른 땅
+      const depth = bottom - h;
+      g.fillStyle = 'rgba(18,58,92,0.62)'; g.fillRect(x, h + 7, 2, Math.max(0, depth - 7));            // 깊은 물
+      g.fillStyle = 'rgba(34,96,136,0.55)'; g.fillRect(x, h + 3, 2, Math.min(4, depth - 3));             // 중간
+      g.fillStyle = 'rgba(70,150,190,0.6)'; g.fillRect(x, h + 1, 2, 2);                                  // 수면 바로 아래
+      const slope = Math.cos(x * 0.045 + t * 0.055) * 0.07 + Math.cos(x * 0.13 - t * 0.09) * 0.1;
+      g.fillStyle = slope > 0.08 ? '#e8fbff' : slope > -0.02 ? '#9ee2f5' : '#5fb4d6'; g.fillRect(x, h, 2, 1);   // 수면선: 마루는 하얀 거품
+      if (slope > 0.11 && hash(x, (t >> 3)) < 0.5) { g.fillStyle = 'rgba(232,251,255,0.8)'; g.fillRect(x, h - 1, 2, 1); }
+      // 커스틱: 바닥 쪽에 일렁이는 밝은 점 (8틱마다 바뀜)
+      for (let k = 0; k < 2; k++) { const r = hash(x + k * 31, (t >> 3) + k * 7); if (r < 0.09 && depth > 10) { g.fillStyle = 'rgba(160,230,255,0.55)'; g.fillRect(x, Math.round(h + 6 + r * 11 * (depth - 8)), 2, 1); } }
+    }
+    // 기포: 바닥에서 올라와 수면에서 사라짐
+    for (let i = 0; i < 18; i++) {
+      const bx = Math.floor(camX / 40) * 40 + i * 47 + ((hash(i, 3) * 40) | 0), cyc = 160 + ((hash(i, 9) * 120) | 0), ph = (t + i * 37) % cyc, by = 300 - ph * 0.45;
+      if (by < top + 2 || floorAt(bx) <= top + 2) continue;
+      g.fillStyle = 'rgba(200,240,255,0.7)'; g.fillRect(Math.round(bx + Math.sin((t + i * 13) * 0.1) * 1.5), Math.round(by), 2, 2);
+    }
+  }
   // 레벨 오브젝트 (게임 그림과 같은 픽셀 소품)
   drawLevel(g, w) {
     const L = w.level, t = w.t, I = n => this.img(n);
@@ -689,6 +726,7 @@ export class Renderer {
         i = t < X.hitF ? span(0, 2, t / X.hitF) : t < X.hitF + 5 ? (t < X.hitF + 2 ? 3 : 4) : span(5, 7, (t - X.hitF - 5) / (X.totalF - X.hitF - 5));
         break;
       }
+      case 'spin': n = 'atk3'; i = t < CFG.spin.hitF ? 2 : t < CFG.spin.hitF + CFG.spin.activeF + 6 ? 3 + ((t >> 1) & 1) : span(5, 7, (t - CFG.spin.hitF - 12) / 12); break;   // 회전 베기: 칼을 뻗은 채 빙글
       case 'cast': n = 'parry'; i = t < 3 ? 2 : t < CFG.skill[p.spell].castF - 4 ? 4 : 6; break;   // 등불을 앞으로 내밀어 시전
       case 'roll': case 'ghost': n = 'roll'; i = span(0, 7, (p.stateT || 0) / (CFG.roll.totalF + CFG.roll.endLagF)); break;
       case 'hurt': n = 'hurt'; i = span(0, 5, t / CFG.player.hurtStunF); break;

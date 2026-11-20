@@ -68,7 +68,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['melee/heavy-cleave', 'explosions/implosion', 'arcane/magic-circle-cast', 'arcane/spell-charge', 'arcane/mana-burst', 'ice/ice-shatter', 'fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'fire/fire-tornado', 'ice/ice-spikes', 'holy/smite', 'nature/thorns', 'shadow/life-steal', 'lightning/chain-lightning', 'lightning/zap-hit', 'shadow/dark-explosion', 'holy/heal-aoe', 'explosions/small-explosion', 'ice/snowflake-burst', 'water/wave-crash', 'ice/ice-shatter', 'nature/boulder', 'spawn/poof', 'pickups/collect-burst', 'lightning/thunderclap', 'explosions/plasma-explosion', 'holy/sunburst', 'nature/healing-bloom', 'holy/feather-burst', 'explosions/big-explosion', 'explosions/implosion', 'nature/quake', 'impacts/ground-slam', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['melee/heavy-cleave', 'explosions/implosion', 'arcane/magic-circle-cast', 'arcane/spell-charge', 'arcane/mana-burst', 'ice/ice-shatter', 'fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'fire/fire-tornado', 'ice/ice-spikes', 'holy/smite', 'nature/thorns', 'shadow/life-steal', 'lightning/chain-lightning', 'lightning/zap-hit', 'shadow/dark-explosion', 'holy/heal-aoe', 'explosions/small-explosion', 'ice/snowflake-burst', 'water/wave-crash', 'ice/ice-shatter', 'nature/boulder', 'spawn/poof', 'pickups/collect-burst', 'water/ripples', 'water/splash', 'melee/spin-slash', 'arcane/blink-in', 'lightning/thunderclap', 'explosions/plasma-explosion', 'holy/sunburst', 'nature/healing-bloom', 'holy/feather-burst', 'explosions/big-explosion', 'explosions/implosion', 'nature/quake', 'impacts/ground-slam', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -179,6 +179,11 @@ export class FxDirector {
         R.flash = Math.max(R.flash, L[1]);
         break;
       }
+      // 강적 기믹
+      case 'barrierBreak': P('ice/ice-shatter', ev.x, ev.y + 30, { palette: CYAN, life: 50, light: 0.45 }, 3); break;
+      case 'barrierUp': P('holy/divine-shield', ev.x, ev.y + 40, { palette: CYAN, life: 40, light: 0.3 }, 2); break;
+      case 'mirage': P('arcane/blink-in', ev.x, ev.y + 20, { palette: VIOLET, life: 40, light: 0.35 }, 2); break;
+      case 'barrierHit': P('impacts/shield-block', ev.x, ev.y + 20, { palette: CYAN, light: 0.3 }, 2); break;
       // 레벨 요소
       case 'urnBreak': P('spawn/poof', ev.x, ev.y + 14, { palette: DUST, life: 30, light: 0.2 }, 2); break;
       case 'ventFire': this.spell('fire/flame-pillar', ev.x, 300, { life: 85, light: 0.5 }); break;
@@ -195,9 +200,11 @@ export class FxDirector {
       case 'mirrorReflect': this.spell('ice/snowflake-burst', ev.x, ev.y, { life: 50, light: 0.5 }); this.spell('impacts/hit-spark', ev.x, ev.y + 16, { height: 16, palette: CYAN, life: 30, light: 0.5 }); this.spell('lightning/zap-hit', ev.bx, ev.by, { life: 40, light: 0.5 }); break;
       case 'beaconLit': R.fx.spawn('fire/brazier', ev.x, 255, { light: 0.55, key: 'beacon' + ev.x }); this.spell('impacts/hit-spark', ev.x, 255, { height: 10, palette: AMBER, life: 30, light: 0.5 }); break;
       case 'beaconOut': R.fx.stopKey('beacon' + ev.x); break;
-      case 'phase2': this.spell('explosions/implosion', ev.x, ev.y + 40, { palette: ev.kind === 'saint' ? CYAN : ev.kind === 'spider' ? LILAC : ev.kind === 'shadow' ? VIOLET : AMBER, life: 90, light: 0.5 }); this.spell('nature/quake', ev.x, 300, { palette: DUST, life: 100, light: 0.3 }); break;
+      case 'phase2': if (ev.kind === 'saint') for (const dx of [-500, -250, 0, 250, 500]) this.spell('water/wave-crash', ev.x + dx, 300, { life: 80, light: 0.4 });   // 물이 밀려든다
+        this.spell('explosions/implosion', ev.x, ev.y + 40, { palette: ev.kind === 'saint' ? CYAN : ev.kind === 'spider' ? LILAC : ev.kind === 'shadow' ? VIOLET : AMBER, life: 90, light: 0.5 }); this.spell('nature/quake', ev.x, 300, { palette: DUST, life: 100, light: 0.3 }); break;
       case 'exposed': P('impacts/hit-spark', ev.x, ev.y + 30, { height: 20, palette: GOLD, life: 30, light: 0.4 }, 2); break;
-      case 'land': if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;
+      case 'land': if (w.water != null && w.water < 296 && ev.y > w.water) { this.spell('water/splash', ev.x, w.water + 6, { life: 45, light: 0.35 }); break; }   // 물에 착지 → 물보라
+        if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;
       case 'dead': P('spawn/soul-rise', ev.x, ev.y, { actor: R.actorOf(w.player), flip: w.player.face < 0 }, 3); R.trans.spawn('transitions/burn-away', 0, 0, {}); break;
       case 'afterglow': P('lightning/spark-arc', ev.x, ev.y + 20, { palette: AMBER, life: 30, light: 0.3 }, 2); break;
     }
@@ -212,6 +219,12 @@ export class FxDirector {
       else if (b.wave) F.spawn(b.src?.kind === 'saint' ? 'water/wave-crash' : 'impacts/ground-slam', 0, 0, { follow: b, dy: 6, palette: b.src?.kind === 'saint' ? undefined : DUST, light: 0.5 });
       else if (b.shard) F.spawn(b.src?.kind === 'bellBoss' ? 'nature/boulder' : 'ice/ice-crystal', 0, 0, { follow: b, palette: b.src?.kind === 'bellBoss' ? DUST : LILAC });   // 종탑 잔해는 돌
       else if (b.bolt && BOLT[b.bolt]) (b.owner === 'player' ? R.mfx : F).spawn(BOLT[b.bolt][0], 0, 0, { follow: b, flip: b.vx < 0, ...BOLT[b.bolt][1] });   // 리라 마법탄은 2배 레이어
+    }
+    // 물 속을 걸으면 발밑에 잔물결, 착지하면 물보라 (성녀 2막)
+    if (w.water != null && w.water < 296) {
+      const inWater = b => b.y + b.h > w.water + 2 && groundAt(w, b.x + b.w / 2, 1) > w.water + 2;
+      if (inWater(p) && Math.abs(p.vx) > 0.5 && p.onGround && w.t % 16 === 0) this.spell('water/ripples', p.x + p.w / 2, w.water + 4, { life: 40, light: 0.25 });
+      for (const e of w.enemies) if (e.boss && inWater(e) && Math.abs(e.vx) > 0.3 && w.t % 20 === 0) this.spell('water/ripples', e.x + e.w / 2, w.water + 4, { life: 40, light: 0.2 });
     }
     // 오브젝트: 열린 출구엔 포탈, 보스방 화로는 충전되면 불이 붙고 쓰면 꺼짐
     (w.props || []).forEach((o, i) => {

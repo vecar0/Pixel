@@ -37,7 +37,7 @@ for (let guard = 0; guard < 2000; guard++) {
     await p.keyboard.press('j'); await p.waitForTimeout(250);
     for (let k = 0; k < 8 && (await mode()) === 'talk'; k++) { await tap('#tnext'); await p.waitForTimeout(120); }   // 상인 첫 대화
     (await mode()) === st.room || fail(st.room + ' 창이 안 열림');
-    await tap(st.room === 'rest' ? '[data-id=heal]' : '[data-id=leave]'); await p.waitForTimeout(250);
+    await tap(st.room === 'rest' ? '.pick:not([disabled])' : '[data-id=leave]');   // 휴식: 고를 수 있는 첫 항목 (체력이 가득하면 치료는 꺼짐) await p.waitForTimeout(250);
   } else {
     // 전투: 리라는 무적, 적을 차례로 처치 (웨이브 포함)
     await p.evaluate(() => { window.__lk.world.player.iframes = 1e9; window.__lk.world.holdWaves = false; });   // 튜토리얼 방도 바로 진행

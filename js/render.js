@@ -29,6 +29,9 @@ const MAX_PARTICLES = 400;
 const PROP_GRADE = { urn: 0.5, spikes: 0.45, vent: 0.45, lever: 0.4, gate: 0.5, chest: 0.4, 'chest-open': 0.35, mover: 0.5, bell: 0.45, chain: 0.5, post: 0.5,
   mirror: 0.2, beacon: 0.5, shrine: 0.45, rack: 0.4, lamp: 0.45, 'deco-barrels': 0.45, 'deco-cart': 0.45, 'deco-bench': 0.45, keeper: 0.25, board: 0.45, scarecrow: 0.4, merchant: 0.2 };   // 인물(등대지기·상인)은 약하게
 const DIM = 0.92;                                                       // 소품은 배경보다 아주 조금 어둡게 (어둠 속에 놓인 느낌)
+// 반격 연참 칼자국: assets/fx-flurry0~3.png (가로 8프레임). ax·ay = 그림 안 중심, dx·dy = 리라 발 기준 위치, f = 프레임당 틱
+const FLURRY_FX = [{ w: 87, h: 32, ax: 41, ay: 14, dx: 34, dy: -34, f: 2 }, { w: 82, h: 85, ax: 42, ay: 42, dx: 30, dy: -34, f: 2 },
+  { w: 88, h: 67, ax: 43, ay: 28, dx: 32, dy: -34, f: 2 }, { w: 112, h: 115, ax: 56, ay: 57, dx: 48, dy: -34, f: 3 }];
 const bellOf = w => (w.props || []).find(o => o.kind === 'bell') || {};
 const PHASE2_TITLE = { bellBoss: ['2막 · 무너지는 종탑', '천장에서 잔해가 떨어진다 · 대종이 더 빨리 다시 걸린다'], saint: ['2막 · 차오르는 물', '낮은 바닥에선 느려진다 · 양쪽 제단 위로'],
   spider: ['2막 · 깨어나는 광맥', '세 번째 거울이 자란다 · 천장 수정이 쏟아진다'], shadow: ['2막 · 개기일식', '더 어두워지고 등대가 짧게 탄다'] };
@@ -39,6 +42,7 @@ export class Renderer {
     this.fx = new FxLayer(); this.mfx = new FxLayer(1.5) /* 마법 이펙트: 1.5배 굵은 픽셀 (캐릭터 크기에 맞춤) */; this.bgfx = new FxLayer(); this.pfx = new FxLayer(); /* pfx: 리라 베기 (리라 뒤에 그림) */ this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
     this.parts = []; this.texts = [];
     this.ghosts = [];             // 회피 잔상
+    this.slashes = [];            // 반격 연참 칼자국 (스프라이트 애니메이션)
     this.tail = null;             // 포니테일 스프링
     this.lantern = { a: 0, v: 0 };
     this.squash = 0; this.flash = 0; this.zoom = 0; this.stunFx = new Map();
@@ -75,7 +79,7 @@ export class Renderer {
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.mfx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; }
+  reset() { this.fx.clear(); this.mfx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.slashes = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; }
 
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
@@ -93,9 +97,8 @@ export class Renderer {
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
       else if (ev.type === 'flurryStart') { this.flash = Math.max(this.flash, 0.45); this.zoom = 0.6; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '반격!', life: 45 }); }
-      else if (ev.type === 'flurryHit') {                                   // 연참: 타마다 칼자국 (번갈아 위·아래, 마지막은 크게)
-        const F = [['melee/sword-slash', 24, -2], ['melee/uppercut', 22, 0], ['melee/double-slash', 26, 0], ['melee/heavy-cleave', 30, 0]][ev.k] || ['melee/sword-slash', 24, 0];
-        this.pfx.spawn(F[0], ev.x + ev.face * F[1], ev.y + F[2], { flip: ev.face < 0, palette: ev.k === 3 ? AMBER7 : STEEL, light: ev.k === 3 ? 0.45 : 0.2, life: 26, speed: ev.k === 3 ? 1 : 1.4 });
+      else if (ev.type === 'flurryHit') {                                   // 연참: 타마다 전용 칼자국 애니메이션 (GIF로 만든 8프레임 픽셀 그림)
+        this.slashes.push({ k: ev.k, x: ev.x + ev.face * FLURRY_FX[ev.k].dx, y: ev.y + FLURRY_FX[ev.k].dy, face: ev.face, t: 0 });
         if (ev.k === 3) this.flash = Math.max(this.flash, 0.5);
       }
       else if (ev.type === 'execChain') { this.texts.push({ x: ev.x, y: ev.y - 60, t: 0, s: `연속 처형 ×${ev.n}`, life: 70 }); this.flash = Math.max(this.flash, 0.6); }
@@ -145,6 +148,8 @@ export class Renderer {
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
     this.parts = this.parts.filter(p => p.life > 0);
     const pl = w.player; if (pl.state === 'roll' && pl.stateT < CFG.roll.totalF && pl.stateT % 3 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 12 });   // 회피 잔상
+    if (!(w.hitstop > 0)) for (const sl of this.slashes) sl.t++;
+    this.slashes = this.slashes.filter(sl => sl.t < FLURRY_FX[sl.k].f * 8);
     for (const g of this.ghosts) g.life--;
     this.ghosts = this.ghosts.filter(g => g.life > 0);
     for (const t of this.texts) t.t++;
@@ -246,7 +251,14 @@ export class Renderer {
     if (w.props) this.drawGimmickFront(g, w);                             // 대종은 보스 위에 (가둠)
     this.drawWarnings(g, w);
     g.globalAlpha = 1;
-    g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);   // 베기는 적 위·리라 뒤: 리라 몸을 덮지 않음
+    g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);
+    for (const sl of this.slashes) {                                      // 반격 연참 칼자국
+      const F = FLURRY_FX[sl.k], im = this.img('fx-flurry' + sl.k); if (!im) continue;
+      const fr = Math.min(7, Math.floor(sl.t / F.f));
+      g.save(); g.translate(Math.round(sl.x), Math.round(sl.y)); g.scale(sl.face, 1); g.globalCompositeOperation = 'lighter';
+      g.drawImage(im, fr * F.w, 0, F.w, F.h, -F.ax, -F.ay, F.w, F.h); g.globalAlpha = 0.5; g.drawImage(im, fr * F.w, 0, F.w, F.h, -F.ax, -F.ay, F.w, F.h);
+      g.restore();
+    }   // 베기는 적 위·리라 뒤: 리라 몸을 덮지 않음
     if (!hideChars) this.drawLira(g, w, p);
     if (p.state === 'flask' && !hideChars) {                             // 기름병 마시는 중: 머리 위 초록 원이 차오름
       const k = Math.min(1, p.stateT / (CFG.flask.useF * (p.mods.flaskSpeed || 1))), cx = p.x + p.w / 2, cy = p.y - 30;

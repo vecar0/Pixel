@@ -519,15 +519,16 @@ export class Renderer {
   // 보스 기믹 오브젝트 (보스 뒤): 쇠사슬 고리 · 수정 거울 · 빛의 등대
   drawGimmickProp(g, w, o) {
     const t = w.t;
-    if (o.kind === 'rope') {                                              // 천장 대종을 붙든 쇠사슬 → 바닥 고리
-      const bell = bellOf(w), up = bell.st === 'up';
-      const x0 = o.x, y0 = 266, x1 = bell.x + (o.x < bell.x ? -44 : 44), y1 = up ? (this.bellY ?? 8) + 70 : 30, n = up ? 40 : 8;
-      for (let i = 0; i <= n; i++) { const k = i / 40, x = Math.round(x0 + (x1 - x0) * k), y = Math.round(y0 + (y1 - y0) * k);
-        g.fillStyle = i % 2 ? '#5a5264' : '#8a8096'; g.fillRect(x - 2, y - 3, 4, 6); }
-      const ready = up && bell.cd <= 0, pulse = ready ? 0.5 + 0.5 * Math.sin(t * 0.15) : 0;
-      g.fillStyle = '#2a2232'; g.fillRect(x0 - 10, 266, 20, 34); g.fillStyle = '#4a4252'; g.fillRect(x0 - 10, 266, 20, 3);   // 돌 말뚝
-      g.strokeStyle = ready ? `rgba(255,${180 + 60 * pulse | 0},90,1)` : '#6a6070'; g.lineWidth = 3; g.beginPath(); g.arc(x0, 262, 7, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1;   // 고리 (빛나면 벨 수 있음)
-      if (ready) { const gl = g.createRadialGradient(x0, 262, 2, x0, 262, 26); gl.addColorStop(0, `rgba(255,179,71,${0.35 * pulse})`); gl.addColorStop(1, 'rgba(255,179,71,0)'); g.fillStyle = gl; g.fillRect(x0 - 26, 236, 52, 52); }
+    if (o.kind === 'rope') {                                              // 대종을 붙든 쇠사슬: 돌 말뚝(윈치)의 고리 → 종 옆구리. 종이 떨어지면 끊긴 사슬이 늘어짐
+      const bell = bellOf(w), up = bell.st === 'up', post = this.img('post'), chain = this.img('chain'), left = o.x < bell.x;
+      const rx = o.x, ry = 300 - 44 + 20;                                // 고리 위치 (말뚝 그림 기준)
+      if (chain) {
+        if (up || bell.st === 'rise') { const bx = bell.x + (left ? -40 : 40), by = (this.bellY ?? 8) + 60; this.drawChain(g, chain, rx, ry, bx, by); }
+        else this.drawChain(g, chain, rx, ry, rx + (left ? 10 : -10), ry - 26);   // 끊어진 사슬 토막
+      }
+      if (post) { g.save(); g.translate(Math.round(rx), 300 + 1); if (!left) g.scale(-1, 1); g.drawImage(post, -30, -post.naturalHeight); g.restore(); }
+      const ready = up && bell.cd <= 0;
+      if (ready) { const k = 0.5 + 0.5 * Math.sin(w.t * 0.15), gl = g.createRadialGradient(rx, ry, 2, rx, ry, 22); gl.addColorStop(0, `rgba(255,179,71,${0.45 * k})`); gl.addColorStop(1, 'rgba(255,179,71,0)'); g.fillStyle = gl; g.fillRect(rx - 22, ry - 22, 44, 44); }   // 벨 수 있으면 고리가 빛남
     } else if (o.kind === 'mirror' && this.img('mirror')) {                // 수정 거울 (깨지면 바닥에서 다시 자람)
       const im = this.img('mirror'), x = Math.round(o.x - im.naturalWidth / 2), grow = o.cd > 0 ? 0.15 + 0.6 * (1 - o.cd / 900) : 1, h = Math.round(im.naturalHeight * grow);
       if (o.cd <= 0) { const gl = g.createRadialGradient(o.x, 260, 4, o.x, 260, 50); gl.addColorStop(0, 'rgba(120,220,255,0.22)'); gl.addColorStop(1, 'rgba(120,220,255,0)'); g.fillStyle = gl; g.fillRect(o.x - 50, 210, 100, 90); }
@@ -543,6 +544,13 @@ export class Renderer {
       if (o.litT <= 0) { const pulse = 0.5 + 0.5 * Math.sin(w.t * 0.12); g.fillStyle = `rgba(255,179,71,${0.25 + 0.4 * pulse})`; g.fillRect(Math.round(o.x) - 2, 253, 4, 3); }
     }
   }
+  // 사슬 그림을 (x0,y0)→(x1,y1) 방향으로 이어 붙임
+  drawChain(g, im, x0, y0, x1, y1) {
+    const L = Math.hypot(x1 - x0, y1 - y0), a = Math.atan2(y1 - y0, x1 - x0) - Math.PI / 2, th = im.naturalHeight;
+    g.save(); g.translate(Math.round(x0), Math.round(y0)); g.rotate(a);
+    for (let d = 0; d < L; d += th) { const h = Math.min(th, L - d); g.drawImage(im, 0, 0, im.naturalWidth, h, -im.naturalWidth / 2, d, im.naturalWidth, h); }
+    g.restore();
+  }
   // 대종 (보스 위에 그림): 천장에 매달림 → 떨어짐(바닥에 붉은 그림자 예고) → 가둠 → 다시 올라감
   drawGimmickFront(g, w) {
     const bell = w.props.find(o => o.kind === 'bell'); if (!bell) return;
@@ -555,7 +563,7 @@ export class Renderer {
     else if (bell.st === 'rise') y = ground + (top - ground) * Math.min(1, bell.t / G.riseF);
     const yy = Math.round(y + (bell.st === 'up' ? Math.sin(w.t * 0.03) * 2 : 0));
     const rattle = bell.st === 'down' && bell.trapped ? Math.round(Math.sin(w.t * 0.9) * (bell.t % 50 < 14 ? 2 : 0.6)) : 0;   // 안에서 보스가 몸부림 → 종이 덜컹
-    if (bell.st === 'up' || bell.st === 'rise') { g.fillStyle = '#5a5264'; for (let k = yy + 4; k > -10; k -= 6) g.fillRect(Math.round(bell.x) - 2, k, 4, 4); }   // 천장 사슬
+    if ((bell.st === 'up' || bell.st === 'rise') && this.img('chain')) this.drawChain(g, this.img('chain'), bell.x, yy + 6, bell.x, -20);   // 천장 사슬
     g.drawImage(im, Math.round(bell.x - im.naturalWidth / 2) + rattle, yy);
     this.bellY = yy;
   }

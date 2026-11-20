@@ -5,9 +5,14 @@ const LANTERN = [69, 54];                                          // idle 프�
 const load = src => { const im = new Image(); im.src = src; return im; };
 
 export function startTitleScene(cv) {
-  const W = Math.max(240, Math.round(H * innerWidth / Math.max(1, innerHeight))), LIRA_X = Math.round(W * 0.13);
-  cv.width = W; cv.height = H;
-  const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+  // 캔버스 폭은 화면에 실제로 보이는 크기의 비율에 맞춘다 (폰 주소창·회전으로 비율이 바뀌어도 리라가 찌그러지지 않게)
+  let W = 240, LIRA_X = 31;
+  const g = cv.getContext('2d');
+  const fit = () => {
+    const cw = cv.clientWidth || innerWidth, ch = cv.clientHeight || innerHeight, w = Math.max(240, Math.round(H * cw / Math.max(1, ch)));
+    if (w !== W || cv.height !== H) { W = w; LIRA_X = Math.round(W * 0.13); cv.width = W; cv.height = H; g.imageSmoothingEnabled = false; }
+  };
+  fit();
   const far = load('assets/bg1-far.png'), mid = load('assets/bg1-mid.png');
   const idle = Array.from({ length: 8 }, (_, i) => load(`assets/lira-idle-${i}.png`));
   const embers = Array.from({ length: 26 }, () => spawnEmber(true));
@@ -21,7 +26,7 @@ export function startTitleScene(cv) {
 
   function frame() {
     if (!alive) return;
-    t++;
+    t++; fit();
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
     // 하늘: 아주 어두운 남색
     const sky = g.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#07060c'); sky.addColorStop(1, '#141020');

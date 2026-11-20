@@ -47,7 +47,7 @@ export class Input {
       move(e.clientX, e.clientY);
     });
     zone.addEventListener('pointermove', e => { if (e.pointerId === st.id) move(e.clientX, e.clientY); });
-    const end = e => { if (e.pointerId !== st.id) return; st.id = null; st.x = st.y = 0; knob.style.transform = ''; stick.classList.remove('on'); };
+    const end = e => { if (e.pointerId !== st.id) return; st.id = null; st.x = st.y = 0; knob.style.transform = ''; stick.classList.remove('on'); stick.style.left = stick.style.top = ''; };   // 손을 떼면 제자리로
     zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end); zone.addEventListener('lostpointercapture', end);
 
     for (const b of root.querySelectorAll('[data-btn]')) {

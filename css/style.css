@@ -454,3 +454,23 @@ button.scard:disabled { opacity: .45; cursor: default; }
 .talkbox .talk-body b { color: var(--flame); font-size: 13px; }
 .talkbox .talk-body p { margin: 4px 0 0; color: #ece3f4; font-size: 15px; line-height: 1.5; min-height: 2.6em; }
 .talkbox .next { min-height: 36px; padding: 0 14px; font-size: 14px; margin: 0; flex: none; }
+
+/* ── 폰 맞춤 터치 버튼: 화면 높이에 비례하는 크기, 오른쪽 아래에 촘촘히 (가운데 시야를 가리지 않게) ── */
+#touch { --u: clamp(40px, 11.5vh, 58px); --r0: max(14px, env(safe-area-inset-right)); --b0: max(10px, env(safe-area-inset-bottom)); }
+#b-attack { width: calc(var(--u) * 1.5); height: calc(var(--u) * 1.5); right: var(--r0); bottom: var(--b0); }
+#b-attack .ico { width: calc(var(--u) * .62); height: calc(var(--u) * .62); }
+#b-roll { width: var(--u); height: var(--u); right: calc(var(--r0) + var(--u) * 1.62); bottom: var(--b0); }
+#b-parry { width: calc(var(--u) * 1.25); height: calc(var(--u) * 1.25); right: calc(var(--r0) + var(--u) * 1.42); bottom: calc(var(--b0) + var(--u) * 1.08); }
+#b-parry .ico { width: calc(var(--u) * .5); height: calc(var(--u) * .5); }
+#b-jump { width: var(--u); height: var(--u); right: calc(var(--r0) + var(--u) * .12); bottom: calc(var(--b0) + var(--u) * 1.62); }
+#b-skill { width: calc(var(--u) * .95); height: calc(var(--u) * .95); right: calc(var(--r0) + var(--u) * 2.7); bottom: calc(var(--b0) + var(--u) * 1.15); }
+#b-skill .ico { width: calc(var(--u) * .45); height: calc(var(--u) * .45); }
+.tb .ico { width: calc(var(--u) * .42); height: calc(var(--u) * .42); }
+.tb small { font-size: clamp(8px, 2vh, 10px); }
+#b-flask { width: calc(var(--u) * .78); height: calc(var(--u) * .78); top: max(6px, env(safe-area-inset-top)); right: calc(var(--r0) + 46px); }
+#b-pause { width: 38px; height: 38px; top: max(6px, env(safe-area-inset-top)); right: var(--r0); }
+#stick { width: calc(var(--u) * 1.9); height: calc(var(--u) * 1.9); margin: 0; transform: translate(-50%, -50%); left: calc(max(18px, env(safe-area-inset-left)) + var(--u) * .95); top: calc(100% - var(--b0) - var(--u) * .95); }   /* 쉴 때 왼쪽 아래, 누르면 손가락 아래로 */
+#knob { width: calc(var(--u) * .78); height: calc(var(--u) * .78); margin: calc(var(--u) * -.39); }
+/* 눌린 버튼: 그림은 한 장만 (이전엔 배경 크기가 풀려 작은 원이 바둑판처럼 반복돼 보였음) */
+.tb.down { background-size: 100% 100%; background-repeat: no-repeat; background-position: center; }
+#tcv { object-fit: cover; }

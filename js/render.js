@@ -92,7 +92,12 @@ export class Renderer {
       else if (ev.type === 'execute') { this.flash = 0.8; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!', life: 60 }); }
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
-      else if (ev.type === 'spinStart') { this.pfx.spawn('melee/spin-slash', ev.x, ev.y, { palette: AMBER7, light: 0.5, life: 40 }); this.flash = Math.max(this.flash, 0.5); this.zoom = 0.6; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '반격!', life: 45 }); }
+      else if (ev.type === 'flurryStart') { this.flash = Math.max(this.flash, 0.45); this.zoom = 0.6; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '반격!', life: 45 }); }
+      else if (ev.type === 'flurryHit') {                                   // 연참: 타마다 칼자국 (번갈아 위·아래, 마지막은 크게)
+        const F = [['melee/sword-slash', 24, -2], ['melee/uppercut', 22, 0], ['melee/double-slash', 26, 0], ['melee/heavy-cleave', 30, 0]][ev.k] || ['melee/sword-slash', 24, 0];
+        this.pfx.spawn(F[0], ev.x + ev.face * F[1], ev.y + F[2], { flip: ev.face < 0, palette: ev.k === 3 ? AMBER7 : STEEL, light: ev.k === 3 ? 0.45 : 0.2, life: 26, speed: ev.k === 3 ? 1 : 1.4 });
+        if (ev.k === 3) this.flash = Math.max(this.flash, 0.5);
+      }
       else if (ev.type === 'execChain') { this.texts.push({ x: ev.x, y: ev.y - 60, t: 0, s: `연속 처형 ×${ev.n}`, life: 70 }); this.flash = Math.max(this.flash, 0.6); }
       else if (ev.type === 'barrierBreak') { this.texts.push({ x: ev.x, y: ev.y - 50, t: 0, s: '방패 깨짐!', life: 60 }); this.flash = Math.max(this.flash, 0.6); }
       else if (ev.type === 'barrierHit') this.texts.push({ x: ev.x, y: ev.y - 30, t: 0, s: `막힘 (${ev.left})`, life: 30 });
@@ -239,7 +244,7 @@ export class Renderer {
     this.drawWarnings(g, w);
     g.globalAlpha = 1;
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);   // 베기는 적 위·리라 뒤: 리라 몸을 덮지 않음
-    if (!hideChars) this.drawLira(g, w, p.state === 'spin' && p.stateT < CFG.spin.hitF + CFG.spin.activeF + 4 ? { ...p, face: (p.stateT >> 2) & 1 ? -p.face : p.face } : p);   // 회전 베기: 좌우로 빠르게 돌아봄
+    if (!hideChars) this.drawLira(g, w, p);
     if (p.state === 'flask' && !hideChars) {                             // 기름병 마시는 중: 머리 위 초록 원이 차오름
       const k = Math.min(1, p.stateT / (CFG.flask.useF * (p.mods.flaskSpeed || 1))), cx = p.x + p.w / 2, cy = p.y - 30;
       g.fillStyle = 'rgba(13,10,17,.7)'; g.beginPath(); g.arc(cx, cy, 8, 0, Math.PI * 2); g.fill();
@@ -777,7 +782,10 @@ export class Renderer {
         i = t < X.hitF ? span(0, 2, t / X.hitF) : t < X.hitF + 5 ? (t < X.hitF + 2 ? 3 : 4) : span(5, 7, (t - X.hitF - 5) / (X.totalF - X.hitF - 5));
         break;
       }
-      case 'spin': n = 'atk3'; i = t < CFG.spin.hitF ? 2 : t < CFG.spin.hitF + CFG.spin.activeF + 6 ? 3 + ((t >> 1) & 1) : span(5, 7, (t - CFG.spin.hitF - 12) / 12); break;   // 회전 베기: 칼을 뻗은 채 빙글
+      case 'flurry': {                                                     // 반격 연참: 1·2·3타 그림을 빠르게 이어 붙이고, 마지막 타는 3타 자세로 크게
+        const H = CFG.flurry.hits, k = Math.max(0, H.findLastIndex(h => t >= h - 3)), s0 = H[k] - 3, s1 = k < H.length - 1 ? H[k + 1] - 3 : CFG.flurry.totalF;
+        n = ['atk1', 'atk2', 'atk1', 'atk3'][k]; i = t < s0 ? 2 : span(2, 7, (t - s0) / Math.max(1, s1 - s0)); break;
+      }
       case 'cast': n = 'parry'; i = t < 3 ? 2 : t < CFG.skill[p.spell].castF - 4 ? 4 : 6; break;   // 등불을 앞으로 내밀어 시전
       case 'roll': case 'ghost': n = 'roll'; i = span(0, 7, (p.stateT || 0) / (CFG.roll.totalF + CFG.roll.endLagF)); break;
       case 'hurt': n = 'hurt'; i = span(0, 5, t / CFG.player.hurtStunF); break;

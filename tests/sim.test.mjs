@@ -394,11 +394,12 @@ test('레벨 배치: 지역이 깊을수록 가시·분출구가 늘고, 지역 
   ok(w4.level.vents.length >= 1, 'vents'); ok(w4.level.movers.length === 1, 'mover'); ok(w4.level.chests.length === 1, 'chest');
 });
 /* ── 콤보 손맛 · 강적 기믹 ── */
-test('반격 회전 베기: 완벽 패링 직후 공격 → 양쪽 적을 한 번에, 도는 동안 무적', () => {
+test('반격 연참: 완벽 패링 직후 공격 → 앞으로 파고들며 4연속 베기, 무적, 뒤쪽은 안 맞음', () => {
   const { w, res } = parryAt(3); eq(res, 'perfect'); ok(w.player.counterT > 0, 'window');
-  const back = makeDummy(w, { hp: 300, behind: true }), front = makeDummy(w, { hp: 300 });
-  steps(w, 2); tick(w, I({ attack: true })); let spun = false, inv = false; for (let i = 0; i < 14; i++) { tick(w, I()); if (w.player.state === 'spin') { spun = true; inv = inv || invulnerable(w.player); } } ok(spun, 'spin'); ok(inv, 'invuln');
-  steps(w, CFG.spin.totalF + 12); ok(back.hp < 300 && front.hp < 300, 'both sides ' + back.hp + ' ' + front.hp);
+  const back = makeDummy(w, { hp: 300, behind: true }), front = makeDummy(w, { hp: 300 }); front.x = w.player.x + 50;
+  steps(w, 2); const x0 = w.player.x; tick(w, I({ attack: true })); let fl = false, inv = false, hits = 0;
+  for (let i = 0; i < CFG.flurry.totalF + 16; i++) { tick(w, I()); if (w.player.state === 'flurry') { fl = true; inv = inv || invulnerable(w.player); } hits += w.events.filter(e => e.type === 'attackHit' && e.flurry && Math.abs(e.x - (front.x + front.w / 2)) < 2).length; }
+  ok(fl, 'flurry'); ok(inv, 'invuln'); eq(hits, 4, 'hits ' + hits); eq(front.hp, 300 - CFG.flurry.dmg.reduce((a, b) => a + b)); eq(back.hp, 300); ok(w.player.x > x0 + 20, 'lunged');
   const w2 = W(); settle(w2); tick(w2, I({ attack: true })); eq(w2.player.state, 'attack');   // 평소엔 그냥 공격
 });
 test('연속 처형: 5초 안에 두 번째 처형이면 빛 +20, 세 번째면 체력 +1', () => {

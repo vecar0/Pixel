@@ -76,7 +76,7 @@ const TALK = {
     ['허수아비로 손을 풀고 가렴.', '패링은 적이 번쩍이는 그 순간이 전부야.'],
     ['어둠이 깊을수록 보상도 크다네.', '자신이 생기면 제단에서 어둠을 올려 봐.'],
     ['방마다 목표 시간이 있어.', '빨리 정리하면 불씨를 더 얹어 주지.'],
-    ['완벽하게 막아 낸 직후 바로 베어 봐.', '몸을 돌리며 양쪽을 한꺼번에 베는 반격이 나간단다.'],
+    ['완벽하게 막아 낸 직후 바로 베어 봐.', '앞으로 파고들며 네 번 연달아 베는 반격이 나간단다.'],
     ['쓰러진 적을 연달아 처형하면', '등불이 그만큼 더 밝아지지.'],
   ] },
   merchant: { name: '떠돌이 상인', img: 'assets/merchant.png', lines: [
@@ -519,7 +519,8 @@ function onEvents(w) {
     if (ev.type === 'parry' && ev.perfect) addScore('parry', 25);
     if (ev.type === 'execute') addScore('execute', 40);
     if (ev.type === 'execChain') { addScore('execute', 40 * ev.n); sfx.play('heal'); }
-    if (ev.type === 'spinStart') { sfx.play('swing'); sfx.play('hit3'); if (navigator.vibrate) navigator.vibrate(25); }
+    if (ev.type === 'flurryStart' && navigator.vibrate) navigator.vibrate(20);
+    if (ev.type === 'flurryHit') sfx.play(ev.k === 3 ? 'hit3' : 'swing');
     if (ev.type === 'barrierHit') sfx.play('parryNormal');
     if (ev.type === 'barrierBreak') sfx.play('execute');
     if (ev.type === 'mirage') sfx.play('roll');

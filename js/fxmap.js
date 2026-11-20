@@ -1,7 +1,7 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwp7yzma';
-import { groundAt } from './core/world.js?v=mwp7yzma';
+import { preload } from './fx.js?v=mwp8gn8l';
+import { groundAt } from './core/world.js?v=mwp8gn8l';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -83,7 +83,7 @@ export class FxDirector {
         if (o.kind === 'campfire') { R.fx.spawn('fire/campfire', o.x, 300, { light: 0.5 }); for (const d of [-110, 110]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
         if (o.kind === 'merchant') { R.bgfx.spawn('fire/brazier', o.x + 90, 300, { light: 0.35 }); R.bgfx.spawn('fire/candle', o.x - 100, 300, { light: 0.3 }); }
         if (o.kind === 'keeper' || o.kind === 'board') R.bgfx.spawn('fire/candle', o.x + (o.kind === 'keeper' ? -60 : 40), 300, { light: 0.3 });
-        if (o.kind === 'altar') { R.fx.spawn('fire/brazier', o.x, 238, { light: 0.55, iron: NO_IRON }); for (const d of [-70, 70]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
+        if (o.kind === 'altar') { R.fx.spawn('fire/brazier', o.x - 10, 234, { light: 0.55, iron: NO_IRON }); for (const d of [-70, 70]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }   // 불: 제단 그림의 그릇(왼쪽 10px, 꼭대기) 위
       }
     }
     R.trans.clear(); if (!boss) R.iris(w, 'open');   // 방 입장: 리라를 중심으로 아이리스가 열림 (보스방은 등장 연출이 대신)

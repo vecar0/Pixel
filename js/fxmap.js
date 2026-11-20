@@ -127,7 +127,7 @@ export class FxDirector {
       case 'block': P('impacts/shield-block', ev.x, ev.y + 20, { palette: LILAC, light: 0.3 }, 2); break;
       case 'blink': P('arcane/blink-out', ev.x, ev.y + 26, { palette: VIOLET, light: 0.3 }, 2); break;
       case 'enemyParry': P('impacts/parry', ev.x, ev.y + 40, { palette: VIOLET, light: 0.3 }, 3); break;
-      case 'heal': P('holy/heal', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: p.face < 0, life: 110, light: 0.4 }, 3); break;   // 몸을 타고 오르는 회복 빛
+      case 'heal': P('holy/heal', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: p.face < 0, life: 110, light: 0.2 }, 3); break;   // 몸을 타고 오르는 회복 빛
       case 'castStart': {                                                  // 시전: 발밑에 마법진(모든 마법), 큰 마법은 몸에 빛이 모임
         const pal = palOf(ev.spell);
         P('arcane/magic-circle-cast', p.x + p.w / 2, feet, { life: 40, light: 0.45, palette: pal }, 3);

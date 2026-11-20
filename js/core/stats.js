@@ -44,5 +44,38 @@ export function statMods(s) {
     spellMul: Math.max(0.4, 1 + 0.15 * d('lmp')), lightStat: Math.max(0.5, 1 + 0.1 * d('lmp')), lmp7: s.lmp >= 7, lmp10: s.lmp >= 10, costMul: low('lmp') ? 1.25 : 1,
     hpBonus: d('vit'), flaskBonus: s.vit >= 7 ? 1 : low('vit') ? -1 : 0, flaskCount: s.vit >= 10 ? 1 : 0,
     critChance: Math.max(0, 0.06 * d('fury')), killCrit: s.fury >= 7, critMul: s.fury >= 10 ? 3 : 2, furyExec: low('fury') ? 0.7 : 1,
+    res: Object.fromEntries(resonancesOf(s).map(r => [r.id, true])),   // 공명
   };
+}
+
+// 공명: 서로 다른 쌍의 두 스탯이 모두 7 이상이면 열리는 조합 특성 (쌍 3개 → 조합 12개)
+export const RESONANCES = [
+  { id: 'riposte',  a: 'str', b: 'wil',  name: '철벽 반격', desc: '완벽 패링 직후 다음 공격 피해 +60%' },
+  { id: 'emberEdge',a: 'str', b: 'lmp',  name: '불꽃 칼날', desc: '3타가 적에게 화상 (3초간 초당 3)' },
+  { id: 'grit',     a: 'str', b: 'vit',  name: '버팀', desc: '체력이 최대의 1/3 이하면 공격 피해 +40%' },
+  { id: 'slayer',   a: 'str', b: 'fury', name: '처단', desc: '처형하면 빛 +30, 다음 공격 치명타' },
+  { id: 'deflect',  a: 'agi', b: 'wil',  name: '흘려 막기', desc: '구르기로 공격을 흘리면 빛 +15' },
+  { id: 'emberStep',a: 'agi', b: 'lmp',  name: '잔불 걸음', desc: '구르기가 끝날 때 작은 유도 불씨를 쏜다 (피해 8)' },
+  { id: 'enduring', a: 'agi', b: 'vit',  name: '질긴 걸음', desc: '기름병을 마시는 동안 제 속도로 움직인다' },
+  { id: 'gale',     a: 'agi', b: 'fury', name: '질풍', desc: '구르기 직후 첫 공격 치명타 확률 +35%' },
+  { id: 'aegis',    a: 'wil', b: 'vit',  name: '수호', desc: '방마다 한 번, 맞을 피해를 막는다' },
+  { id: 'retribute',a: 'wil', b: 'fury', name: '응징', desc: '완벽 패링하면 다음 공격이 치명타' },
+  { id: 'warmLamp', a: 'lmp', b: 'vit',  name: '따스한 등불', desc: '마법을 3번 쓸 때마다 체력 1 회복' },
+  { id: 'wildfire', a: 'lmp', b: 'fury', name: '폭주 등불', desc: '마법도 치명타가 난다 (투지 치명타 확률·배율 적용)' },
+];
+export const resonancesOf = s => RESONANCES.filter(r => s[r.a] >= 7 && s[r.b] >= 7);
+// 극의: 10에 도달한 스탯의 칭호
+export const MASTERY = { str: '파쇄자', agi: '그림자', wil: '철의 의지', lmp: '등불 현자', vit: '불굴', fury: '광전사' };
+// 지금 수치 (구체적인 값). 화면에 '공격 피해 112%'처럼 보여 줌
+export function statNumbers(id, v) {
+  const d = v - STAT_START, pct = x => Math.round(x * 100) + '%';
+  switch (id) {
+    case 'str': return `공격 피해 ${pct(Math.max(0.4, 1 + 0.12 * d))}`;
+    case 'agi': return `이동·구르기 ${pct(1 + 0.06 * d)}, 구르기 무적 ${12 + d}프레임`;
+    case 'wil': return `완벽 패링 ${Math.min(12, Math.max(2, 6 + d))}프레임, 자세 피해 ${pct(Math.max(0.4, 1 + 0.12 * d))}`;
+    case 'lmp': return `마법 피해 ${pct(Math.max(0.4, 1 + 0.15 * d))}, 빛 획득 ${pct(Math.max(0.5, 1 + 0.1 * d))}`;
+    case 'vit': return `최대 체력 ${Math.max(1, 5 + d)}`;
+    case 'fury': return `치명타 확률 ${Math.round(Math.max(0, 6 * d))}%, 치명타 ${v >= 10 ? 3 : 2}배`;
+  }
+  return '';
 }

@@ -18,6 +18,9 @@ export function resolveEnemyHit(w, hb) {
     p.parryOk = true; p.recoverWait = PR.successRecoverF;
     p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal) * p.mods.lightMul);
     if (perfect && p.mods.chain) p.chainN = Math.min(5, p.chainN + 1);          // 불씨 연쇄
+    const RES = p.mods.res || {};
+    if (perfect && RES.riposte) p.riposte = true;                                // 공명 철벽 반격
+    if (perfect && RES.retribute) p.crit = true;                                 // 공명 응징
     if (perfect && p.mods.echo) w.projectiles.push({                           // 반향: 앞으로 검기
       x: p.face > 0 ? p.x + p.w : p.x - 24, y: p.y + 18, w: 24, h: 14, vx: p.face * 6, vy: 0,
       dmg: 1.5, parryable: true, owner: 'player', life: 50, echo: true, src: {} });
@@ -34,9 +37,14 @@ export function resolveEnemyHit(w, hb) {
   }
   if (invulnerable(p)) {
     if (p.state === 'roll' && p.mods.afterglow && !hb.src.glow) { hb.src.glow = true; p.crit = true; w.events.push({ type: 'afterglow', x: p.x + p.w / 2, y: p.y }); }
+    if (p.state === 'roll' && (p.mods.res || {}).deflect && !hb.src.deflected) { hb.src.deflected = true; p.light = Math.min(CFG.light.max, p.light + 15); w.events.push({ type: 'resonance', id: 'deflect' }); }   // 공명 흘려 막기
     return 'ignored';
   }
   hb.src.done = true;
+  if ((p.mods.res || {}).aegis && p.aegisReady) {                              // 공명 수호: 방마다 한 번 피해를 막음
+    p.aegisReady = false; p.iframes = 30; w.hitstop = Math.max(w.hitstop, 6);
+    w.events.push({ type: 'aegis', x: p.x + p.w / 2, y: p.y + 20 }); return 'blocked';
+  }
   p.hp -= hb.dmg; p.chainN = 0; p.hurtCount = (p.hurtCount || 0) + 1;
   p.iframes = CFG.player.iframesHurt;
   p.buffer = null;
@@ -103,11 +111,15 @@ export function resolvePlayerAttacks(w) {
       w.events.push({ type: 'executeStart', x: e.x + e.w / 2, y: e.y + e.h / 2 });
       return;
     } else {
-      if (!p.crit && p.mods.critChance) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < p.mods.critChance) p.crit = true; }   // 투지: 치명타 확률
-      const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? (p.mods.critMul || 2) : 1) * (p.mods.atkMul || 1);
+      const RES = p.mods.res || {}, cc = (p.mods.critChance || 0) + (RES.gale && p.galeT > 0 ? 0.35 : 0);
+      if (!p.crit && cc) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < cc) p.crit = true; }   // 투지·질풍: 치명타 확률
+      p.galeT = 0;
+      const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? (p.mods.critMul || 2) : 1) * (p.mods.atkMul || 1)
+        * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1);   // 공명 철벽 반격·버팀
+      p.riposte = false;
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
       damageEnemy(w, e, Math.round(CFG.attack.dmg[p.combo] * mul), PO.hit * (p.mods.poiseMul || 1));
-      if (p.combo === 2 && p.mods.flame) e.burnT = 180;                       // 화염 칼날
+      if (p.combo === 2 && (p.mods.flame || RES.emberEdge)) e.burnT = 180;   // 화염 칼날 각인·공명 불꽃 칼날                       // 화염 칼날
       w.hitstop = Math.max(w.hitstop, CFG.attack.hitstop[p.combo]);
       e.kvx = p.face * CFG.attack.push[p.combo] * (e.boss ? 0.15 : 1);
       if (p.combo === 2) w.shake = Math.max(w.shake, 6);
@@ -129,9 +141,11 @@ function igniteBrazier(w, o) {
 // 등불 마법 (스킬). 등장 중인 적은 맞지 않는다
 const liveOf = w => w.enemies.filter(e => !e.dead && !(e.spawnT > 0));
 function spellHit(w, e, dmg, poise, spell) {
+  const p = w.player; let crit = false;
+  if ((p.mods.res || {}).wildfire && p.mods.critChance) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < p.mods.critChance) { crit = true; dmg = Math.round(dmg * (p.mods.critMul || 2)); } }   // 공명 폭주 등불
   damageEnemy(w, e, dmg, poise);
   w.hitstop = Math.max(w.hitstop, 3);                                   // 마법도 맞는 순간 멈칫 (손맛)
-  w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 1, face: w.player.face, dmg, crit: false, spell });
+  w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 1, face: w.player.face, dmg, crit, spell });
 }
 // 가까운 적 (앞쪽 우선). 없으면 null
 function nearestTarget(w, range) {
@@ -142,6 +156,9 @@ function nearestTarget(w, range) {
 }
 export function resolveSkill(w, ev) {
   const p = w.player, S = CFG.skill[ev.spell], M = p.mods.spellMul || 1, cx = p.x + p.w / 2, PM = p.mods.poiseMul || 1;
+  if ((p.mods.res || {}).warmLamp && ++p.castCount % 3 === 0 && p.hp < p.maxHp) {   // 공명 따스한 등불
+    const hp0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: hp0, x: cx, y: p.y + p.h });
+  }
   const aim = nearestTarget(w, 520);                                    // 자동 조준: 가장 가까운 적(앞쪽 우선) 쪽으로 돌아서 쏜다
   if (aim) { p.face = Math.sign(aim.x + aim.w / 2 - cx) || p.face; ev.face = p.face; }
   const live = liveOf(w);
@@ -199,6 +216,7 @@ export function updateExecute(w) {
     if (!e.dead) damageEnemy(w, e, e.boss ? Math.round(e.maxHp * PO.executeFrac * p.mods.execMul * (p.mods.furyExec || 1)) : e.hp);
     w.hitstop = Math.max(w.hitstop, 12); w.shake = 12;
     if (p.mods.str10) for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 320) addPoise(w, o, 0.4);   // 힘 10
+    if ((p.mods.res || {}).slayer) { p.light = Math.min(CFG.light.max, p.light + 30); p.crit = true; }   // 공명 처단
     w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
     p.execTarget = null;
   }

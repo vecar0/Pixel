@@ -10,7 +10,7 @@ export function createPlayer(x, y) {
   return {
     x, y, w: P.w, h: P.h, vx: 0, vy: 0, face: 1,
     onGround: false, coyote: 0, jumpCut: false, airAttacked: false,
-    hp: P.hp, maxHp: P.hp, spells: ['bolt'], light: 0, flasks: CFG.flask.charges, maxFlasks: CFG.flask.charges,
+    hp: P.hp, maxHp: P.hp, spells: ['bolt'], castCount: 0, aegisReady: true, galeT: 0, light: 0, flasks: CFG.flask.charges, maxFlasks: CFG.flask.charges,
     relics: new Set(), mods: { rollMul: 1, iExtra: 0, airJumps: 0, execMul: 1, lightMul: 1, ...statMods(startStats()) }, airLeft: 0, chainN: 0, crit: false,
     state: 'idle', stateT: 0, combo: 0, comboT: 0,
     iframes: 0, buffer: null,
@@ -100,7 +100,14 @@ export function updatePlayer(w, inp) {
     w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 24, y: p.y + 18, w: 24, h: 14, vx: p.face * 6, vy: 0, pdmg: Math.round(8 * p.mods.atkMul), owner: 'player', life: 32, echo: true, src: {} });
   if (p.state === 'attack' && t >= A.startupF + A.activeF + A.recoveryF + (p.mods.atkLag || 0)) { p.comboT = A.comboWindowF; setState(p, 'idle'); }
   if (p.state === 'parry' && (p.parryOk ? t >= PR.normalF : t >= PR.normalF + PR.whiffF + (p.mods.whiffLag || 0))) setState(p, 'idle');
-  if (p.state === 'roll' && t >= RO.totalF + RO.endLagF + (p.mods.rollLag || 0)) { if (p.mods.agi10) p.crit = true; setState(p, 'idle'); }   // 민첩 10: 구르기 직후 치명타
+  if (p.state === 'roll' && t >= RO.totalF + RO.endLagF + (p.mods.rollLag || 0)) {
+    const RES = p.mods.res || {};
+    if (p.mods.agi10) p.crit = true;                                          // 민첩 10: 구르기 직후 치명타
+    if (RES.gale) p.galeT = 40;                                                // 공명 질풍
+    if (RES.emberStep) w.projectiles.push({ x: p.x + p.w / 2 - 6, y: p.y + 20, w: 12, h: 10, vx: p.face * 5, vy: 0, spd: 5, homing: true, pdmg: 8, poise: 0.05, owner: 'player', life: 90, bolt: 'lamp', hits: [], src: {} });   // 공명 잔불 걸음
+    setState(p, 'idle');
+  }
+  if (p.galeT > 0) p.galeT--;
   if (p.state === 'hurt' && t >= P.hurtStunF) setState(p, 'idle');
   if (p.state === 'flask' && t >= CFG.flask.useF) {
     const hp0 = p.hp; p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, CFG.flask.heal + (p.mods.flaskBonus || 0)));
@@ -126,7 +133,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'roll') {
     p.vx = t < RO.totalF ? p.rollDir * RO.dist * p.mods.rollMul / RO.totalF : 0;
   } else if (free || p.state === 'flask') {
-    const spd = P.speed * (p.mods.speedMul || 1), max = p.state === 'flask' ? spd * 0.3 : spd;
+    const spd = P.speed * (p.mods.speedMul || 1), max = p.state === 'flask' && !(p.mods.res || {}).enduring ? spd * 0.3 : spd;   // 공명 질긴 걸음
     if (dir) {
       p.vx += dir * spd / P.accelF;
       if (Math.abs(p.vx) > max) p.vx = Math.sign(p.vx) * max;

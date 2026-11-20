@@ -85,6 +85,8 @@ export class Renderer {
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
       else if (ev.type === 'heal') this.healFx(p, ev.amount, ev.from);
+      else if (ev.type === 'aegis') this.texts.push({ x: ev.x, y: ev.y - 30, t: 0, s: '수호!' });
+      else if (ev.type === 'resonance') this.texts.push({ x: p.x + p.w / 2, y: p.y - 20, t: 0, s: '흘려 막기' });
       else if (ev.type === 'land') {
         this.squash = Math.min(1, ev.v / 7);
         if (ev.v > 3) { this.dust(ev.x - 4, ev.y, -1, 5); this.dust(ev.x + 4, ev.y, 1, 5); }
@@ -121,7 +123,6 @@ export class Renderer {
     this.ghosts = this.ghosts.filter(g => g.life > 0);
     for (const t of this.texts) t.t++;
     this.texts = this.texts.filter(t => t.t < (t.life || 40));
-    if (this.healFlash > 0) this.healFlash = Math.max(0, this.healFlash - 0.025);
     if (this.hpGain && --this.hpGain.t <= 0) this.hpGain = null;
     this.squash *= 0.8; this.zoom *= 0.85;
     this.flash = this.flash > 0 ? Math.max(0, this.flash - 0.18) : Math.min(0, this.flash + 0.1);
@@ -232,7 +233,7 @@ export class Renderer {
     for (const t of this.texts) {
       const L = t.life || 40, k = t.t / L, y = t.y + oy - (t.heal ? 22 : 14) * Math.min(1, t.t / 8) - k * (t.heal ? 14 : 6);
       g.globalAlpha = 1 - Math.max(0, k - 0.6) / 0.4;
-      if (t.heal) g.font = 'bold 20px Galmuri11, monospace';
+      if (t.heal) g.font = 'bold 14px Galmuri11, monospace';
       g.fillStyle = t.heal ? '#0e2a14' : '#2a1204'; g.fillText(t.s, t.x + ox + 1, y + 1);
       g.fillStyle = t.heal ? '#8dffa0' : C.amberHi; g.fillText(t.s, t.x + ox, y);
       if (t.heal) g.font = 'bold 12px Galmuri11, monospace';
@@ -242,11 +243,6 @@ export class Renderer {
 
     // 화면 번쩍: 완벽 패링은 흰색, 피격은 붉은색
     if (this.flash > 0.01) { g.fillStyle = `rgba(255,248,230,${this.flash * 0.22})`; g.fillRect(0, 0, vw, H); }   // 화면 섬광은 은은하게
-    if (this.healFlash > 0.01) {                                          // 회복: 가장자리부터 초록빛
-      const hg = g.createRadialGradient(vw / 2, H / 2, H * 0.35, vw / 2, H / 2, vw * 0.7);
-      hg.addColorStop(0, 'rgba(80,230,120,0)'); hg.addColorStop(1, `rgba(80,230,120,${0.32 * this.healFlash})`);
-      g.fillStyle = hg; g.fillRect(0, 0, vw, H);
-    }
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
     if (this.hud !== false && !(this.cine && this.cine.t < CINE.out2)) this.drawHud(g, w);   // 등장 연출 중엔 HUD 숨김
     for (const [m, y] of [[this.banner, 96], [this.sayMsg, H - 70]]) {     // 스테이지 이름 배너 · 안내 한 줄
@@ -411,9 +407,8 @@ export class Renderer {
   say(s) { this.sayMsg = { s, t: 150 }; }
   // 회복 연출: 큰 초록 '+N', 화면 가장자리 초록빛, 체력 바의 새로 찬 칸이 반짝임 (몸을 타고 오르는 빛은 fxmap의 holy/heal)
   healFx(p, amount, from = p.hp - amount) {
-    this.texts.push({ x: p.x + p.w / 2, y: p.y - 18, t: 0, s: amount > 0 ? `+${amount}` : '체력 가득', heal: true, life: 70 });
-    this.healFlash = 1; this.hpGain = { from: Math.max(0, from), to: p.hp, t: 70 };
-    this.burst(p.x + p.w / 2, p.y + 30, 10, ['#7fe08a', '#d8ffd8', '#3fae5a'], 1.6);
+    this.texts.push({ x: p.x + p.w / 2, y: p.y - 18, t: 0, s: amount > 0 ? `+${amount}` : '체력 가득', heal: true, life: 50 });
+    this.hpGain = { from: Math.max(0, from), to: p.hp, t: 40 };          // 연출은 몸의 회복 빛(pixelfx) + 작은 숫자 + 체력 바 새 칸만
   }
   // 보스 등장 연출: 보스를 비추며 페이드인 → 이름 → 페이드아웃 → 넓은 방 전체로 페이드인
   startCine(name, sub) { this.cine = { t: 0, name, sub, focusBoss: true, hideLira: true }; }
@@ -786,8 +781,7 @@ export class Renderer {
     g.fillStyle = '#ff8a94'; g.fillRect(hx, hy, Math.round(hw * p.hp / p.maxHp), 2);
     if (this.hpGain) {                                                   // 회복으로 새로 찬 칸: 초록·흰빛 깜빡임
       const G = this.hpGain, x0 = hx + Math.round(hw * G.from / p.maxHp), x1 = hx + Math.round(hw * Math.min(p.hp, G.to) / p.maxHp);
-      g.fillStyle = (G.t >> 2) & 1 ? '#d8ffd8' : '#5fe07a'; g.fillRect(x0, hy, Math.max(0, x1 - x0), 7);
-      g.strokeStyle = '#8dffa0'; g.lineWidth = 1; g.strokeRect(hx - 1.5, hy - 1.5, hw + 3, 10);
+      g.globalAlpha = G.t / 40; g.fillStyle = '#9dffb0'; g.fillRect(x0, hy, Math.max(0, x1 - x0), 7); g.globalAlpha = 1;   // 새로 찬 칸만 잠깐 밝게
     }
     g.fillStyle = '#120e16'; for (let i = 1; i < p.maxHp; i++) g.fillRect(hx + i * 11, hy, 1, 7);
     // 빛 게이지: 랜턴 + 4칸 눈금. 가득 차면 깜빡임

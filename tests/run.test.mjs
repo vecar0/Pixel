@@ -4,6 +4,8 @@ import { CFG } from '../js/core/config.js';
 import { takeTrain, applyStats, runSpell, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, nextStage, stageOf, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
 import { tick, EMPTY_INPUT } from '../js/core/world.js';
 import { spawnEnemy, ENEMY_DEFS } from '../js/core/enemies.js';
+import { resolveEnemyHit as resolveHit } from '../js/core/combat.js';
+import { resonancesOf, RESONANCES } from '../js/core/stats.js';
 import { createWorld } from '../js/core/world.js';
 import { defaultSave, buy, relicPool, recordRun, dailySeed, UNLOCKS } from '../js/core/meta.js';
 const I = o => ({ ...EMPTY_INPUT, ...o });
@@ -260,6 +262,29 @@ test('투지: 높으면 치명타가 나오고(10이면 3배), 7 이상이면 �
   const w = mk({ fury: 10, vit: 0 }); eq(w.player.mods.critMul, 3); ok(w.player.mods.critChance > 0.25); ok(w.player.mods.killCrit);
   eq(mk({}).player.mods.critChance, 0); eq(w.player.maxHp, 1);
   eq(runSpell(Object.assign(newRun(1), { stats: { ...newRun(1).stats, fury: 7, vit: 3 } })), 'chain');
+});
+
+test('공명: 다른 쌍 두 스탯이 7 이상이면 열림, 같은 쌍끼리는 불가', () => {
+  eq(RESONANCES.length, 12); ok(RESONANCES.every(r => r.a !== r.b));
+  const base = { str: 5, agi: 5, wil: 5, lmp: 5, vit: 5, fury: 5 };
+  eq(resonancesOf({ ...base, str: 7, wil: 7 }).map(r => r.id).join(), 'riposte');
+  eq(resonancesOf({ ...base, str: 7, agi: 3 }).length, 0);
+  eq(resonancesOf({ ...base, str: 8, wil: 8, vit: 7 }).length, 3);
+});
+test('공명 효과: 철벽 반격·수호·버팀·따스한 등불', () => {
+  const mk = st => { const r = newRun(1); Object.assign(r.stats, st); enterRoom(r, 'combat'); const w = buildRoomWorld(r); w.enemies.length = 0; w.waves = []; steps(w, 20); return w; };
+  // 수호: 첫 피해는 막고 두 번째는 들어감
+  const w = mk({ wil: 7, lmp: 3, vit: 7, fury: 3 }); const p = w.player, hp = p.hp; ok(p.mods.res.aegis);
+  const hit = () => { const src = {}; w.hitboxes.push({ src, owner: null, x: p.x, y: p.y, w: p.w, h: p.h, dmg: 1, parryable: false, dir: -1 }); for (const hb of w.hitboxes) resolveHit(w, hb); w.hitboxes.length = 0; };
+  hit(); eq(p.hp, hp); p.iframes = 0; hit(); eq(p.hp, hp - 1);
+  // 철벽 반격: 다음 공격 1.6배
+  const w2 = mk({ str: 7, agi: 3, wil: 7, lmp: 3 }), p2 = w2.player; p2.riposte = true; p2.face = 1;
+  const e = spawnEnemy(w2, 'ghoul', p2.x + p2.w + 2, p2.y); e.update = () => {}; e.maxHp = e.hp = 500; e.poiseMax = false;
+  tick(w2, I({ attack: true })); steps(w2, CFG.attack.startupF + 2); eq(500 - e.hp, Math.round(10 * p2.mods.atkMul * 1.6)); ok(!p2.riposte);
+  // 따스한 등불: 마법 3번째에 체력 1
+  const w3 = mk({ lmp: 7, wil: 3, vit: 7, fury: 3 }), p3 = w3.player; p3.hp = 2;
+  for (let i = 0; i < 3; i++) { p3.light = 100; p3.state = 'idle'; tick(w3, I({ skill: true })); steps(w3, 40); }
+  eq(p3.hp, 3);
 });
 
 run();

@@ -17,7 +17,7 @@ export const SPELLS = {
   smite:   { name: '심판',      icon: 'parry',       tone: 'amber', fx: 'holy/smite',               desc: '가장 가까운 적 머리 위로 빛의 망치가 떨어져 자세를 크게 무너뜨린다' },
   wisps:   { name: '도깨비불',  icon: 'ember',       tone: 'amber', fx: 'fire/fireball',            desc: '등불에서 불씨 셋이 흩어져 날아가 각자 가까운 적을 쫓는다' },
   thorns:  { name: '가시 덩굴', icon: 'heart',       tone: 'heal',  fx: 'nature/thorns',            desc: '앞쪽 바닥에서 가시 덩굴이 솟아 적을 찌르고 발을 묶는다 (자세 피해 큼)' },
-  drain:   { name: '피의 갈취', icon: 'afterglow',   tone: 'red',   fx: 'shadow/life-steal',        desc: '가장 가까운 적의 피를 뽑아 와 피해를 주고 맞히면 체력 1을 되찾는다' },
+  drain:   { name: '피의 갈취', icon: 'afterglow',   tone: 'red',   fx: 'shadow/soul-drain',       desc: '가장 가까운 적의 피를 뽑아 와 피해를 주고 맞히면 체력 1을 되찾는다' },
   heal:    { name: '치유의 빛', icon: 'heart',       tone: 'heal',  fx: 'holy/heal',                desc: '빛이 몸을 감싸 체력을 2 되찾는다' },
   sanctum: { name: '성광 기둥', icon: 'vigor',       tone: 'heal',  fx: 'holy/holy-pillar',         desc: '빛기둥이 내려와 주변 적을 치고 체력을 1 되찾는다' },
 };

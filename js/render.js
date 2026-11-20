@@ -144,6 +144,7 @@ export class Renderer {
     if (this.irisMode) { this.irisClock += IRIS_SPEED / CFG.TICK; if (this.irisMode === 'open' && this.irisClock >= 2.2) this.irisMode = null; }
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
     this.parts = this.parts.filter(p => p.life > 0);
+    if (p.state === 'roll' && p.stateT < CFG.roll.totalF && p.stateT % 3 === 0) this.ghosts.push({ x: p.x, y: p.y, face: p.face, life: 12 });   // 회피 잔상
     for (const g of this.ghosts) g.life--;
     this.ghosts = this.ghosts.filter(g => g.life > 0);
     for (const t of this.texts) t.t++;
@@ -236,6 +237,8 @@ export class Renderer {
       g.fillStyle = 'rgba(13,10,17,.75)'; g.fillRect(Math.round(x - tw / 2), y - 7, Math.round(tw), 14); g.fillStyle = '#cfc6dc'; g.fillText('허수아비 (연습 상대)', x, y);
       g.textAlign = 'left'; g.textBaseline = 'top';
     }
+    for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
+    g.globalAlpha = 1;
     const hasBeacon = (w.props || []).some(o => o.kind === 'beacon');
     const trapped = bellOf(w).st === 'down' && bellOf(w).trapped;           // 대종에 갇힌 보스는 종 안 (그리지 않음). 허수아비는 그림 + 맞으면 흔들림
     if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; this.drawEnemy(g, w, e); g.globalAlpha = 1; }   // 어둠 속 그림자는 흐릿하게

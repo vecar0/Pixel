@@ -49,7 +49,7 @@ const LAND = {
   thunder: [[['lightning/thunderclap', { light: 0.5 }]], 0.7],
   blast:   [[['explosions/implosion', { palette: VIOLET, light: 0.5 }], ['nature/quake', { palette: VIOLET }]], 0.7],
   spikes:  [[['ice/frost-nova', { light: 0.3 }]], 0.3],
-  thorns:  [[['nature/healing-bloom', { light: 0.35 }]], 0.25],
+  thorns:  [[['nature/healing-bloom', 'lightning/spark-arc', 'shadow/soul-drain', { light: 0.35 }]], 0.25],
 };
 const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
 
@@ -126,7 +126,6 @@ export class FxDirector {
           ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
         break;
-      case 'executeStart': P('arcane/spell-charge', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: p.face < 0, life: 40, light: 0.4, palette: AMBER, speed: 0.6 }, 3); break;   // 처형 준비: 몸에 빛이 모임
       case 'execute': P('impacts/crit-hit', ev.x, ev.y + 30, { light: 0.5 }, 3); P('explosions/implosion', ev.x, ev.y + 20, { palette: AMBER, life: 60, light: 0.35 }, 3); break;
       case 'hurt': P('ui/heart-lost', p.x + p.w / 2, p.y - 8, {}, 3); break;   // 붉은 화면·파편은 렌더러가 그림
       case 'kill': {
@@ -147,7 +146,7 @@ export class FxDirector {
       case 'block': P('impacts/shield-block', ev.x, ev.y + 20, { palette: LILAC, light: 0.3 }, 2); break;
       case 'blink': P('arcane/blink-out', ev.x, ev.y + 26, { palette: VIOLET, light: 0.3 }, 2); break;
       case 'enemyParry': P('impacts/parry', ev.x, ev.y + 40, { palette: VIOLET, light: 0.3 }, 3); break;
-      case 'heal': P('holy/heal', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: p.face < 0, life: 110, light: 0.2 }, 3); break;   // 몸을 타고 오르는 회복 빛
+      case 'heal': P('nature/healing-bloom', p.x + p.w / 2, feet, { life: 80, light: 0.3 }, 3); break;   // 발밑에서 피어오르는 회복 빛 (리라 실루엣을 덧그리는 이펙트는 쓰지 않음)
       case 'castStart': {                                                  // 시전: 손의 등불에서 짧게 불꽃이 튄다 (마법진·몸 빛 없음, 모든 마법 공통)
         const hx = p.x + p.w / 2 + p.face * 16, hy = p.y + 30;
         P('impacts/hit-spark', hx, hy + 8, { height: 8, flip: p.face < 0, palette: palOf(ev.spell), life: 22, light: 0.35 }, 2);
@@ -165,10 +164,10 @@ export class FxDirector {
         else if (sp === 'ring') { M('fire/fire-ring', ev.x, feet, { life: 80, light: 0.5 }); M('explosions/plasma-explosion', ev.x, feet, { palette: AMBER, life: 60, light: 0.5 }); R.flash = Math.max(R.flash, 0.6); }
         else if (sp === 'ward') { M('ice/frost-nova', ev.x, feet, { life: 60, light: 0.45 }); M('ice/snowflake-burst', ev.x, feet - 30, { life: 60, light: 0.35 }); R.flash = Math.max(R.flash, 0.35); M('holy/divine-shield', 0, 0, { follow: p, dy: p.h / 2 / R.mfx.k, life: 300, key: 'blue', light: 0.25, palette: ICE }); }
         else if (sp === 'spear') { M('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: f, life: 50, light: 0.55, palette: VIOLET }); M('arcane/mana-burst', hx, feet, { palette: VIOLET, life: 50, light: 0.5 }); R.flash = Math.max(R.flash, 0.5); }
-        else if (sp === 'chain') R.flash = Math.max(R.flash, 0.4), M('lightning/chain-lightning', p.x + p.w / 2, feet, { flip: f, actor: R.actorOf(p, R.mfx.k), skip: 0.4, life: 60, light: 0.45 });
-        else if (sp === 'drain') R.flash = Math.max(R.flash, 0.3), M('shadow/life-steal', p.x + p.w / 2, feet, { flip: f, actor: R.actorOf(p, R.mfx.k), life: 80, light: 0.4 });
+        else if (sp === 'chain') { R.flash = Math.max(R.flash, 0.4); M('lightning/spark-arc', hx + p.face * 10, feet - 30, { flip: f, life: 30, light: 0.45 }); }   // 맞은 적마다 감전(zap-hit)
+        else if (sp === 'drain') { R.flash = Math.max(R.flash, 0.3); if (ev.tx != null) M('shadow/soul-drain', ev.tx, groundAt(w, ev.tx - 10, 20), { palette: BLOOD, life: 70, light: 0.4 }); }
         else if (sp === 'blast') M('shadow/dark-explosion', ev.tx, gy, { life: 130, light: 0.5 });
-        else if (sp === 'heal') { P('holy/heal', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: f, life: 110, light: 0.35 }, 3); M('holy/heal-aoe', p.x + p.w / 2, feet, { palette: GOLD, life: 90, light: 0.35 }); R.flash = Math.max(R.flash, 0.3); }   // 몸을 감싸는 빛이라 1배 (리라 실루엣과 겹침)
+        else if (sp === 'heal') { M('holy/heal-aoe', p.x + p.w / 2, feet, { palette: GOLD, life: 90, light: 0.35 }); R.flash = Math.max(R.flash, 0.3); }   // 몸을 감싸는 빛이라 1배 (리라 실루엣과 겹침)
         else if (sp === 'thorns') M('nature/thorns', hx, feet, { flip: f, life: 90, light: 0.35 });
         else if (sp === 'sanctum') { M('holy/holy-pillar', ev.x, feet, { life: 120, light: 0.5 }); M('holy/heal-aoe', ev.x, feet, { palette: GOLD, life: 100, light: 0.35 }); M('holy/feather-burst', ev.x, feet - 40, { palette: GOLD, life: 80, light: 0.3 }); R.flash = Math.max(R.flash, 0.5); }
         break;

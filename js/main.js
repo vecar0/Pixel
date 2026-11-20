@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick } from './core/world.js?v=mwp97anf';
-import { Renderer } from './render.js?v=mwp97anf';
-import { Input } from './input.js?v=mwp97anf';
-import { Sfx } from './sfx.js?v=mwp97anf';
-import { stepLoop } from './loop.js?v=mwp97anf';
-import { spawnEnemy } from './core/enemies.js?v=mwp97anf';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwp97anf';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwp97anf';
-import { icon, RELIC_TONE } from './icons.js?v=mwp97anf';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwp97anf';
-import { startTitleScene } from './titlescene.js?v=mwp97anf';
+import { createWorld, tick } from './core/world.js?v=mwpa0oiq';
+import { Renderer } from './render.js?v=mwpa0oiq';
+import { Input } from './input.js?v=mwpa0oiq';
+import { Sfx } from './sfx.js?v=mwpa0oiq';
+import { stepLoop } from './loop.js?v=mwpa0oiq';
+import { spawnEnemy } from './core/enemies.js?v=mwpa0oiq';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwpa0oiq';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwpa0oiq';
+import { icon, RELIC_TONE } from './icons.js?v=mwpa0oiq';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwpa0oiq';
+import { startTitleScene } from './titlescene.js?v=mwpa0oiq';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwp97anf';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwp97anf';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwp97anf';
-import { takeTrain, runSpell } from './core/run.js?v=mwp97anf';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwp97anf';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwp97anf';
+import { CFG } from './core/config.js?v=mwpa0oiq';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwpa0oiq';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpa0oiq';
+import { takeTrain, runSpell } from './core/run.js?v=mwpa0oiq';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwpa0oiq';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwpa0oiq';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -402,44 +402,65 @@ function leaveRoom() {
   mode = 'transition'; touch.classList.add('hidden'); R.iris(world, 'close');
   const closed = () => {                                                  // 완전히 닫힌 검은 화면에서 남은 보상을 고른 뒤 다음 방
     const k = run.pending; run.pending = null;
-    if (k === 'train') rewardScreen(goNext); else if (k === 'relic') relicScreen(goNext); else goNext();
+    if (k === 'train') rewardScreen(goNext); else if (k === 'train1') rewardScreen(goNext, null, null, 1); else if (k === 'relic') relicScreen(goNext); else goNext();
   };
   const wait = () => { if (R.irisClock >= 1.02) closed(); else { R.stepFx(world); requestAnimationFrame(wait); } };
   requestAnimationFrame(wait);
 }
-// 휴식(모닥불 앞에서): 한 번만. 고르면 바로 방으로 돌아감
+// 휴식(모닥불 앞에서): 한 번만, 셋 중 하나. 상황에 따라 답이 달라지게 (다쳤으면 치료, 기름이 바닥이면 기름, 멀쩡하면 단련)
 function restScreen() {
   const p = world.player, fire = world.props.find(o => o.kind === 'campfire');
   if (fire.used) { R.say('불씨가 잦아들었다. 오른쪽 길로 나아가자'); return; }
   mode = 'rest'; touch.classList.add('hidden');
-  screen(`<div class="card"><h2>작은 등불</h2><div class="quote">모닥불 곁에서 잠시 숨을 고른다</div>${runStat()}<div class="picks">
-    <button class="pick door t-red" data-id="heal"><div class="niche">${icon('heart', 'red')}</div><b>몸을 추스른다</b><span>체력 +2 (${p.hp} → ${Math.min(p.maxHp, p.hp + 2)})</span></button>
-    <button class="pick door t-heal" data-id="oil"><div class="niche">${icon('flask', 'heal')}</div><b>기름을 채운다</b><span>기름병 가득 (${p.flasks} → ${p.maxFlasks})</span></button></div>
+  const oilTo = Math.min(p.maxFlasks + 1, p.flasks + 1);
+  screen(`<div class="card"><h2>작은 등불</h2><div class="quote">모닥불 곁에서 잠시 숨을 고른다 — 하나만 고를 수 있다</div>${runStat()}<div class="picks">
+    <button class="pick door t-red" data-id="heal" ${p.hp >= p.maxHp ? 'disabled' : ''}><div class="niche">${icon('heart', 'red')}</div><b>몸을 추스른다</b><span>체력 가득 (${p.hp} → ${p.maxHp})</span></button>
+    <button class="pick door t-heal" data-id="oil" ${oilTo <= p.flasks ? 'disabled' : ''}><div class="niche">${icon('flask', 'heal')}</div><b>기름을 짠다</b><span>기름병 +1 (${p.flasks} → ${oilTo})<br>최대치보다 1개 더</span></button>
+    <button class="pick door t-amber" data-id="train"><div class="niche">${icon('vigor', 'amber')}</div><b>검을 벼린다</b><span>단련 1점 (나갈 때 찍기)</span></button></div>
     <div class="btns"><button class="btn alt" data-id="back">그냥 지나간다</button></div></div>`);
   bindPicks(id => {
     const hp0 = p.hp;
-    if (id === 'heal') p.hp = Math.min(p.maxHp, p.hp + 2); else if (id === 'oil') p.flasks = p.maxFlasks;
+    if (id === 'heal') p.hp = p.maxHp; else if (id === 'oil') p.flasks = oilTo; else if (id === 'train') run.pending = 'train1';
     if (id !== 'back') fire.used = true;
     resume();
     if (id === 'heal') { R.healFx(p, p.hp - hp0, hp0); R.dir.events({ events: [{ type: 'heal' }], player: p, t: world.t }); sfx.play('heal'); }
     if (id === 'oil') { R.say(`기름병을 채웠다 (${p.flasks}개)`); sfx.play('heal'); }
+    if (id === 'train') { R.say('검을 벼렸다 — 나가면 단련 1점'); sfx.play('click'); }
   });
 }
-// 상점(상인 앞에서): 여러 번 살 수 있고, 닫으면 방으로 돌아감. 각인은 산 즉시 적용
+// 상점(상인 앞에서): 매번 다른 물건 몇 가지. 물건마다 한 번만, 기름병은 살수록 비싸짐 → 불씨로 다 살 수는 없다 (고르는 재미)
+const WARES = {
+  flask:  { name: '기름병', tone: 'heal', ic: 'flask', desc: p => `기름병 +1 (지금 ${p.flasks})`, price: r => 20 + 12 * (r.flaskBuys || 0) },
+  salve:  { name: '연고', tone: 'red', ic: 'heart', desc: p => `체력 +2 (${p.hp} → ${Math.min(p.maxHp, p.hp + 2)})`, price: r => 18 + 4 * r.region, ok: p => p.hp < p.maxHp },
+  wick:   { name: '불쏘시개', tone: 'amber', ic: 'ember', desc: p => `스킬 게이지 가득 (${p.light | 0} → 100)`, price: r => 14 + 3 * r.region, ok: p => p.light < 100 },
+  whet:   { name: '숫돌', tone: 'amber', ic: 'vigor', desc: () => '단련 1점 (나갈 때 찍기)', price: r => 45 + 10 * r.region, ok: () => run.pending !== 'train1' },
+};
+function shopStock(r) {
+  const extra = [['salve', 'wick', 'whet'][(rand(r) * 3) | 0]];
+  r.flaskBuys = 0; return { relics: relicOffer(r, 2), wares: ['flask', ...extra], sold: [] };
+}
 function shopScreen() {
   mode = 'shop'; touch.classList.add('hidden');
   const st = world.props.find(o => o.kind === 'merchant');
-  st.offer = st.offer || relicOffer(run, 2);
-  const p = world.player;
-  screen(`<div class="card"><h2>떠돌이 상인</h2><div class="quote">"불씨만 있으면 뭐든 내주지."</div>${runStat()}<div class="picks">
-    ${st.offer.map(id => relicCard(id, cost(30)).replace('<button', run.embers < 30 ? '<button disabled' : '<button')).join('')}
-    <button class="pick t-heal" data-id="flask" ${run.embers < 15 ? 'disabled' : ''}><div class="niche">${icon('flask', 'heal')}</div><b>기름병</b><span>기름병 +1 (지금 ${p.flasks})</span>${cost(15)}</button>
+  st.stock = st.stock || shopStock(run);
+  const p = world.player, S = st.stock, relicPrice = 40 + 10 * (run.region - 1);
+  const ware = id => { const W = WARES[id], pr = W.price(run), sold = S.sold.includes(id), ok = !sold && run.embers >= pr && (!W.ok || W.ok(p));
+    return `<button class="pick t-${W.tone}" data-id="w:${id}" ${ok ? '' : 'disabled'}><div class="niche">${icon(W.ic, W.tone)}</div><b>${W.name}${sold ? ' (팔림)' : ''}</b><span>${W.desc(p)}</span>${cost(pr)}</button>`; };
+  screen(`<div class="card"><h2>떠돌이 상인</h2><div class="quote">"좋은 물건은 하나씩뿐이야. 잘 골라."</div>${runStat()}<div class="picks">
+    ${S.relics.map(id => relicCard(id, cost(relicPrice)).replace('<button', run.embers < relicPrice ? '<button disabled' : '<button')).join('')}
+    ${S.wares.map(ware).join('')}
     </div><div class="btns"><button class="btn alt" data-id="leave">닫기</button></div></div>`);
   bindPicks(id => {
     if (id === 'leave') return resume();
-    if (id === 'flask' && run.embers >= 15) { run.embers -= 15; p.flasks++; p.maxFlasks = Math.max(p.maxFlasks, p.flasks); }
-    else if (RELICS[id] && run.embers >= 30) {
-      run.embers -= 30; takeRelic(run, id); st.offer.splice(st.offer.indexOf(id), 1);
+    if (id.startsWith('w:')) {
+      const k = id.slice(2), W = WARES[k], pr = W.price(run);
+      if (S.sold.includes(k) || run.embers < pr || (W.ok && !W.ok(p))) return shopScreen();
+      run.embers -= pr;
+      if (k === 'flask') { p.flasks++; p.maxFlasks = Math.max(p.maxFlasks, p.flasks); run.flaskBuys = (run.flaskBuys || 0) + 1; if (run.flaskBuys >= 3) S.sold.push(k); }
+      else { S.sold.push(k); if (k === 'salve') p.hp = Math.min(p.maxHp, p.hp + 2); else if (k === 'wick') p.light = 100; else if (k === 'whet') run.pending = 'train1'; }
+      sfx.play('heal');
+    } else if (RELICS[id] && run.embers >= relicPrice) {
+      run.embers -= relicPrice; takeRelic(run, id); S.relics.splice(S.relics.indexOf(id), 1);
       const hp = p.hp, fl = p.flasks; applyRelics(p, run.relics); applyStats(p, run.stats); p.hp = Math.min(p.maxHp, hp + (id === 'vigor' ? 1 : 0)); p.flasks = fl + (id === 'oil' ? 1 : 0);
     }
     shopScreen();
@@ -451,11 +472,12 @@ function overlay(kind) {
   if (kind === 'cleared') {
     // 방을 비우면 출구만 열린다. 보상(단련·각인)은 출구로 나가 아이리스가 검게 닫힌 뒤 고른다 (leaveRoom)
     world.rewarded = world.counted = true; run.pending = run.room === 'combat' ? 'train' : 'relic'; roomCleared(run);
+    const fp = world.player, oilGot = fp.flasks < fp.maxFlasks; if (oilGot) fp.flasks++;   // 방을 비우면 기름병 1개 다시 채움
     addScore('room', 100);
     const sec = world.t / 60, par = world.par || 0, fast = par && sec <= par;
     const bonus = fast ? Math.round(200 * (1 - sec / par)) + 20 : 0;
     if (fast) { addScore('time', bonus); run.embers += 5; }
-    resume(); R.say((fast ? `빠른 정리! ${Math.ceil(sec)}초 / 목표 ${par}초 · 점수 +${bonus} · 불씨 +5 — ` : '') + (run.pending === 'train' ? '출구가 열렸다 — 나가면 단련' : '출구가 열렸다 — 나가면 각인 선택'), fast ? 240 : 150);
+    resume(); R.say((fast ? `빠른 정리! ${Math.ceil(sec)}초 / 목표 ${par}초 · 점수 +${bonus} · 불씨 +5 — ` : '') + (oilGot ? '기름병 +1 · ' : '') + (run.pending === 'train' ? '출구가 열렸다 — 나가면 단련' : '출구가 열렸다 — 나가면 각인 선택'), fast ? 240 : 150);
   } else if (kind === 'won') {
     saveFromWorld(run, world);
     const boss = regionOf(run).boss;

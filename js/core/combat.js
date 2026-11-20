@@ -1,9 +1,9 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwp97anf';
-import { hitLevel } from './level.js?v=mwp97anf';
-import { CFG } from './config.js?v=mwp97anf';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwp97anf';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwp97anf';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwpa0oiq';
+import { hitLevel } from './level.js?v=mwpa0oiq';
+import { CFG } from './config.js?v=mwpa0oiq';
+import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwpa0oiq';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwpa0oiq';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -181,7 +181,7 @@ export function resolveSkill(w, ev) {
     const spread = n === 3 ? [-0.9, 0, 0.9] : n === 2 ? [-0.25, 0.25] : [0];
     for (let i = 0; i < n; i++) w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 16, y: p.y + 18 + (n > 1 ? (i - (n - 1) / 2) * 10 : 0), w: 16, h: 12,
       vx: p.face * S.speed, vy: spread[i], pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player',
-      bolt: ev.spell === 'lance' ? 'lance' : 'lamp', pierce: ev.spell === 'lance', homing: !!S.homing, spd: S.speed, life: 110, hits: [], src: {} });
+      bolt: ev.spell === 'lance' ? 'lance' : ev.spell === 'wisps' ? 'wisp' : 'lamp', pierce: ev.spell === 'lance', homing: !!S.homing, spd: S.speed, life: 110, hits: [], src: {} });
   } else if (S.line) {                                                 // 바닥 직선: 앞쪽 line px 안의 땅 위 적 (가시가 지나가는 시간만큼 늦게)
     const x0 = p.face > 0 ? p.x + p.w : p.x - S.line;
     ev.tx = cx; w.pending.push({ t: S.delay, spell: ev.spell, x: x0 + S.line / 2, dmg: Math.round(S.dmg * M), poise: S.poise * PM, r: S.line / 2, y0: p.y - 20, y1: p.y + p.h + 10 });

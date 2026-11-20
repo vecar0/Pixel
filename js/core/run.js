@@ -1,10 +1,10 @@
 // 한 판(런)의 진행: 서약 → 방 → 각인 → 문 선택 → … → 보스. 순수 로직 (DOM 없음)
-import { CFG } from './config.js?v=mwp97anf';
-import { createWorld } from './world.js?v=mwp97anf';
-import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwp97anf';
-import { startStats, statMods, train } from './stats.js?v=mwp97anf';
-import { OIL_SPELL, spellFor } from './spells.js?v=mwp97anf';
-import { populateArena, parTime } from './level.js?v=mwp97anf';
+import { CFG } from './config.js?v=mwpa0oiq';
+import { createWorld } from './world.js?v=mwpa0oiq';
+import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwpa0oiq';
+import { startStats, statMods, train } from './stats.js?v=mwpa0oiq';
+import { OIL_SPELL, spellFor } from './spells.js?v=mwpa0oiq';
+import { populateArena, parTime } from './level.js?v=mwpa0oiq';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -82,7 +82,7 @@ export function advanceRegion(r) {
   if (r.regionFlasksUsed === 0) r.noFlaskRegion = true;
   r.shards += 3;
   if (r.region >= REGIONS.length) return false;
-  setRegion(r, r.region + 1); r.hp = null; r.room = 'combat';
+  setRegion(r, r.region + 1); r.hp = null; r.flasks = null; r.room = 'combat';   // 새 지역: 체력·기름병 가득
   return true;
 }
 
@@ -217,6 +217,7 @@ export function buildRoomWorld(r) {
   if (r.dark >= 5) p.maxFlasks = Math.max(1, p.maxFlasks - 1);   // 어둠 5+: 기름병 -1
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);
   p.flasks = r.flasks == null ? p.maxFlasks : r.flasks;
+  p.light = Math.min(CFG.light.max, r.light || 0);                 // 스킬 게이지(빛)는 다음 방으로 이어짐
   if (p.mods.roomHeal && r.hp != null && p.hp < p.maxHp) { p.hp++; p.roomHealed = true; }   // 생명 16: 새 방 들어갈 때 체력 1
   return w;
 }
@@ -225,6 +226,6 @@ export function buildRoomWorld(r) {
 export function saveFromWorld(r, w) {
   const p = w.player;
   r.regionFlasksUsed += p.flasksUsed || 0;
-  r.hp = p.hp; r.flasks = p.flasks; r.perfect += p.perfectParries; r.executes += p.executes || 0;
+  r.hp = p.hp; r.flasks = p.flasks; r.light = p.light; r.perfect += p.perfectParries; r.executes += p.executes || 0;
   if (r.room === 'boss' && w.won && !p.hurtCount) r.noHitBoss = true;
 }

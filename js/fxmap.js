@@ -1,7 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwp97anf';
-import { groundAt } from './core/world.js?v=mwp97anf';
+import { preload } from './fx.js?v=mwpa0oiq';
+import { CFG } from './core/config.js?v=mwpa0oiq';
+import { groundAt } from './core/world.js?v=mwpa0oiq';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -10,10 +11,13 @@ const GOLD = ['#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', 
 const VIOLET = ['#1a0a2a', '#3a1660', '#6a2aa0', '#9a4ae0', '#c890ff', '#f0e0ff', '#ffffff'];
 const GREY = ['#1a1820', '#3a3640', '#5e5866', '#8a8494', '#b8b2c2', '#e4e0ea', '#ffffff'];
 const LILAC = ['#1e1430', '#3c2a5c', '#6a4e96', '#9a7ccc', '#c8b0f0', '#ece2ff', '#ffffff'];
+const GREEN = ['#0a1a0c', '#16361a', '#24582a', '#3a8a3a', '#6ac25a', '#b4ec8a', '#f0ffe0'];
+const TEAL = ['#04161a', '#0a3438', '#11606a', '#1aa0a8', '#5ae0d8', '#b8fff4', '#ffffff'];   // 도깨비불: 푸른 귀화
+const SHADE = ['#06020c', '#14081e', '#2a1040', '#4a1a6a', '#7a2ea0', '#c070e0', '#f0d0ff'];   // 흑염: 검보라
 const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', '#ffffff'];
 // 마법별 색 (마법진·모이는 빛). 함수라서 아래쪽 팔레트 상수를 써도 됨
-const palOf = sp => ({ bolt: AMBER, wisps: AMBER, pillar: AMBER, tornado: AMBER, meteor: AMBER, ring: AMBER, lance: ICE, spikes: ICE, stars: ICE, ward: ICE, thunder: CYAN, chain: CYAN,
-  smite: GOLD, spear: VIOLET, blast: VIOLET, heal: GOLD, sanctum: GOLD, thorns: GOLD, drain: BLOOD })[sp] || AMBER;
+const palOf = sp => ({ bolt: AMBER, wisps: TEAL, pillar: AMBER, tornado: AMBER, meteor: AMBER, ring: AMBER, lance: ICE, spikes: ICE, stars: ICE, ward: ICE, thunder: CYAN, chain: CYAN,
+  smite: GOLD, spear: VIOLET, blast: VIOLET, heal: GOLD, sanctum: GOLD, thorns: GREEN, drain: BLOOD })[sp] || AMBER;
 const HIT = ['#1a0e06', '#3a2410', '#6a4420', '#9a6a34', '#c4955a', '#e0bc88', '#f0dcb8'];   // 기본 타격: 흰빛 없는 톤
 const ICE = ['#081a2a', '#10345a', '#1e5a8c', '#3a8cc8', '#7ac0f0', '#c0e8ff', '#ffffff'];
 const BLOOD = ['#14040a', '#3a0a14', '#6a101c', '#a01824', '#d42a30', '#ff5a50', '#ff9a8a', '#ffe6de'];
@@ -44,14 +48,14 @@ const LAND = {
   pillar:  [[['impacts/ground-slam', { palette: AMBER }], ['fire/fire-ring', { light: 0.3 }]], 0.35],
   tornado: [[['impacts/hit-spark', { palette: AMBER, height: 30 }]], 0.15],
   meteor:  [[['explosions/big-explosion', { palette: AMBER, light: 0.6 }], ['nature/quake', { palette: DUST }]], 0.8],
-  stars:   [[['ice/frost-nova', { light: 0.35 }]], 0.2],
+  stars:   [[['ice/snowflake-burst', { light: 0.3 }]], 0.2],
   smite:   [[['holy/sunburst', { palette: GOLD, dy: -40, life: 50 }]], 0.6],
   thunder: [[['lightning/thunderclap', { light: 0.5 }]], 0.7],
   blast:   [[['explosions/implosion', { palette: VIOLET, light: 0.5 }], ['nature/quake', { palette: VIOLET }]], 0.7],
   spikes:  [[['ice/frost-nova', { light: 0.3 }]], 0.3],
-  thorns:  [[['nature/healing-bloom', 'lightning/spark-arc', 'shadow/soul-drain', { light: 0.35 }]], 0.25],
+  thorns:  [[['impacts/hit-spark', { palette: GREEN, height: 26, light: 0.3 }], ['nature/quake', { palette: DUST }]], 0.25],   // 덩굴이 땅을 뚫고 나온 자리
 };
-const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
+const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], wisp: ['fire/fireball', { palette: TEAL, light: 0.4 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
 
 export const ALL_IDS = [...new Set([
   ...Object.values(AMBIENT).flatMap(a => [...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]),
@@ -61,7 +65,7 @@ export const ALL_IDS = [...new Set([
   'ui/quest-complete', 'ui/achievement', 'nature/healing-bloom', 'fire/fire-ring', 'holy/sunburst', 'holy/feather-burst', 'shadow/dark-explosion', 'spawn/soul-rise',
   'projectiles/energy-disc', 'ice/ice-crystal', 'water/wave-crash', 'ice/snowflake-burst', 'lightning/spark-arc', 'lightning/lightning-strike', 'status/stunned',
   'status/burning', 'status/rage', 'arcane/rune-circle', 'arcane/blink-out', 'pickups/collect-burst', 'explosions/big-explosion', 'explosions/plasma-explosion',
-  'holy/holy-pillar', 'transitions/iris', 'transitions/slash-wipe', 'transitions/pixel-dissolve', 'transitions/shatter-wipe', 'transitions/burn-away',
+  'holy/holy-pillar', 'ice/icicle-fall', 'shadow/shadow-flames', 'nature/vine-whip', 'transitions/iris', 'transitions/slash-wipe', 'transitions/pixel-dissolve', 'transitions/shatter-wipe', 'transitions/burn-away',
 ])];
 
 export class FxDirector {
@@ -158,17 +162,21 @@ export class FxDirector {
         else if (sp === 'tornado') M('fire/fire-tornado', ev.tx, gy, { life: 100, light: 0.45 });
         else if (sp === 'meteor') M('fire/meteor', ev.tx, gy, { life: 150, light: 0.5, flip: f });
         else if (sp === 'spikes') M('ice/ice-spikes', hx, feet, { flip: f, life: 90, light: 0.4 });
-        else if (sp === 'stars') M('arcane/star-fall', ev.tx, gy, { palette: ICE, life: 110, light: 0.45 });   // 얼음빛 별(고드름)이 쏟아짐
+        else if (sp === 'stars') {                                         // 고드름 비: 고드름이 세 차례 떨어져 꽂힌다 (착지 순간 = 피해 순간)
+          const S = CFG.skill.stars, IMPACT = 0.944, DUR = 2.6;
+          S.ticks.forEach((ox, i) => { const at = (S.delay + i * S.gap) / 60, x = ev.tx + ox * ev.face;
+            for (const d of [-26, 0, 26]) M('ice/icicle-fall', x + d, groundAt(w, x + d - 10, 20), { life: 120, light: 0.4, skip: Math.max(0, (IMPACT - at + Math.abs(d) * 0.002) / DUR) }); });
+        }
         else if (sp === 'thunder') M('lightning/lightning-strike', ev.tx, gy, { life: 110, light: 0.5 });
         else if (sp === 'smite') M('holy/smite', ev.tx, gy, { life: 120, light: 0.5 });
         else if (sp === 'ring') { M('fire/fire-ring', ev.x, feet, { life: 80, light: 0.5 }); M('explosions/plasma-explosion', ev.x, feet, { palette: AMBER, life: 60, light: 0.5 }); R.flash = Math.max(R.flash, 0.6); }
         else if (sp === 'ward') { M('ice/frost-nova', ev.x, feet, { life: 60, light: 0.45 }); M('ice/snowflake-burst', ev.x, feet - 30, { life: 60, light: 0.35 }); R.flash = Math.max(R.flash, 0.35); M('holy/divine-shield', 0, 0, { follow: p, dy: p.h / 2 / R.mfx.k, life: 300, key: 'blue', light: 0.25, palette: ICE }); }
-        else if (sp === 'spear') { M('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: f, life: 50, light: 0.55, palette: VIOLET }); M('arcane/mana-burst', hx, feet, { palette: VIOLET, life: 50, light: 0.5 }); R.flash = Math.max(R.flash, 0.5); }
+        else if (sp === 'spear') { M('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: f, life: 50, light: 0.55, palette: SHADE }); M('shadow/shadow-flames', hx, feet, { life: 45, light: 0.4 }); R.flash = Math.max(R.flash, 0.5); }   // 흑염 창: 검은 불꽃이 일며 검은 광선
         else if (sp === 'chain') { R.flash = Math.max(R.flash, 0.4); M('lightning/spark-arc', hx + p.face * 10, feet - 30, { flip: f, life: 30, light: 0.45 }); }   // 맞은 적마다 감전(zap-hit)
         else if (sp === 'drain') { R.flash = Math.max(R.flash, 0.3); if (ev.tx != null) M('shadow/soul-drain', ev.tx, groundAt(w, ev.tx - 10, 20), { palette: BLOOD, life: 70, light: 0.4 }); }
         else if (sp === 'blast') M('shadow/dark-explosion', ev.tx, gy, { life: 130, light: 0.5 });
         else if (sp === 'heal') { M('holy/heal-aoe', p.x + p.w / 2, feet, { palette: GOLD, life: 90, light: 0.35 }); R.flash = Math.max(R.flash, 0.3); }   // 몸을 감싸는 빛이라 1배 (리라 실루엣과 겹침)
-        else if (sp === 'thorns') M('nature/thorns', hx, feet, { flip: f, life: 90, light: 0.35 });
+        else if (sp === 'thorns') { M('nature/thorns', hx, feet, { flip: f, life: 90, light: 0.35, palette: GREEN }); M('nature/vine-whip', hx, feet, { flip: f, life: 60, light: 0.3, palette: GREEN }); }   // 가시 덩굴: 덩굴이 앞으로 휘감아 뻗음
         else if (sp === 'sanctum') { M('holy/holy-pillar', ev.x, feet, { life: 120, light: 0.5 }); M('holy/heal-aoe', ev.x, feet, { palette: GOLD, life: 100, light: 0.35 }); M('holy/feather-burst', ev.x, feet - 40, { palette: GOLD, life: 80, light: 0.3 }); R.flash = Math.max(R.flash, 0.5); }
         break;
       }
@@ -195,8 +203,8 @@ export class FxDirector {
       case 'bellRelease': P('impacts/hit-spark', ev.x, 60, { height: 20, palette: GOLD, life: 30, light: 0.4 }, 3); break;
       case 'bellTrap': this.spell('impacts/ground-slam', ev.x, 300, { palette: GOLD, life: 70, light: 0.5 }); this.spell('nature/quake', ev.x, 300, { palette: DUST, life: 80, light: 0.3 }); break;
       case 'bellMiss': this.spell('impacts/ground-slam', ev.x, 300, { palette: DUST, life: 60, light: 0.3 }); break;
-      case 'veilUp': { const b = w.enemies.find(e => e.boss); if (b) R.fx.spawn('holy/divine-shield', 0, 0, { follow: b, dy: b.h / 2, key: 'veil', light: 0.35, palette: CYAN }); break; }
-      case 'veilBreak': R.fx.stopKey('veil'); this.spell('water/wave-crash', ev.x, ev.y + 40, { life: 70, light: 0.5 }); this.spell('impacts/crit-hit', ev.x, ev.y + 20, { life: 50, light: 0.5 }); break;
+      case 'veilUp': { const b = w.enemies.find(e => e.boss); if (b) R.mfx.spawn('holy/divine-shield', 0, 0, { follow: b, dy: b.h * 0.42 / R.mfx.k, key: 'veil', light: 0.35, palette: CYAN }); break; }   // 1.5배 레이어: 커진 성녀 몸을 다 덮게
+      case 'veilBreak': R.mfx.stopKey('veil'); this.spell('water/wave-crash', ev.x, ev.y + 40, { life: 70, light: 0.5 }); this.spell('impacts/crit-hit', ev.x, ev.y + 20, { life: 50, light: 0.5 }); break;
       case 'mirrorReflect': this.spell('ice/snowflake-burst', ev.x, ev.y, { life: 50, light: 0.5 }); this.spell('impacts/hit-spark', ev.x, ev.y + 16, { height: 16, palette: CYAN, life: 30, light: 0.5 }); this.spell('lightning/zap-hit', ev.bx, ev.by, { life: 40, light: 0.5 }); break;
       case 'beaconLit': R.fx.spawn('fire/brazier', ev.x, 280, { light: 0.55, key: 'beacon' + ev.x, iron: NO_IRON }); this.spell('impacts/hit-spark', ev.x, 255, { height: 10, palette: AMBER, life: 30, light: 0.5 }); break;
       case 'beaconOut': R.fx.stopKey('beacon' + ev.x); break;

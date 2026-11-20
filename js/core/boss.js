@@ -16,7 +16,7 @@ export const BOSSES = {
   },
   // 지역 2: 침수 성녀 — 물창 투척(완벽 패링 시 반사), 밀물(패링 불가), 2페이즈 3연 돌진
   saint: {
-    name: '침수 성녀', hp: 700, w: 34, h: 88, speed: 1.2, range: 260, boss: true, poise: true, cooldown: [30, 55],
+    name: '침수 성녀', hp: 700, w: 42, h: 110, speed: 1.2, range: 260, boss: true, poise: true, cooldown: [30, 55],
     near: ['spear', 'lance', 'tide'], far: ['spear', 'tide'], phase2: ['rush'], variants: ['rain', 'lance2', 'spear3'],
     attacks: {
       spear: { name: 'spear', telegraphF: 22, activeF: 1, recoverF: 34, dmg: 1, parryable: true, bolt: { speed: 5, w: 26, h: 8 } },
@@ -60,7 +60,7 @@ export const BOSSES = {
   },
 };
 
-import { rng } from './enemies.js?v=mwp97anf';
+import { rng } from './enemies.js?v=mwpa0oiq';
 
 export const bossWant = (w, e, dx) => !!e.forceNext || Math.abs(dx) < BOSSES[e.kind].range || rng(w) < 0.012;
 

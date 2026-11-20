@@ -60,7 +60,8 @@ export function spawnEnemy(w, kind, x, y, opt = {}) {
   const d = ENEMY_DEFS[kind], hpMul = opt.hpMul || 1;
   const e = {
     kind, x, y, w: d.w, h: d.h, vx: 0, vy: 0, face: -1, onGround: false,
-    hp: Math.round(d.hp * hpMul), maxHp: Math.round(d.hp * hpMul), boss: !!d.boss, poise: 0, poiseMax: !!d.poise, poiseRes: 1, stunT: 0, poiseRegenT: 0,
+    hp: Math.round(d.hp * hpMul), maxHp: Math.round(d.hp * hpMul), boss: !!d.boss, poise: 0, poiseMax: !!d.poise || !d.oneHit, poiseRes: d.boss ? 1 : CFG.poise.mobRes, stunT: 0,   // 일반 적도 그로기 (나방 제외)
+    poiseRegenT: 0,
     st: 'idle', stT: 0, atk: null, srcs: [], cd: 30, spawnT: opt.emerge ? EMERGE_F : 0, hitBy: -1, flash: 0, kvx: 0, staggerT: 0,
     shield: !!d.shield, counter: !!d.counter,
     speed: d.speed, range: d.range, cdMul: 1, mods: [], forceNext: null, variant: opt.variant || null, dashDx: 0, dashDy: 0,

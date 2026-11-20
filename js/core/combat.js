@@ -54,7 +54,7 @@ export function addPoise(w, e, frac) {
   e.poiseRegenT = PO.regenDelayF;
   if (e.poise >= 1) {
     // 그로기: 하던 공격은 취소 → 풀린 뒤엔 반드시 새 예고부터 (예고 없는 공격 방지)
-    e.stunT = PO.stunF; e.st = 'idle'; e.stT = 0; e.atk = null; e.srcs = []; e.cd = 40;
+    e.stunT = e.boss ? PO.stunF : PO.mobStunF; e.st = 'idle'; e.stT = 0; e.atk = null; e.srcs = []; e.cd = 40;
     w.events.push({ type: 'stun', x: e.x + e.w / 2, y: e.y });
   }
 }
@@ -97,12 +97,11 @@ export function resolvePlayerAttacks(w) {
         continue;
       }
     }
-    if (e.stunT > 0) {                      // 그로기 → 처형
-      e.stunT = 0; e.poise = 0; p.executes = (p.executes || 0) + 1;
-      damageEnemy(w, e, Math.round(e.maxHp * PO.executeFrac * p.mods.execMul * (p.mods.furyExec || 1)));
-      w.hitstop = Math.max(w.hitstop, 10); w.shake = 10;
-      if (p.mods.str10) for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 320) addPoise(w, o, 0.4);   // 힘 10
-      w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2 });
+    if (e.executing) continue;
+    if (e.stunT > 0) {                      // 그로기 → 처형 모션 시작 (피해는 베는 순간에)
+      p.state = 'execute'; p.stateT = 0; p.execTarget = e; p.buffer = null; e.executing = true;
+      w.events.push({ type: 'executeStart', x: e.x + e.w / 2, y: e.y + e.h / 2 });
+      return;
     } else {
       if (!p.crit && p.mods.critChance) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < p.mods.critChance) p.crit = true; }   // 투지: 치명타 확률
       const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? (p.mods.critMul || 2) : 1) * (p.mods.atkMul || 1);
@@ -186,9 +185,28 @@ export function landSkill(w, d) {
   if (d.spell === 'meteor' || d.spell === 'thunder') w.hitstop = Math.max(w.hitstop, 4);
 }
 
+// 처형 모션: 적 옆으로 파고들고, hitF에 벤다. 일반 적은 즉사, 보스는 최대 체력의 15%(×각인·투지)
+export function updateExecute(w) {
+  const p = w.player, e = p.execTarget;
+  if (p.state !== 'execute' || !e) return;
+  const X = CFG.execute, t = p.stateT;
+  if (t < X.hitF && !e.dead) {
+    const side = Math.sign((p.x + p.w / 2) - (e.x + e.w / 2)) || -1, tx = side > 0 ? e.x + e.w + 2 : e.x - p.w - 2;
+    p.x += (tx - p.x) * 0.3; p.face = -side; p.vx = 0;
+  }
+  if (t === X.hitF) {
+    e.executing = false; e.stunT = 0; e.poise = 0; p.executes = (p.executes || 0) + 1;
+    if (!e.dead) damageEnemy(w, e, e.boss ? Math.round(e.maxHp * PO.executeFrac * p.mods.execMul * (p.mods.furyExec || 1)) : e.hp);
+    w.hitstop = Math.max(w.hitstop, 12); w.shake = 12;
+    if (p.mods.str10) for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 320) addPoise(w, o, 0.4);   // 힘 10
+    w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
+    p.execTarget = null;
+  }
+}
+
 // 적 자세 게이지 회복·그로기 시간
 export function updatePoise(e) {
-  if (e.stunT > 0) { if (--e.stunT === 0) e.poise = 0; return; }
+  if (e.stunT > 0) { if (!e.executing && --e.stunT === 0) e.poise = 0; return; }   // 처형당하는 중엔 그로기 유지
   if (e.poiseRegenT > 0) e.poiseRegenT--;
   else if (e.poise > 0) e.poise = Math.max(0, e.poise - PO.regenPerF);
 }

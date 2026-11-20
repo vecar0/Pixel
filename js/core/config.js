@@ -21,7 +21,8 @@ export const CFG = {
     hitstopPerfect: 8, hitstopNormal: 3, staggerF: 30, staggerPush: 8,
   },
   roll: { totalF: 22, dist: 128, iStart: 2, iEnd: 13, endLagF: 6 },
-  poise: { perfect: 0.25, normal: 0.08, hit: 0.02, stunF: 180, regenDelayF: 120, regenPerF: 0.002, executeFrac: 0.15 },
+  poise: { perfect: 0.25, normal: 0.08, hit: 0.02, stunF: 180, mobStunF: 150, mobRes: 1.6, regenDelayF: 120, regenPerF: 0.002, executeFrac: 0.15 },   // mob*: 일반 적 그로기 (더 잘 무너지고 2.5초)
+  execute: { hitF: 22, totalF: 42, slow: 0.35 },   // 처형 모션: 22틱째에 베고 42틱에 끝, 그동안 시간 0.35배
   light: { max: 100, perfect: 25, normal: 10, kill: 3 },
   // 등불 마법 (빛 게이지 소모, 1칸). homing = 가까운 적을 쫓아감. delay = pixelfx 이펙트의 착탄 시점(틱)에 맞춘 피해 지연. inv = 시전 중 무적
   skill: {

@@ -65,8 +65,8 @@ test('각인 효과: 반향 → 완벽 패링 시 앞으로 검기 발사', () =
 test('각인 효과: 처형자 → 처형 피해 2배', () => {
   const r = newRun(1); chooseOath(r, 'execute'); enterRoom(r, 'combat');
   const w = buildRoomWorld(r); w.enemies.length = 0; w.waves = []; steps(w, 40);
-  const e = spawnEnemy(w, 'ghoul', w.player.x + w.player.w + 2, w.player.y); e.maxHp = e.hp = 400; e.poiseMax = true; e.stunT = 100; e.update = () => {};
-  tick(w, I({ attack: true })); steps(w, 8);
+  const e = spawnEnemy(w, 'ghoul', w.player.x + w.player.w + 2, w.player.y); e.maxHp = e.hp = 400; e.poiseMax = true; e.stunT = 100; e.boss = true; e.update = () => {};   // 보스 처형 공식 (일반 적은 즉사)
+  tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + CFG.execute.hitF + 4);
   eq(400 - e.hp, Math.round(400 * CFG.poise.executeFrac * 2));
 });
 test('각인 효과: 화염 칼날 → 3타에 화상 (3초간 초당 3)', () => {

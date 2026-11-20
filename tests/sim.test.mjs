@@ -144,9 +144,21 @@ test('poise: 완벽 패링 4번 → 그로기 180, 처형 = 최대체력 15%', (
   }
   eq(d.stunT > 0, true, 'stun'); eq(w.player.hp, 5);
   steps(w, 20);
-  const hp0 = d.hp; d.x = w.player.x + w.player.w + 4;
-  tick(w, I({ attack: true })); steps(w, 8);
-  eq(hp0 - d.hp, 30);
+  const hp0 = d.hp; d.x = w.player.x + w.player.w + 4; d.boss = true;
+  tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 2);
+  eq(w.player.state, 'execute'); eq(d.hp, hp0);                                  // 처형 모션 시작: 아직 피해 없음
+  steps(w, CFG.execute.hitF + 2); eq(hp0 - d.hp, 30);                            // 베는 순간 보스는 15%
+});
+test('일반 적 그로기·처형: 완벽 패링으로 무너지고, 처형 모션 동안 무적, 베는 순간 즉사', () => {
+  const w = W(); settle(w);
+  const e = spawnEnemy(w, 'ghoul', w.player.x + w.player.w + 4, w.player.y); e.update = () => {};
+  ok(e.poiseMax); eq(e.poiseRes, CFG.poise.mobRes);
+  const { addPoise } = { addPoise: null };
+  e.poise = 0.99; damageEnemy(w, e, 1, 0.05); ok(e.stunT > 0 && e.stunT <= CFG.poise.mobStunF);
+  w.player.face = 1; tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 2);
+  eq(w.player.state, 'execute'); ok(invulnerable(w.player)); ok(!e.dead);
+  steps(w, CFG.execute.hitF + 2); ok(e.dead || !w.enemies.includes(e), 'killed');
+  steps(w, CFG.execute.totalF); eq(w.player.state, 'idle');
 });
 const cast = (w, spell, light = 100) => { w.player.spells = [spell]; w.player.light = light; tick(w, I({ skill: true })); };
 test('마법 1칸: 불꽃 고리 빛 55 소모, 반경 안 적 피해, 시전 중 피해 없음', () => {

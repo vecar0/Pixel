@@ -2,7 +2,7 @@
 import { CFG } from './config.js';
 import { createPlayer, updatePlayer, overlap } from './player.js';
 import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite } from './enemies.js';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy } from './combat.js';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js';
 import { ACTIONS } from './player.js';
 
 export const EMPTY_INPUT = Object.freeze({
@@ -115,6 +115,7 @@ export function tick(w, inp) {
   if (w.props) inp = propInput(w, inp);
   for (const o of w.props || []) if (o.cd > 0) o.cd--;
   updatePlayer(w, inp);
+  updateExecute(w);
   for (const ev of [...w.events]) if (ev.type === 'skill') resolveSkill(w, ev);
   for (const d of w.pending) if (--d.t <= 0) landSkill(w, d);             // 지연 마법: 이펙트가 떨어지는 순간 피해
   w.pending = w.pending.filter(d => d.t > 0);

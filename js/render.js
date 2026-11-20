@@ -80,7 +80,8 @@ export class Renderer {
     this.dir.events(w); this.dir.tick(w);
     for (const ev of w.events) {
       if (ev.type === 'parry' && ev.perfect) { this.flash = 1; this.zoom = 1; this.texts.push({ x: p.x + p.w / 2, y: p.y - 26, t: 0, s: '완벽!' }); }
-      else if (ev.type === 'execute') { this.flash = 0.7; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!' }); }
+      else if (ev.type === 'executeStart') { this.pfx.spawn('melee/heavy-cleave', p.x + p.w / 2 + p.face * 24, feet, { flip: p.face < 0, palette: AMBER7, light: 0.4, life: 80, speed: 0.55 }); }
+      else if (ev.type === 'execute') { this.flash = 0.8; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!', life: 60 }); }
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
       else if (ev.type === 'heal') this.healFx(p, ev.amount, ev.from);
@@ -155,7 +156,12 @@ export class Renderer {
 
     g.save();
     // 완벽 패링 줌인: 리라를 중심으로 살짝 당김
-    if (this.zoom > 0.02 && !still) {
+    const ex = p.state === 'execute' ? Math.min(1, p.stateT / 10) * (p.stateT > CFG.execute.totalF - 10 ? (CFG.execute.totalF - p.stateT) / 10 : 1) : 0;
+    this.execK = ex;
+    if (ex > 0.01 && !still) {                                            // 처형: 리라 쪽으로 22%까지 확대
+      const z = 1 + ex * 0.22, cx = p.x + p.w / 2 + ox + p.face * 20, cy = p.y + 30 + oy;
+      g.translate(cx, cy); g.scale(z, z); g.translate(-cx, -cy);
+    } else if (this.zoom > 0.02 && !still) {
       const z = 1 + this.zoom * 0.07, cx = p.x + p.w / 2 + ox, cy = p.y + 20 + oy;
       g.translate(cx, cy); g.scale(z, z); g.translate(-cx, -cy);
     }
@@ -250,6 +256,12 @@ export class Renderer {
       if (m.sub) { g.font = '10px Galmuri9, monospace'; g.fillStyle = '#b89a6a'; g.fillText(m.sub, vw / 2, y - 24); }
       g.font = (m === this.banner ? '20px' : '11px') + ' Galmuri11, monospace'; g.fillStyle = '#ffe2a8'; g.shadowColor = 'rgba(255,170,70,.6)'; g.shadowBlur = 8;
       g.fillText(m.s, vw / 2, y); g.restore();
+    }
+    if (this.execK > 0.01) {                                              // 처형: 위아래 검은 띠, 가장자리 어둠
+      const k = this.execK, bar = Math.round(30 * k);
+      const v = g.createRadialGradient(vw / 2, H / 2, H * 0.3, vw / 2, H / 2, vw * 0.65); v.addColorStop(0, 'rgba(5,3,10,0)'); v.addColorStop(1, `rgba(5,3,10,${0.6 * k})`);
+      g.fillStyle = v; g.fillRect(0, 0, vw, H);
+      g.fillStyle = '#05030a'; g.fillRect(0, 0, vw, bar); g.fillRect(0, H - bar, vw, bar);
     }
     if (this.cine) this.drawCine(g, vw, H);
     this.trans.draw(g, vw, H);                                              // 장면 전환 · 임팩트 프레임 (맨 위)
@@ -559,6 +571,11 @@ export class Renderer {
         i = t < 2 ? 2 : t < W ? (t < W / 2 ? 3 : 4) : span(5, 7, (t - W) / CFG.parry.whiffF);
         break;
       }
+      case 'execute': {                                                    // 처형: 3타 자세로 크게 베기 (느린 웅크림 → 베기 → 여운)
+        const X = CFG.execute; n = 'atk3';
+        i = t < X.hitF ? span(0, 2, t / X.hitF) : t < X.hitF + 5 ? (t < X.hitF + 2 ? 3 : 4) : span(5, 7, (t - X.hitF - 5) / (X.totalF - X.hitF - 5));
+        break;
+      }
       case 'cast': n = 'parry'; i = t < 3 ? 2 : t < CFG.skill[p.spell].castF - 4 ? 4 : 6; break;   // 등불을 앞으로 내밀어 시전
       case 'roll': case 'ghost': n = 'roll'; i = span(0, 7, (p.stateT || 0) / (CFG.roll.totalF + CFG.roll.endLagF)); break;
       case 'hurt': n = 'hurt'; i = span(0, 5, t / CFG.player.hurtStunF); break;
@@ -741,6 +758,12 @@ export class Renderer {
       g.fillStyle = h.parryable ? 'rgba(255,255,255,0.35)' : 'rgba(255,79,94,0.45)'; g.fillRect(h.x, h.y, h.w, h.h);
     }
     if (!e.boss && e.hp < e.maxHp) { g.fillStyle = '#000'; g.fillRect(Math.round(e.x), Math.round(e.y) - 5, e.w, 2); g.fillStyle = C.red; g.fillRect(Math.round(e.x), Math.round(e.y) - 5, Math.round(e.w * e.hp / e.maxHp), 2); }
+    if (!e.boss && e.poiseMax && (e.poise > 0 || e.stunT > 0)) {           // 일반 적 자세 게이지 (가득 차면 그로기 → 처형 가능)
+      const bw = Math.max(e.w, 24), bx = Math.round(e.x + e.w / 2 - bw / 2), by = Math.round(e.y) - 2;
+      g.fillStyle = '#000'; g.fillRect(bx, by, bw, 2);
+      g.fillStyle = e.stunT > 0 ? ((w.t >> 2) & 1 ? '#fff' : '#ffe2a8') : '#e8c060'; g.fillRect(bx, by, Math.round(bw * (e.stunT > 0 ? 1 : e.poise)), 2);
+      if (e.stunT > 0 && !e.executing) { g.font = '9px Galmuri9, monospace'; g.textAlign = 'center'; g.fillStyle = '#ffe2a8'; g.fillText('처형!', e.x + e.w / 2, by - 12); g.textAlign = 'left'; }
+    }
   }
 
   // HUD: 왼쪽 위 체력·빛·기름병, 가운데 위 방 진행·불씨, 아래 보스 체력

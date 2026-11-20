@@ -55,7 +55,7 @@ export class FxDirector {
   preloadRegion(region) {
     const a = AMBIENT[region] || AMBIENT[1];
     preload([...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]);
-    preload(['arcane/magic-circle-cast', 'arcane/spell-charge', 'arcane/mana-burst', 'ice/ice-shatter', 'fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
+    preload(['melee/heavy-cleave', 'explosions/implosion', 'arcane/magic-circle-cast', 'arcane/spell-charge', 'arcane/mana-burst', 'ice/ice-shatter', 'fire/brazier', 'transitions/iris', 'fire/campfire', 'arcane/portal', 'melee/sword-slash', 'melee/uppercut', 'melee/spear-sweep', 'fire/fireball', 'ice/ice-lance', 'fire/flame-pillar', 'lightning/lightning-strike', 'fire/meteor', 'arcane/star-fall', 'holy/divine-shield', 'arcane/arcane-beam', 'ice/frost-nova', 'holy/heal', 'holy/holy-pillar', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'ui/damage-quiet', 'transitions/burn-away']);
   }
 
   // 방에 들어올 때: 배경 생물·불빛·날씨 + 장면 전환
@@ -106,7 +106,8 @@ export class FxDirector {
           ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
         break;
-      case 'execute': P('impacts/crit-hit', ev.x, ev.y + 30, { light: 0.4 }, 3); break;
+      case 'executeStart': P('arcane/spell-charge', p.x + p.w / 2, feet, { actor: R.actorOf(p), flip: p.face < 0, life: 40, light: 0.4, palette: AMBER, speed: 0.6 }, 3); break;   // 처형 준비: 몸에 빛이 모임
+      case 'execute': P('impacts/crit-hit', ev.x, ev.y + 30, { light: 0.5 }, 3); P('explosions/implosion', ev.x, ev.y + 20, { palette: AMBER, life: 60, light: 0.35 }, 3); break;
       case 'hurt': P('ui/heart-lost', p.x + p.w / 2, p.y - 8, {}, 3); break;   // 붉은 화면·파편은 렌더러가 그림
       case 'kill': {
         if (ev.boss) { P('explosions/big-explosion', ev.x, ev.y + 40, { life: 150, light: 0.5 }, 3); P('holy/holy-pillar', ev.x, ev.y + 40, { light: 0.5 }, 3); break; }

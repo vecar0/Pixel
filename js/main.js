@@ -361,6 +361,8 @@ function onEvents(w) {
     }
     else if (ev.type === 'attackHit') { sfx.play(ev.combo === 2 ? 'hit3' : 'hit'); if (navigator.vibrate) navigator.vibrate(ev.combo === 2 ? 18 : 8); }
     else if (ev.type === 'land' && ev.v > 3) sfx.play('land');
+    else if (ev.type === 'executeStart') { sfx.play('telegraph'); sfx.play('swing'); if (navigator.vibrate) navigator.vibrate(20); }
+    else if (ev.type === 'execute' && navigator.vibrate) { sfx.play('execute'); navigator.vibrate([40, 30, 60]); }
     else if (ev.type === 'castStart') sfx.play(ev.spell === 'bolt' ? 'swing' : 'ult');
     else if (SOUND[ev.type]) sfx.play(SOUND[ev.type]);
     if (ev.type === 'kill' && run) run.kills++;
@@ -395,7 +397,8 @@ function frameBody(now) {
       if (R.irisBusy() || R.stepCine()) { R.stepFx(world); acc = 0; touch.classList.add('hidden'); world.wasCine = true; }   // 아이리스·보스 등장 연출 동안은 세계 정지, 버튼 숨김
       else {
         if (world.wasCine) { world.wasCine = false; showTouch(); }
-        acc = stepLoop(acc, slowT > 0 && !world.hitstop ? dt * 0.45 : dt, step);   // 완벽 패링 직후 잠깐 슬로모션
+        const rate = world.player.state === 'execute' && !world.hitstop ? CFG.execute.slow : slowT > 0 && !world.hitstop ? 0.45 : 1;   // 처형 중 슬로모션, 완벽 패링 직후 잠깐 슬로
+        acc = stepLoop(acc, dt * rate, step);
       }
       if (world.over) overlay('dead');
       else if (world.won) overlay('won');

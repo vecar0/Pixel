@@ -23,6 +23,7 @@ function setState(p, s) { p.state = s; p.stateT = 0; }
 export function invulnerable(p) {
   if (p.iframes > 0) return true;
   if (p.state === 'roll') return p.stateT >= RO.iStart && p.stateT <= RO.iEnd + p.mods.iExtra;
+  if (p.state === 'execute') return true;                   // 처형 중 무적
   return p.state === 'cast' && !!CFG.skill[p.spell].inv;   // 큰 마법 시전 중 무적
 }
 
@@ -105,6 +106,7 @@ export function updatePlayer(w, inp) {
     const hp0 = p.hp; p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, CFG.flask.heal + (p.mods.flaskBonus || 0)));
     w.events.push({ type: 'heal', amount: p.hp - hp0, from: hp0, x: p.x + p.w / 2, y: p.y + p.h }); setState(p, 'idle');
   }
+  if (p.state === 'execute' && t >= CFG.execute.totalF) setState(p, 'idle');
   if (p.state === 'cast') {
     const S = CFG.skill[p.spell];
     if (t === S.fireF) w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face });

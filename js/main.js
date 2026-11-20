@@ -230,7 +230,7 @@ function town() {
   if (stopTitle) { stopTitle(); stopTitle = null; }
   mode = 'town'; sfx.musicFor(0); practice = false;
   if (!world || !world.town) {
-    world = buildTown(); run = null; R.runInfo = null; R.region = 1;
+    world = buildTown(); run = null; R.runInfo = null; R.region = 0;
     R.reset(); R.dir.preloadRegion(1); R.dir.enterRoom(world, 1, false);
     R.banner = { s: '등대 마을', sub: `등불 조각 ${save.shards} · 오른쪽 끝이 순례 길`, t: 170, dur: 170 };
     R.say('창고 · 허수아비 · 제단 · 모닥불 앞에서 공격 버튼', 240);

@@ -8,7 +8,7 @@ import { overlap } from './player.js';
 export const GIMMICK = {
   bell:   { rope: [380, 740], x: 560, half: 66, dropF: 40, trapF: 240, riseF: 50, cd: 600, dmg: 80 },
   veil:   { firstF: 300, cd: 900, mul: 0.25, breakDmg: 60, breakPoise: 0.7 },
-  mirror: { xs: [300, 640], h: 84, cd: 900, dmg: 70, poise: 0.5 },
+  mirror: { xs: [300, 640], h: 94, cd: 900, dmg: 70, poise: 0.5 },
   light:  { xs: [180, 560, 940], r: 140, litF: 720, inMul: 1.5, outMul: 0.5 },
 };
 export const GIMMICK_OF = { bellBoss: 'bell', saint: 'veil', spider: 'mirror', shadow: 'light' };

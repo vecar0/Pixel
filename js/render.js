@@ -195,10 +195,10 @@ export class Renderer {
     const d = this.dctx;
     d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, vw, H);
     const beacons = (w.props || []).filter(o => o.kind === 'beacon');
-    d.fillStyle = beacons.length ? 'rgba(4,2,8,0.78)' : 'rgba(4,2,8,0.5)'; d.fillRect(0, 0, vw, H);   // 그림자 보스방은 더 어둡다
+    d.fillStyle = beacons.length ? 'rgba(4,2,8,0.78)' : w.town ? 'rgba(4,2,8,0.18)' : 'rgba(4,2,8,0.5)'; d.fillRect(0, 0, vw, H);   // 그림자 보스방은 더 어둡다
     d.globalCompositeOperation = 'destination-out';
     for (const o of beacons) if (o.litT > 0) {                            // 켜진 등대: 둥근 빛 구멍
-      const bx = o.x + ox, by = 240 + oy, r = 150 * Math.min(1, o.litT / 40), bg = d.createRadialGradient(bx, by, 10, bx, by, r);
+      const bx = o.x + ox, by = 248 + oy, r = 150 * Math.min(1, o.litT / 40), bg = d.createRadialGradient(bx, by, 10, bx, by, r);
       bg.addColorStop(0, 'rgba(0,0,0,1)'); bg.addColorStop(0.7, 'rgba(0,0,0,0.85)'); bg.addColorStop(1, 'rgba(0,0,0,0)'); d.fillStyle = bg; d.fillRect(0, 0, vw, H);
     }
     this.lampX = p.x + p.w / 2 + p.face * 30; this.lampY = p.y + p.h - 32; this.lampR = 110 + p.light * 0.9;   // 리라 손의 등불 = 이 세계의 광원
@@ -358,7 +358,7 @@ export class Renderer {
 
   // 지역 1 '이끼 묘지' 배경: 먼 배경(0.2) · 중간 묘비(0.55) · 바닥/발판 타일. 좌우 반전으로 이어 붙여 이음새를 숨김
   drawBackdrop(g, w, camX, sx, sy) {
-    const r = this.region || 1;
+    const r = this.region ?? 1;   // 0 = 마을
     if (!this.bgs[r]) { this.bgs[r] = {}; for (const n of ['far', 'mid', 'ground']) { const im = new Image(); im.src = `assets/bg${r}-${n}.png`; this.bgs[r][n] = im; } }
     const B = this.bgs[r], ok = im => im.complete && im.naturalWidth;
     if (!ok(B.far) || !ok(B.mid) || !ok(B.ground)) return false;
@@ -372,8 +372,8 @@ export class Renderer {
       if (dark) { g.fillStyle = `rgba(8,6,14,${dark})`; g.fillRect(0, 0, vw, H); }
     };
     const cam0 = camX; camX += w.bgOff || 0;                       // 방마다 배경 시작 위치가 달라 풍경이 바뀐다
-    tile(B.far, 0.2, 0, 0.45);
-    tile(B.mid, 0.55, 300 - B.mid.naturalHeight + 6, 0.25);
+    tile(B.far, 0.2, 0, r === 0 ? 0.08 : 0.45);                        // 마을(0)은 밝게: 등대와 집 불빛이 보이게
+    tile(B.mid, 0.55, 300 - B.mid.naturalHeight + 6, r === 0 ? 0.05 : 0.25);
     camX = cam0;
     // 땅과 발판
     const G = B.ground, gw = G.naturalWidth, top = 14;   // 그림 14행 = 걷는 면
@@ -455,7 +455,7 @@ export class Renderer {
     } else if (o.kind === 'beacon' && this.img('beacon')) {               // 빛의 등대: 돌 받침 + 쇠 그릇 (켜지면 불꽃은 fxmap)
       const im = this.img('beacon'), x = Math.round(o.x - im.naturalWidth / 2);
       g.drawImage(im, x, 300 - im.naturalHeight);
-      if (o.litT <= 0) { const pulse = 0.5 + 0.5 * Math.sin(w.t * 0.12); g.fillStyle = `rgba(255,179,71,${0.25 + 0.4 * pulse})`; g.fillRect(Math.round(o.x) - 2, 248, 4, 3); }
+      if (o.litT <= 0) { const pulse = 0.5 + 0.5 * Math.sin(w.t * 0.12); g.fillStyle = `rgba(255,179,71,${0.25 + 0.4 * pulse})`; g.fillRect(Math.round(o.x) - 2, 253, 4, 3); }
     }
   }
   // 대종 (보스 위에 그림): 천장에 매달림 → 떨어짐(바닥에 붉은 그림자 예고) → 가둠 → 다시 올라감
@@ -517,7 +517,7 @@ export class Renderer {
 
   // 발판: 바닥 타일 윗부분을 잘라 쓰되, 아래 그림자 + 윗면 밝은 테두리 + 양 끝 받침으로 '밟을 수 있는 것'임을 보여 줌
   drawPlatforms(g, w) {
-    const G = this.bgs[this.region || 1]?.ground; if (!G || !G.naturalWidth) return;
+    const G = this.bgs[this.region ?? 1]?.ground; if (!G || !G.naturalWidth) return;
     const gw = G.naturalWidth, top = 14, th = 22;
     for (const s of w.solids) {
       if (!s.oneWay) continue;

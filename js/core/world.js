@@ -26,6 +26,7 @@ const ROOMS = {
     solids: [
       { x: -40, y: 0, w: 40, h: 360 }, { x: 720, y: 0, w: 40, h: 360 },
       { x: -40, y: 300, w: 800, h: 60 },
+      { x: 110, y: 218, w: 110, h: 8, oneWay: true }, { x: 500, y: 218, w: 110, h: 8, oneWay: true },   // 양쪽 발판: 충격파·광선 피하기
     ],
     spawn: { x: 80, y: 230 },
   },
@@ -44,7 +45,10 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
     waves: [], waveDelay: 0, hpMul, pending: [],
   };
   if (room === 'arena') w.waves = [[['ghoul', 520], ['ghoul', 600], ['moth', 700]], [['ghoul', 900], ['moth', 1000]]];
-  if (room === 'boss') spawnEnemy(w, boss, 480, 300 - ENEMY_DEFS[boss].h - 2, { variant, hpMul });   // 바닥 위에서 시작
+  if (room === 'boss') {
+    spawnEnemy(w, boss, 480, 300 - ENEMY_DEFS[boss].h - 2, { variant, hpMul });   // 바닥 위에서 시작
+    w.props = [{ kind: 'brazier', x: 46, cd: 0 }, { kind: 'brazier', x: 674, cd: 0 }];   // 기믹: 등불 화로
+  }
   updateCamera(w);
   return w;
 }
@@ -53,13 +57,15 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
 export const INTERACT_R = 56;
 export function nearProp(w) {
   const p = w.player, cx = p.x + p.w / 2;
-  return (w.props || []).find(o => o.kind !== 'exit' && Math.abs(o.x - cx) < INTERACT_R) || null;
+  return (w.props || []).find(o => (o.kind === 'merchant' || o.kind === 'campfire') && Math.abs(o.x - cx) < INTERACT_R) || null;
 }
-function havenInput(w, inp) {
+// 오브젝트: 상인·모닥불은 공격 버튼으로 이용, 출구는 열려 있으면 닿는 순간 나감 (전투방은 적을 다 잡아야 열림)
+function propInput(w, inp) {
   const o = nearProp(w), p = w.player;
   if (o && inp.attack) { w.events.push({ type: 'interact', kind: o.kind }); inp = { ...inp, attack: false }; }
-  const exit = (w.props || []).find(o => o.kind === 'exit');
-  if (exit && p.x + p.w / 2 > exit.x - 12 && !w.exited) { w.exited = true; w.events.push({ type: 'exit' }); }
+  const exit = w.props.find(o => o.kind === 'exit');
+  if (exit && w.cleared) exit.locked = false;
+  if (exit && !exit.locked && p.x + p.w / 2 > exit.x - 12 && !w.exited) { w.exited = true; w.events.push({ type: 'exit' }); }
   return inp;
 }
 
@@ -106,7 +112,8 @@ export function tick(w, inp) {
   if (w.shake > 0) w.shake--;
   w.hitboxes.length = 0;
 
-  if (w.room === 'haven') inp = havenInput(w, inp);
+  if (w.props) inp = propInput(w, inp);
+  for (const o of w.props || []) if (o.cd > 0) o.cd--;
   updatePlayer(w, inp);
   for (const ev of [...w.events]) if (ev.type === 'skill') resolveSkill(w, ev);
   for (const d of w.pending) if (--d.t <= 0) landSkill(w, d);             // 지연 마법: 이펙트가 떨어지는 순간 피해

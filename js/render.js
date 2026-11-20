@@ -192,9 +192,10 @@ export class Renderer {
     this.drawLira(g, w, p);
     for (const b of w.projectiles) {
       if (b._fx) continue;
-      g.fillStyle = b.owner === 'player' ? C.amberHi : b.parryable ? C.white : C.red;
-      g.fillRect(Math.round(b.x), Math.round(b.y), b.w, b.h);
-      if (!b.parryable && b.owner === 'enemy') { g.strokeStyle = C.white; g.strokeRect(Math.round(b.x) + 0.5, Math.round(b.y) + 0.5, b.w - 1, b.h - 1); }
+      const bx = b.x + b.w / 2, by = b.y + b.h / 2, r = Math.max(3, Math.min(b.w, b.h) / 2);     // 이펙트 없는 탄: 사각형 대신 빛나는 구슬
+      const gl = g.createRadialGradient(bx, by, 0, bx, by, r * 2.2), col = b.owner === 'player' ? '255,200,110' : b.parryable ? '235,230,255' : '255,110,120';
+      gl.addColorStop(0, `rgba(${col},0.95)`); gl.addColorStop(0.45, `rgba(${col},0.5)`); gl.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = gl; g.beginPath(); g.arc(bx, by, r * 2.2, 0, Math.PI * 2); g.fill();
     }
     for (const q of this.parts) { g.fillStyle = q.col; g.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s); }
     if (this.debug) {
@@ -352,15 +353,23 @@ export class Renderer {
         g.fillStyle = gl; g.fillRect(o.x - 100, 170, 200, 140);
         g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight);
       }
-      const label = o.kind === 'merchant' ? '상점 열기' : o.kind === 'campfire' ? (o.used ? '불씨가 잦아들었다' : '쉬기') : '다음 길 →';
-      const show = o.kind === 'exit' ? w.player.x > o.x - 260 : o === near;
+      if (o.kind === 'exit' && o.locked) {                               // 봉인된 문: 어두운 돌 아치 + 붉은 봉인 (적을 다 잡으면 포탈로 바뀜)
+        const x = Math.round(o.x), pulse = 0.4 + 0.25 * Math.sin(w.t * 0.08);
+        g.fillStyle = '#1a1620'; g.fillRect(x - 22, 236, 44, 64); g.fillStyle = '#2e2838'; g.fillRect(x - 26, 232, 52, 6); g.fillRect(x - 26, 238, 6, 62); g.fillRect(x + 20, 238, 6, 62);
+        g.fillStyle = `rgba(255,79,94,${pulse})`; g.fillRect(x - 1, 248, 2, 40); g.fillRect(x - 12, 266, 24, 2); g.fillRect(x - 8, 256, 16, 1); g.fillRect(x - 8, 278, 16, 1);
+      }
+      const label = o.kind === 'merchant' ? '상점 열기' : o.kind === 'campfire' ? (o.used ? '불씨가 잦아들었다' : '쉬기')
+        : o.kind === 'brazier' ? (o.cd > 0 ? `화로 재충전 ${Math.ceil(o.cd / 60)}초` : '공격해서 화로 점화 → 보스에게 불기둥')
+        : o.locked ? '적을 모두 쓰러뜨리면 열린다' : '다음 길 →';
+      const pcx = w.player.x + w.player.w / 2;
+      const show = o.kind === 'exit' ? pcx > o.x - 260 : o.kind === 'brazier' ? Math.abs(o.x - pcx) < 90 : o === near;
       if (!show) continue;
-      const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : 214, txt = o.kind === 'exit' || o.used ? label : `공격 버튼  ${label}`;
+      const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : o.kind === 'brazier' ? 186 : 214, txt = o.kind === 'exit' || o.kind === 'brazier' || o.used ? label : `공격 버튼  ${label}`;
       g.font = '10px Galmuri9, monospace'; g.textBaseline = 'middle'; g.textAlign = 'center';
-      const tw = g.measureText(txt).width + 14, bob = Math.round(Math.sin(w.t * 0.1) * 2);
-      g.fillStyle = 'rgba(13,10,17,.8)'; g.fillRect(Math.round(o.x - tw / 2), y - 8 + bob, Math.round(tw), 16);
-      g.fillStyle = '#ffb347'; g.fillRect(Math.round(o.x - tw / 2), y + 7 + bob, Math.round(tw), 1);
-      g.fillStyle = '#ffe2a8'; g.fillText(txt, o.x, y + bob);
+      const tw = g.measureText(txt).width + 14, bob = Math.round(Math.sin(w.t * 0.1) * 2), lx = Math.max(tw / 2 + 4, Math.min(w.width - tw / 2 - 4, o.x));   // 벽 가까이선 화면 안으로
+      g.fillStyle = 'rgba(13,10,17,.8)'; g.fillRect(Math.round(lx - tw / 2), y - 8 + bob, Math.round(tw), 16);
+      g.fillStyle = '#ffb347'; g.fillRect(Math.round(lx - tw / 2), y + 7 + bob, Math.round(tw), 1);
+      g.fillStyle = '#ffe2a8'; g.fillText(txt, lx, y + bob);
       g.textAlign = 'left'; g.textBaseline = 'top';
     }
   }
@@ -668,7 +677,7 @@ export class Renderer {
       const col = a.parryable ? C.white : C.red;
       g.strokeStyle = col; g.lineWidth = 2;
       if (blink && !spr) g.strokeRect(x - 1, y - 1, ew + 2, eh + 2);
-      if (!a.parryable) { g.fillStyle = 'rgba(255,79,94,0.25)'; g.fillRect(x - 3, y - 3, ew + 6, eh + 6); }
+      if (!a.parryable && !spr) { g.fillStyle = 'rgba(255,79,94,0.25)'; g.fillRect(x - 3, y - 3, ew + 6, eh + 6); }   // 그림 있는 적은 붉은 덧칠로 충분
       g.lineWidth = 1;
       g.fillStyle = col; g.fillRect(Math.round(e.x + e.w / 2) - 1, e.y - 12, 3, 7); g.fillRect(Math.round(e.x + e.w / 2) - 1, e.y - 4, 3, 2);
     }

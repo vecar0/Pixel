@@ -21,8 +21,8 @@ test('각인 제안: 3개, 서로 다름, 이미 가진 것 제외, 같은 시�
 });
 test('문 선택: 서로 다른 방 2개, 마지막 직전엔 보스만', () => {
   const r = newRun(3); chooseOath(r, 'parry');
-  eq(r.route.join(), 'combat,combat,shop,elite,rest,boss');                // 스테이지는 정해진 순서
-  for (const t of ['combat', 'combat', 'shop', 'elite', 'rest', 'boss']) { eq(nextStage(r), t); roomCleared(r); }
+  eq(r.route.join(), 'combat,combat,rest,elite,shop,boss');                // 스테이지는 정해진 순서
+  for (const t of ['combat', 'combat', 'rest', 'elite', 'shop', 'boss']) { eq(nextStage(r), t); roomCleared(r); }
 });
 test('방 진행: 전투 클리어 시 불씨 +10, 방 번호 증가', () => {
   const r = newRun(3); chooseOath(r, 'parry'); enterRoom(r, 'combat');
@@ -238,12 +238,20 @@ test('스탯 구간 능력: 생명 7 체력+1, 생명 3 체력-1, 의지 10 모�
 });
 
 test('쉼터(상점·휴식): 적 없음, 오브젝트 앞 공격 = 상호작용(휘두르지 않음), 오른쪽 출구에 닿으면 나감', () => {
-  const r = newRun(2); chooseOath(r, 'parry'); r.roomIdx = 2; nextStage(r); eq(r.room, 'shop');
+  const r = newRun(2); chooseOath(r, 'parry'); r.roomIdx = 4; nextStage(r); eq(r.room, 'shop');
   const w = buildRoomWorld(r); eq(w.enemies.length, 0); eq(w.props[0].kind, 'merchant');
   steps(w, 20); w.player.x = w.props[0].x - w.player.w / 2; steps(w, 2);
   tick(w, I({ attack: true })); ok(w.events.some(e => e.type === 'interact' && e.kind === 'merchant')); ok(w.player.state !== 'attack');
   w.player.x = w.props[1].x; tick(w, I()); ok(w.events.some(e => e.type === 'exit'));
-  r.roomIdx = 4; nextStage(r); eq(buildRoomWorld(r).props[0].kind, 'campfire');
+  r.roomIdx = 2; nextStage(r); eq(buildRoomWorld(r).props[0].kind, 'campfire');
+});
+
+test('전투방 출구: 적이 남아 있으면 잠겨서 못 나가고, 다 잡으면 열림', () => {
+  const r = newRun(4); chooseOath(r, 'parry'); nextStage(r);
+  const w = buildRoomWorld(r), ex = w.props.find(o => o.kind === 'exit'); ok(ex && ex.locked);
+  w.player.x = ex.x; tick(w, I()); ok(!w.events.some(e => e.type === 'exit'));
+  w.player.x = 100; w.enemies.length = 0; w.waves = []; steps(w, 3); ok(w.cleared); ok(!w.exited);
+  w.player.x = ex.x; let out = false; for (let i = 0; i < 3; i++) { tick(w, I()); if (w.events.some(e => e.type === 'exit')) out = true; } ok(out);
 });
 
 run();

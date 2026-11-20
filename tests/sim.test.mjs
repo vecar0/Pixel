@@ -252,6 +252,15 @@ test('나방은 무엇에 맞든 한 방에 죽는다 (지역 체력 배수와 �
   const e = spawnEnemy(w, 'moth', w.player.x + 30, w.player.y, { hpMul: 3 });
   damageEnemy(w, e, 1); ok(e.dead);
 });
+test('보스방 기믹: 등불 화로를 베면 보스에게 피해·자세, 15초 재충전 / 양쪽 발판', () => {
+  const w = createWorld({ room: 'boss' }); steps(w, 30);
+  ok(w.solids.filter(s => s.oneWay).length === 2);
+  const b = w.enemies[0], o = w.props[0]; b.update = () => {}; const hp = b.hp;
+  w.player.x = o.x + 16; w.player.face = -1; steps(w, 5);
+  tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 2);
+  eq(hp - b.hp, 20); ok(b.poise >= 0.5 || b.stunT > 0); ok(o.cd > 800);
+  tick(w, I({ attack: true })); steps(w, CFG.attack.startupF + 20); eq(hp - b.hp, 20);   // 재충전 중엔 반응 없음
+});
 function bossWorld(force) {
   const w = createWorld({ room: 'boss' }); steps(w, 30); w.player.hp = 99;
   const b = w.enemies.find(e => e.boss); b.forceNext = force; b.x = w.player.x + 60;
@@ -279,7 +288,7 @@ function slamTest(mode) {
   }
   return w.player.hp;
 }
-test('shockwave: 패링하면 hp -2', () => eq(slamTest('parry'), 3));
+test('shockwave: 패링 불가라 맞으면 hp -1 (보스 피해 낮춤)', () => eq(slamTest('parry'), 4));
 test('shockwave: 점프로 넘으면 피해 없음', () => eq(slamTest('jump'), 5));
 
 // 완벽 패링 봇: 2틱 안에 맞을 공격이 오면 패링, 안전할 때만 공격

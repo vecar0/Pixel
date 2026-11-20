@@ -29,14 +29,14 @@ export const OATHS = [
 ];
 
 // 스테이지 순서는 정해져 있다 (고르지 않음). 상점·휴식도 걸어 들어가는 스테이지
-const ROUTE = ['combat', 'combat', 'shop', 'elite', 'rest', 'boss'];
+const ROUTE = ['combat', 'combat', 'rest', 'elite', 'shop', 'boss'];
 const SHORT_ROUTE = ['combat', 'rest', 'boss'];     // 지역 1 단축 (종지기 3회 처치 후)
 // 지역 4곳. 지역마다 적 구성·보스·배경·체력 배수가 다르다
 export const REGIONS = [
   { id: 1, name: '이끼 묘지', bg: 'bg1', enemies: ['ghoul', 'moth'], boss: 'bellBoss', route: ROUTE, hp: 1.0 },
   { id: 2, name: '침수 대성당', bg: 'bg2', enemies: ['spearman', 'priest', 'ghoul'], boss: 'saint', route: ROUTE, hp: 1.3 },
   { id: 3, name: '유리 광산', bg: 'bg3', enemies: ['shellguard', 'moth', 'spearman'], boss: 'spider', route: ROUTE, hp: 1.6 },
-  { id: 4, name: '꺼진 태양의 심연', bg: 'bg4', enemies: ['assassin', 'shellguard', 'priest'], boss: 'shadow', route: ['combat', 'shop', 'elite', 'rest', 'boss'], hp: 2.0 },
+  { id: 4, name: '꺼진 태양의 심연', bg: 'bg4', enemies: ['assassin', 'shellguard', 'priest'], boss: 'shadow', route: ['combat', 'rest', 'elite', 'shop', 'boss'], hp: 2.0 },
 ];
 
 // 이번 판 도전 (출발 시 1개)
@@ -200,6 +200,7 @@ export function buildRoomWorld(r) {
   } else {
     const A = genArena(r);
     w = createWorld({ room: 'arena', solids: A.solids, width: A.width, hpMul });
+    w.props = [{ kind: 'exit', x: A.width - 60, locked: true }];       // 출구: 적을 다 잡으면 열림
     w.bgOff = A.bgOff;
     const lvl = r.roomIdx;                         // 뒤로 갈수록 적이 늘어난다
     const xs = () => 480 + ((rand(r) * (w.width - 600)) | 0);

@@ -76,6 +76,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0) {
 export function resolvePlayerAttacks(w) {
   const p = w.player, box = attackBox(p);
   if (!box) return;
+  for (const o of w.props || []) if (o.kind === 'brazier' && o.cd <= 0 && overlap(box, { x: o.x - 14, y: 250, w: 28, h: 50 })) igniteBrazier(w, o);
   for (const e of w.enemies) {
     if (e.dead || e.spawnT > 0 || e.hitBy === p.swing || !overlap(box, e)) continue;
     e.hitBy = p.swing;
@@ -112,6 +113,16 @@ export function resolvePlayerAttacks(w) {
       w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: p.combo, face: p.face, dmg: Math.round(CFG.attack.dmg[p.combo] * mul), crit: !!wasCrit });
     }
   }
+}
+
+// 보스방 기믹: 등불 화로를 베면 보스 발밑에 불기둥 → 피해 + 자세 크게 (15초 재충전)
+export const BRAZIER = { cd: 900, dmg: 20, poise: 0.5 };
+function igniteBrazier(w, o) {
+  o.cd = BRAZIER.cd;
+  const b = w.enemies.find(e => e.boss && !e.dead);
+  w.events.push({ type: 'brazier', x: o.x, tx: b ? b.x + b.w / 2 : o.x, ty: b ? b.y + b.h : 300 });
+  if (b) { damageEnemy(w, b, BRAZIER.dmg, BRAZIER.poise); w.events.push({ type: 'attackHit', x: b.x + b.w / 2, y: b.y + b.h / 2, combo: 1, face: w.player.face, dmg: BRAZIER.dmg, crit: false, spell: 'brazier' }); }
+  w.hitstop = Math.max(w.hitstop, 6); w.shake = Math.max(w.shake, 8);
 }
 
 // 등불 마법 (스킬). 등장 중인 적은 맞지 않는다

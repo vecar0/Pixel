@@ -233,6 +233,13 @@ function relicScreen(after) {
 }
 // 다음 스테이지: 정해진 순서대로 바로 들어간다 (들어갈 때 아이리스가 열림)
 function goNext() { nextStage(run); play(); }
+// 보상을 고른 뒤 방으로 돌아옴: 고른 각인·단련을 바로 적용, 출구가 열렸다고 알림
+function backToRoom() {
+  const p = world.player, hp = p.hp, fl = p.flasks;
+  applyRelics(p, run.relics); applyStats(p, run.stats); p.spells = [runSpell(run)];
+  p.hp = Math.min(p.maxHp, hp); p.flasks = Math.min(Math.max(p.maxFlasks, fl), fl);
+  resume(); R.say('출구가 열렸다 — 오른쪽 끝으로');
+}
 // 출구로 나갈 때: 아이리스가 리라 쪽으로 닫힌 뒤 다음 스테이지
 function leaveRoom() {
   mode = 'transition'; touch.classList.add('hidden'); R.iris(world, 'close');
@@ -278,8 +285,8 @@ function shopScreen() {
 function overlay(kind) {
   mode = kind; touch.classList.add('hidden');
   if (kind === 'cleared') {
-    saveFromWorld(run, world); const wasCombat = run.room === 'combat'; roomCleared(run);
-    if (wasCombat) rewardScreen(goNext); else relicScreen(goNext);
+    world.rewarded = world.counted = true; const wasCombat = run.room === 'combat'; roomCleared(run);
+    if (wasCombat) rewardScreen(backToRoom); else relicScreen(backToRoom);
   } else if (kind === 'won') {
     saveFromWorld(run, world);
     const boss = regionOf(run).boss;
@@ -335,7 +342,8 @@ function onEvents(w) {
     else if (SOUND[ev.type]) sfx.play(SOUND[ev.type]);
     if (ev.type === 'kill' && run) run.kills++;
     if (ev.type === 'interact') { if (ev.kind === 'merchant') shopScreen(); else if (ev.kind === 'campfire') restScreen(); }
-    if (ev.type === 'exit') { saveFromWorld(run, w); roomCleared(run); leaveRoom(); return; }
+    if (ev.type === 'exit') { saveFromWorld(run, w); if (!w.counted) roomCleared(run); leaveRoom(); return; }
+    if (ev.type === 'brazier') sfx.play('execute');
   }
   const p = w.player;
   if (p.stateT === 0 && p.state === 'attack') sfx.play('swing');
@@ -364,7 +372,7 @@ function frameBody(now) {
       acc = stepLoop(acc, slowT > 0 && !world.hitstop ? dt * 0.45 : dt, step);   // 완벽 패링 직후 잠깐 슬로모션
       if (world.over) overlay('dead');
       else if (world.won) overlay('won');
-      else if (world.cleared) overlay('cleared');
+      else if (world.cleared && !world.rewarded) overlay('cleared');
     }
   } else if (mode === 'pause' && input.take('pause')) resume();
   else if (mode !== 'play' && mode !== 'title' && input.take('confirm')) document.querySelector('#ui .btn, #ui .pick')?.dispatchEvent(new PointerEvent('pointerup'));

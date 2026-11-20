@@ -62,7 +62,10 @@ for (let guard = 0; guard < 2000; guard++) {
     if (await mode() === 'relic') {
       const closed = await p.evaluate(() => window.__lk.R.irisClock >= 1.02);
       closed || fail('보상 화면이 아이리스가 닫히기 전에 뜸');
-      if (await p.evaluate(() => !!document.querySelector('[data-up]'))) await tap('[data-up]:not([disabled])'), await p.waitForTimeout(100), await tap('#train');
+      if (await p.evaluate(() => !!document.querySelector('[data-up]'))) {
+        for (let k = 0; k < 4 && await p.evaluate(() => document.querySelector('#train').disabled); k++) { await tap('.arw:not([disabled]):not(.back)'); await p.waitForTimeout(100); }
+        await tap('#train');
+      }
       else await tap('.pick');
       rewarded = true; await p.waitForTimeout(150);
     }

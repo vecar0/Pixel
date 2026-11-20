@@ -384,3 +384,35 @@ button.scard:disabled { opacity: .45; cursor: default; }
 @media (max-height: 460px) { .card.board .spellcard .sc-desc { font-size: 10px; } }
 @media (max-width: 700px) { .sboard { grid-template-columns: 1fr; } }
 .card.board .sc-map { display: block; margin: 6px 0 0; font-size: 10px; line-height: 1.5; } .card.board .sc-map b { color: var(--flame); }
+
+/* ── 가시성 ↑ (스탯 판 글자 키움) + 단련 화살표 · 남은 점수 ── */
+.scard { padding: 6px 8px 7px; }
+.scard .sh b { font-size: 14px; } .scard .sh em { font-size: 18px; } .scard .sh .ico { width: 20px; height: 20px; }
+.scard .sn { font-size: 12px; color: #ece3f4; } .scard .sx, .scard .sw { font-size: 11.5px; } .scard .sx { color: #b9adc8; }
+.scard .ladder .tk { font-size: 10px; padding: 2px 3px; } .scard .ladder .tk.new { outline: 1px solid #fff; animation: tkpop .6s ease-in-out infinite alternate; }
+@keyframes tkpop { to { filter: brightness(1.5); } }
+.scard.up { box-shadow: inset 0 0 0 2px #ffcf6a, 0 0 10px rgba(255,179,71,.3); } .scard.down { box-shadow: inset 0 0 0 1px #6a5a7a; opacity: .92; }
+.scard .dv { font-size: 12px; font-weight: bold; padding: 0 4px; color: #24130a; background: #ffcf6a; } .scard.down .dv { background: #8fb8e8; }
+.srow { display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; gap: 4px; align-items: center; }
+.srow .scale2 { height: 12px; }
+.scale2 i.ch { background: #fff3c4 !important; box-shadow: 0 0 4px #ffcf6a; }
+.arw { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; min-height: 40px; border: 0; margin: 0; cursor: pointer; font: inherit;
+  font-size: 17px; line-height: 1; color: #24130a; background: var(--lantern); box-shadow: inset 0 -3px 0 #b86a1e, inset 0 2px 0 var(--flame), 0 0 0 1px #120e16; }
+.arw small { font-size: 10px; font-weight: bold; margin-top: 1px; }
+.arw.back { background: #8fb8e8; box-shadow: inset 0 -3px 0 #4a6a98, inset 0 2px 0 #cfe4ff, 0 0 0 1px #120e16; }
+.arw:active { transform: translateY(2px); }
+.arw:disabled { background: #2a2232; color: #5d5268; box-shadow: inset 0 0 0 1px #3a3046; cursor: default; }
+.pts { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 6px 8px; background: #120e16; box-shadow: inset 0 0 0 2px var(--lantern); }
+.pts > span:first-child { font-size: 13px; color: var(--flame); } .pts b { font-size: 26px; color: #fff; line-height: 1; } .pts small { font-size: 13px; color: var(--ash); }
+.pts .pips { display: flex; gap: 4px; } .pts .pips i { width: 14px; height: 14px; background: #2a2232; box-shadow: inset 0 0 0 1px #5d5268; transform: rotate(45deg); }
+.pts .pips i.on { background: var(--lantern); box-shadow: 0 0 6px var(--lantern); }
+.pts.zero { box-shadow: inset 0 0 0 2px #6a5a7a; } .pts.zero b { color: var(--ash); }
+.spanel .hint { font-size: 11px; color: #b9adc8; }
+.tprev .tl { font-size: 12px; } .tprev .tl small { display: inline; font-size: 11px; color: #cfc6dc; } .tprev .tl.up b { color: #ffcf6a; } .tprev .tl.down b { color: #8fb8e8; }
+.spanel .tprev .note { font-size: 11.5px; } .spanel .tprev .note b { color: #ffcf6a; } .spanel .tprev .note b.bad { color: #ff6a78; } .spanel .tprev .note b.res { color: #e0c8ff; }
+.spanel .btns { flex-wrap: nowrap; gap: 6px; } .spanel .btns .btn.alt { flex: 0 0 auto; }
+.card.board.train { overflow: hidden; }
+.card.board.train .sboard { min-height: 0; }
+.card.board.train .spanel { max-height: calc(100dvh - 64px); }
+.card.board.train .spanel .tprev { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+.spanel .hint .back { color: #8fb8e8; font-weight: bold; }

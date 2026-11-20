@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick } from './core/world.js';
-import { Renderer } from './render.js';
-import { Input } from './input.js';
-import { Sfx } from './sfx.js';
-import { stepLoop } from './loop.js';
-import { spawnEnemy } from './core/enemies.js';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js';
-import { ENEMY_DEFS } from './core/enemies.js';
-import { icon, RELIC_TONE } from './icons.js';
-import { installPixelUI, roundBtn } from './pixelui.js';
-import { startTitleScene } from './titlescene.js';
+import { createWorld, tick } from './core/world.js?v=mwp7yzma';
+import { Renderer } from './render.js?v=mwp7yzma';
+import { Input } from './input.js?v=mwp7yzma';
+import { Sfx } from './sfx.js?v=mwp7yzma';
+import { stepLoop } from './loop.js?v=mwp7yzma';
+import { spawnEnemy } from './core/enemies.js?v=mwp7yzma';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwp7yzma';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwp7yzma';
+import { icon, RELIC_TONE } from './icons.js?v=mwp7yzma';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwp7yzma';
+import { startTitleScene } from './titlescene.js?v=mwp7yzma';
 installPixelUI();
-import { CFG } from './core/config.js';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js';
-import { takeTrain, runSpell } from './core/run.js';
-import { GIMMICK_HINT } from './core/gimmick.js';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js';
+import { CFG } from './core/config.js?v=mwp7yzma';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwp7yzma';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwp7yzma';
+import { takeTrain, runSpell } from './core/run.js?v=mwp7yzma';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwp7yzma';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwp7yzma';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -276,7 +276,7 @@ const TOWN_W = 1700;
 // 마을 장식 (상호작용 없음): 통·상자 더미 · 가로등 · 손수레 · 벤치와 화분 — 빈 곳을 채워 사람 사는 동네처럼
 const TOWN_DECO = [['deco-barrels', 120], ['lamp', 200], ['deco-bench', 420], ['lamp', 610], ['deco-cart', 760], ['lamp', 1000], ['deco-barrels', 1190], ['deco-bench', 1390], ['lamp', 1460]];
 function buildTown() {
-  const W = TOWN_W, w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }], spawn: { x: 60, y: 240 } });
+  const W = TOWN_W, w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }], spawn: { x: 180, y: 240 } });   // 화면 왼쪽 끝(폰 노치·스틱) 뒤에 가리지 않게
   w.haven = 'town'; w.town = true; w.decor = TOWN_DECO.map(([img, x]) => ({ img, x }));
   // 기능은 하나씩: 이야기 · 보스 연습 · 준비(어둠·기름) · 기록과 오늘의 시련 · 쉬기(설정) · 출발
   w.props = [

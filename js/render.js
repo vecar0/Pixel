@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js';
-import { CFG } from './core/config.js';
-import { attackBox } from './core/player.js';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js';
-import { nearProp } from './core/world.js';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js';
-import { FxDirector } from './fxmap.js';
-import { iconCanvas } from './icons.js';
-import { bodyShade } from './shade.js';
+import { clipBeam } from './core/gimmick.js?v=mwp7yzma';
+import { CFG } from './core/config.js?v=mwp7yzma';
+import { attackBox } from './core/player.js?v=mwp7yzma';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwp7yzma';
+import { nearProp } from './core/world.js?v=mwp7yzma';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwp7yzma';
+import { FxDirector } from './fxmap.js?v=mwp7yzma';
+import { iconCanvas } from './icons.js?v=mwp7yzma';
+import { bodyShade } from './shade.js?v=mwp7yzma';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -29,6 +29,7 @@ const MAX_PARTICLES = 400;
 const PROP_GRADE = { urn: 0.5, spikes: 0.45, vent: 0.45, lever: 0.4, gate: 0.5, chest: 0.4, 'chest-open': 0.35, mover: 0.5, bell: 0.45, chain: 0.5, post: 0.5,
   mirror: 0.2, beacon: 0.5, shrine: 0.45, rack: 0.4, lamp: 0.45, 'deco-barrels': 0.45, 'deco-cart': 0.45, 'deco-bench': 0.45, keeper: 0.25, board: 0.45, scarecrow: 0.4, merchant: 0.2 };   // 인물(등대지기·상인)은 약하게
 const DIM = 0.92;                                                       // 소품은 배경보다 아주 조금 어둡게 (어둠 속에 놓인 느낌)
+const VQ = () => (window.__V ? '?v=' + window.__V : '');   // 그림·데이터도 새 버전으로 (캐시 버스팅)
 const bellOf = w => (w.props || []).find(o => o.kind === 'bell') || {};
 const PHASE2_TITLE = { bellBoss: ['2막 · 무너지는 종탑', '천장에서 잔해가 떨어진다 · 대종이 더 빨리 다시 걸린다'], saint: ['2막 · 차오르는 물', '낮은 바닥에선 느려진다 · 양쪽 제단 위로'],
   spider: ['2막 · 깨어나는 광맥', '세 번째 거울이 자란다 · 천장 수정이 쏟아진다'], shadow: ['2막 · 개기일식', '더 어두워지고 등대가 짧게 탄다'] };
@@ -44,21 +45,21 @@ export class Renderer {
     this.squash = 0; this.flash = 0; this.zoom = 0; this.stunFx = new Map();
     this.debug = /debug=1/.test(location.search);
     // 리라 픽셀 그림 (Higgsfield: 리라 디자인 + 사용자 샘플 화풍 → forge pixel_look로 픽셀 격자 맞춤). 기준점: 발 중앙 (43, 85)
-    this.liraImg = new Image(); this.liraImg.src = 'assets/lira.png';
+    this.liraImg = new Image(); this.liraImg.src = 'assets/lira.png' + VQ();
     // 동작 포즈 (Higgsfield 포즈 생성 → 기준 리라 격자로 읽음). 모두 132x111, 발 기준점 (69, 111)
     this.bgs = {}; this.region = 1;   // 지역별 배경은 처음 쓸 때 불러온다
     // 리라 8프레임 애니메이션 (Higgsfield GIF 생성 → 게임 크기·팔레트로 변환). 프레임마다 발 기준점(ax, ay)
-    fetch('assets/anims.json').then(r => r.json()).then(J => {
-      for (const k in J) for (const n in J[k]) for (const f of J[k][n]) { const im = new Image(); im.src = f.src; f.img = im; }
+    fetch('assets/anims.json' + VQ()).then(r => r.json()).then(J => {
+      for (const k in J) for (const n in J[k]) for (const f of J[k][n]) { const im = new Image(); im.src = f.src + VQ(); f.img = im; }
       this.anims = J.lira; this.enemyAnims = J;
     }).catch(() => {});
     this.pose = {};
-    fetch('assets/enemies.json').then(r => r.json()).then(J => {
-      for (const kind in J) for (const n in J[kind]) { const im = new Image(); im.src = J[kind][n].src; J[kind][n].img = im; }
+    fetch('assets/enemies.json' + VQ()).then(r => r.json()).then(J => {
+      for (const kind in J) for (const n in J[kind]) { const im = new Image(); im.src = J[kind][n].src + VQ(); J[kind][n].img = im; }
       this.enemySprites = J;
     }).catch(() => {});
     for (const n of ['idle', 'atk1', 'atkmid', 'atk2', 'parrymid', 'parry', 'hurt', 'roll', 'jump', 'fall', 'run1', 'run2', 'run3', 'run4']) {
-      const im = new Image(); im.src = `assets/lira-${n}.png`; this.pose[n] = im;
+      const im = new Image(); im.src = `assets/lira-${n}.png` + VQ(); this.pose[n] = im;
     }
     this.resize();
   }
@@ -391,7 +392,7 @@ export class Renderer {
   // 지역 1 '이끼 묘지' 배경: 먼 배경(0.2) · 중간 묘비(0.55) · 바닥/발판 타일. 좌우 반전으로 이어 붙여 이음새를 숨김
   drawBackdrop(g, w, camX, sx, sy) {
     const r = this.region ?? 1;   // 0 = 마을
-    if (!this.bgs[r]) { this.bgs[r] = {}; for (const n of ['far', 'mid', 'ground']) { const im = new Image(); im.src = `assets/bg${r}-${n}.png`; this.bgs[r][n] = im; } }
+    if (!this.bgs[r]) { this.bgs[r] = {}; for (const n of ['far', 'mid', 'ground']) { const im = new Image(); im.src = `assets/bg${r}-${n}.png` + VQ(); this.bgs[r][n] = im; } }
     const B = this.bgs[r], ok = im => im.complete && im.naturalWidth;
     if (!ok(B.far) || !ok(B.mid) || !ok(B.ground)) return false;
     const H = CFG.VIEW_H, vw = this.vw;
@@ -467,7 +468,7 @@ export class Renderer {
     }
   }
   img(n) {
-    this.imgs = this.imgs || {}; let im = this.imgs[n]; if (!im) { im = this.imgs[n] = new Image(); im.src = `assets/${n}.png`; }
+    this.imgs = this.imgs || {}; let im = this.imgs[n]; if (!im) { im = this.imgs[n] = new Image(); im.src = `assets/${n}.png` + VQ(); }
     if (!(im.complete && im.naturalWidth)) return null;
     return PROP_GRADE[n] ? this.graded(n, im) : im;
   }

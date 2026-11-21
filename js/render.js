@@ -134,7 +134,7 @@ export class Renderer {
       else if (ev.type === 'alarm') { this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '경보!', life: 60, col: '#ff4f5e' }); (this.ripples = this.ripples || []).push({ x: ev.x, y: ev.y + 30, r: 6, t: 0, c: '255,79,94', max: ev.r }); }
       else if (ev.type === 'dazzle') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '눈부심', life: 50, col: '#ffe9a0' });
       else if (ev.type === 'assassinate') { this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: ev.elite ? '급습!' : '암살!', life: 50 }); this.flash = Math.max(this.flash, 0.3); }
-      else if (ev.type === 'flash') { this.flash = Math.max(this.flash, 0.9); this.zoom = Math.max(this.zoom || 0, 0.5); }
+      else if (ev.type === 'flash') { this.flash = Math.max(this.flash, 0.3); this.zoom = Math.max(this.zoom || 0, 0.15); this.lampFlash = { t: 0, el: ev.el }; }   // 다시 켬: 등불에서 작은 섬광
       else if (ev.type === 'heatUp') { this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '달아올랐다!', life: 60 }); this.say('거인이 달아올랐다 — 밸브 옆으로 유인해 밸브를 베어라', 200); }
       else if (ev.type === 'quench') { this.flash = ev.hot ? 0.8 : 0.3; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: ev.hot ? '식었다! 갑옷에 금이 갔다' : '증기!', life: 70 }); }
       else if (ev.type === 'steam' && !ev.hit) this.texts.push({ x: ev.x, y: 210, t: 0, s: '쉬익—', life: 30 });
@@ -308,6 +308,21 @@ export class Renderer {
     g.globalAlpha = 1;
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);
     if (!hideChars) this.drawLira(g, w, p);
+    if (this.lampFlash) {                                                  // 섬광: 등불에서 짧게 번쩍 (빛 + 짧은 빛살 8줄, 두른 상태면 속성 색)
+      const F = this.lampFlash, k = F.t / 18, x = this.lampX, y = this.lampY, P = EL_SLASH[F.el === undefined ? null : F.el] || EL_SLASH[null];
+      const rgb = F.el === undefined ? '255,214,140' : EL_RGB[F.el || null], R = 10 + 30 * Math.min(1, k * 2);
+      g.globalCompositeOperation = 'lighter';
+      const gl = g.createRadialGradient(x, y, 0, x, y, R); gl.addColorStop(0, `rgba(255,250,230,${0.8 * (1 - k)})`); gl.addColorStop(0.35, `rgba(${rgb},${0.45 * (1 - k)})`); gl.addColorStop(1, `rgba(${rgb},0)`);
+      g.fillStyle = gl; g.fillRect(x - R, y - R, R * 2, R * 2);
+      g.globalCompositeOperation = 'source-over';
+      if (k < 0.75) for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4 + 0.2, r0 = 4 + 10 * k, r1 = r0 + (i & 1 ? 5 : 9) * (1 - k);
+        g.fillStyle = i & 1 ? P[4] : P[5];
+        for (let r = r0; r < r1; r += 1) g.fillRect(Math.round(x + Math.cos(a) * r), Math.round(y + Math.sin(a) * r), 1, 1);
+      }
+      g.fillStyle = '#fffbe8'; if (k < 0.4) g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3);
+      if (++F.t > 18) this.lampFlash = null;
+    }
     if (p.state === 'flask' && !hideChars) {                             // 기름병 마시는 중: 머리 위 초록 원이 차오름
       const k = Math.min(1, p.stateT / (CFG.flask.useF * (p.mods.flaskSpeed || 1))), cx = p.x + p.w / 2, cy = p.y - 30;
       g.fillStyle = 'rgba(13,10,17,.7)'; g.beginPath(); g.arc(cx, cy, 8, 0, Math.PI * 2); g.fill();

@@ -141,7 +141,7 @@ export class FxDirector {
         break;
       case 'bossFall': P('explosions/big-explosion', ev.x, ev.y + 40, { life: 150, light: 0.6 }, 3); P('holy/holy-pillar', ev.x, ev.y + 40, { light: 0.5, palette: GOLD }, 3); break;   // 보스 마지막 폭발 + 빛기둥
       case 'snuff': P('explosions/smoke-bomb', p.x + p.w / 2 + p.face * 30, p.y + 50, { palette: GREY, life: 30, light: 0 }, 2); break;   // 등불을 끔: 연기 한 줄기
-      case 'flash': P('holy/sunburst', ev.x, ev.y + 20, { palette: ev.el !== undefined ? elPal(ev.el) : GOLD, life: 40, light: 0.7 }, 3); break;   // 다시 켬: 섬광 (두른 상태면 속성 색)
+      // 다시 켬 섬광: render.js가 등불 자리에 작게 그림
       case 'enchant': { const hx = p.x + p.w / 2 + p.face * 30; P('impacts/hit-spark', hx, p.y + 46, { height: 20, flip: p.face < 0, palette: elPal(ev.el), life: 22, light: 0.4 }, 2); break; }   // 불꽃 두르기 완성: 작은 불티만 (모션이 주인공)
       case 'elBurst': {                                                   // 속성 게이지가 찼다: 속성마다 다른 상태 표시
         const pal = elPal(ev.el);

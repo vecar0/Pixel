@@ -1,10 +1,10 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqgfj2i';
-import { hitLevel } from './level.js?v=mwqgfj2i';
-import { STAT_SPELL } from './spells.js?v=mwqgfj2i';
-import { CFG } from './config.js?v=mwqgfj2i';
-import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT, telegraphOf } from './enemies.js?v=mwqgfj2i';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqgfj2i';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqgl5y0';
+import { hitLevel } from './level.js?v=mwqgl5y0';
+import { STAT_SPELL } from './spells.js?v=mwqgl5y0';
+import { CFG } from './config.js?v=mwqgl5y0';
+import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT, telegraphOf } from './enemies.js?v=mwqgl5y0';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqgl5y0';
 
 const PR = CFG.parry, PO = CFG.poise;
 

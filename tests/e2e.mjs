@@ -31,9 +31,8 @@ await check('PC: 타이틀 → Enter(마을) → Enter(출발) → 지역 입장
   eq(await p.evaluate(() => window.__lk.mode), 'town');
   await p.screenshot({ path: path.join(out, 'town.png') });
   await p.keyboard.press('Enter'); await p.waitForTimeout(2300);   // 마을을 떠날 때 아이리스가 닫힌 뒤 지역 입장
-  eq(await p.evaluate(() => window.__lk.mode), 'intro');
-  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
-  eq(await p.evaluate(() => window.__lk.mode), 'play');
+  eq(await p.evaluate(() => window.__lk.mode), 'play');   // 지역 입장: 버튼 없이 바로 (이름만 잠깐 뜸)
+  ok(await p.evaluate(() => !!window.__lk.R.banner), 'region banner');
 });
 await check('마을: 걸어서 창고·제단·모닥불·허수아비, 오른쪽 길 = 순례 준비', PC, async p => {
   await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
@@ -50,10 +49,10 @@ await check('마을: 걸어서 창고·제단·모닥불·허수아비, 오른�
   await at('rack', 'practice'); await at('altar', 'prep'); await at('board', 'records'); await at('campfire', 'camp');
   ok(await p.evaluate(() => window.__lk.world.enemies.some(e => e.dummy)), 'dummy');
   await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(2300);
-  eq(await p.evaluate(() => window.__lk.mode), 'intro');   // 오른쪽 길 = 바로 출발
+  eq(await p.evaluate(() => window.__lk.mode), 'play');   // 오른쪽 길 = 바로 출발
 });
 await check('첫 순례 튜토리얼: 이동 → 점프 → 항아리 → 불씨 → (적 등장) 패링 단계', PC, async p => {
-  await p.keyboard.press('Enter'); await p.waitForTimeout(1200); await p.keyboard.press('Enter'); await p.waitForTimeout(2300); await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(1200); await p.keyboard.press('Enter'); await p.waitForTimeout(3800);
   ok(await p.evaluate(() => window.__lk.world.tutorial && window.__lk.world.holdWaves), 'tutorial room');
   const step = () => p.evaluate(() => window.__lk.tut && window.__lk.tut.step);
   await p.keyboard.down('d'); await p.waitForTimeout(900); await p.keyboard.up('d'); eq(await step(), 1);

@@ -10,7 +10,7 @@ import { I, steps, FLAT, makeDummy } from './helpers.mjs';
 import { stepLoop } from '../js/loop.js';
 import { GIMMICK, hitGimmick } from '../js/core/gimmick.js';
 import { initLevel, LV } from '../js/core/level.js';
-import { newRun, enterRoom, buildRoomWorld, setRegion } from '../js/core/run.js';
+import { newRun, enterRoom, buildRoomWorld, setRegion, saveFromWorld } from '../js/core/run.js';
 import { SPELLS, STAT_SPELL, spellFor } from '../js/core/spells.js';
 
 const W = (o = {}) => createWorld({ room: 'test', solids: FLAT, ...o });
@@ -172,12 +172,13 @@ test('마법 엔진: 시전하면 빛을 쓰지 않고 마법 피해 · 시전 �
   cast(w, 'ring'); steps(w, 30);
   eq(d.hp, 100 - CFG.skill.ring.dmg); eq(w.player.light, 100); eq(w.player.hp, 5);
 });
-test('불꽃 두르기: 빛 30 소모, 15초 동안 베기 피해 +12%·속성 게이지 / 빛 부족하면 못 두름', () => {
+test('불꽃 두르기: 빛 30 소모, 20번 휘두를 동안 베기 피해 +12%·속성 게이지 / 휘두를 때마다 1씩 줄고 다 쓰면 꺼짐 / 빛 부족하면 못 두름', () => {
   const w = W(); settle(w); w.player.face = 1; w.player.spells = ['bolt']; w.player.light = 40; w.player.element = 'str';
   tick(w, I({ skill: true })); steps(w, CFG.skill.enchant.castF + 2);   // 칼을 등불에 대는 동작이 끝날 때까지
-  eq(w.player.light, 10); ok(w.player.enchantT > CFG.enchant.dur - 30, '두름');
+  eq(w.player.light, 10); eq(w.player.enchantT, CFG.enchant.swings, '두름'); steps(w, 300); eq(w.player.enchantT, CFG.enchant.swings, '시간으로는 안 줄어듦');
   const d = makeDummy(w, { hp: 300 }); d.x = w.player.x + 30;
-  tick(w, I({ attack: true })); steps(w, 20); ok(d.elB > 0, '속성 게이지'); eq(d.hp, 300 - Math.round(CFG.attack.dmg[0] * CFG.enchant.dmgMul));
+  tick(w, I({ attack: true })); steps(w, 20); ok(d.elB > 0, '속성 게이지'); eq(d.hp, 300 - Math.round(CFG.attack.dmg[0] * CFG.enchant.dmgMul)); eq(w.player.enchantT, CFG.enchant.swings - 1, '한 번 휘둘러 1 줄어듦');
+  w.player.enchantT = 1; steps(w, 30); tick(w, I({ attack: true })); steps(w, 3); ok(w.player.enchantT > 0, '마지막 베기 동안은 두른 채'); steps(w, 40); eq(w.player.enchantT, 0, '다 쓰면 꺼짐');
   w.player.enchantT = 0; w.player.light = 10; tick(w, I({ skill: true })); ok(w.player.state !== 'cast', '빛 부족');
 });
 test('두르기 단계: 17 개화는 터진 적에게 마법 각인 → 그 적을 처형하면 속성 마법 (저절로 나가지 않음)', () => {
@@ -188,7 +189,7 @@ test('두르기 단계: 17 개화는 터진 적에게 마법 각인 → 그 적�
   steps(w, 40); w.enemies.splice(w.enemies.indexOf(d), 1); const g = makeDummy(w, { hp: 50, poise: true }); g.x = w.player.x + w.player.w + 4; g.sigil = 'tornado'; g.sigilEl = 'str'; g.stunT = 120; g.poise = 1;
   let got = false; tick(w, I({ attack: true })); for (let k = 0; k < 90 && !got; k++) { tick(w, I()); got = w.events.some(e => e.type === 'skill' && e.spell === 'tornado' && e.exec); }
   ok(got, '처형 끝에 회오리'); ok(!g.sigil);
-  w.player.light = 100; w.player.state = 'idle'; tick(w, I({ skill: true })); steps(w, CFG.skill.enchant.castF + 2); ok(w.player.enchantT > 800, '다시 누르면 두르기 시간만 다시 채움');
+  w.player.light = 100; w.player.state = 'idle'; w.player.enchantT = 3; tick(w, I({ skill: true })); steps(w, CFG.skill.enchant.castF + 2); eq(w.player.enchantT, CFG.enchant.swings, '다시 누르면 횟수를 다시 채움');
 });
 test('속성 게이지는 스탯 방식대로 쌓임: 화염=3타, 얼음=구르기로 흘림, 빛=패링, 귀화=등 뒤, 생명=맞기, 번개=연속 타격', () => {
   const setup = el => { const w = W(); settle(w); const p = w.player; p.face = 1; p.element = el; p.enchantT = 900; p.hp = 9; p.maxHp = 9;
@@ -675,5 +676,9 @@ test('암살자: 어둠은 보지만 다시 켜는 섬광에 눈이 멂', () => 
   const w = W(); settle(w); const p = w.player; p.dark = true;
   const a = spawnEnemy(w, 'assassin', p.x + 60, p.y, {}); a.spawnT = 0;
   ok(seesPlayer(w, a), '어둠눈'); relightFlash(w); ok(a.blindT > 0); ok(!seesPlayer(w, a), '눈부심');
+});
+test('두르기 남은 횟수는 다음 방으로 이어짐', () => {
+  const r = newRun(3); enterRoom(r, 'combat'); const w = buildRoomWorld(r); w.player.enchantT = 7;
+  saveFromWorld(r, w); enterRoom(r, 'combat'); eq(buildRoomWorld(r).player.enchantT, 7);
 });
 run();

@@ -21,7 +21,7 @@ await p.goto(`http://localhost:${srv.address().port}/`); await p.waitForTimeout(
 await tap('#go'); await p.waitForTimeout(300);                                  // 타이틀 → 마을
 (await mode()) === 'town' || fail('마을 아님');
 await p.keyboard.press('Enter');                                               // 마을에서 Enter = 출발 → 아이리스 → 지역 입장
-(await until(async () => (await mode()) === 'intro', 5000)) || fail('지역 입장 아님');
+(await until(async () => (await mode()) === 'play', 5000)) || fail('지역 입장 아님');   // 지역 입장: 버튼 없이 바로
 let stages = 0;
 for (let guard = 0; guard < 2000; guard++) {
   const m = await mode();

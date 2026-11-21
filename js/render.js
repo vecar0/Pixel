@@ -1,14 +1,14 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqg1ynu';
-import { CFG } from './core/config.js?v=mwqg1ynu';
-import { attackBox } from './core/player.js?v=mwqg1ynu';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqg1ynu';
-import { SPELLS } from './core/spells.js?v=mwqg1ynu';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqg1ynu';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqg1ynu';
-import { FxDirector } from './fxmap.js?v=mwqg1ynu';
-import { iconCanvas } from './icons.js?v=mwqg1ynu';
-import { bodyShade } from './shade.js?v=mwqg1ynu';
+import { clipBeam } from './core/gimmick.js?v=mwqg4kpo';
+import { CFG } from './core/config.js?v=mwqg4kpo';
+import { attackBox } from './core/player.js?v=mwqg4kpo';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqg4kpo';
+import { SPELLS } from './core/spells.js?v=mwqg4kpo';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqg4kpo';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqg4kpo';
+import { FxDirector } from './fxmap.js?v=mwqg4kpo';
+import { iconCanvas } from './icons.js?v=mwqg4kpo';
+import { bodyShade } from './shade.js?v=mwqg4kpo';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)

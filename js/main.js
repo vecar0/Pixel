@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick } from './core/world.js?v=mwpvktog';
-import { Renderer } from './render.js?v=mwpvktog';
-import { Input } from './input.js?v=mwpvktog';
-import { Sfx } from './sfx.js?v=mwpvktog';
-import { stepLoop } from './loop.js?v=mwpvktog';
-import { spawnEnemy } from './core/enemies.js?v=mwpvktog';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwpvktog';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwpvktog';
-import { icon, RELIC_TONE } from './icons.js?v=mwpvktog';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwpvktog';
-import { startTitleScene } from './titlescene.js?v=mwpvktog';
+import { createWorld, tick } from './core/world.js?v=mwpyhskc';
+import { Renderer } from './render.js?v=mwpyhskc';
+import { Input } from './input.js?v=mwpyhskc';
+import { Sfx } from './sfx.js?v=mwpyhskc';
+import { stepLoop } from './loop.js?v=mwpyhskc';
+import { spawnEnemy } from './core/enemies.js?v=mwpyhskc';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwpyhskc';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwpyhskc';
+import { icon, RELIC_TONE } from './icons.js?v=mwpyhskc';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwpyhskc';
+import { startTitleScene } from './titlescene.js?v=mwpyhskc';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwpvktog';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, spellFor } from './core/spells.js?v=mwpvktog';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpvktog';
-import { takeTrain, runSpell } from './core/run.js?v=mwpvktog';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwpvktog';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwpvktog';
+import { CFG } from './core/config.js?v=mwpyhskc';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, spellFor } from './core/spells.js?v=mwpyhskc';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpyhskc';
+import { takeTrain, runSpell } from './core/run.js?v=mwpyhskc';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwpyhskc';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwpyhskc';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -55,7 +55,8 @@ const DEATH_F = 230;   // 사망 연출 길이(틱): 쓰러짐 90 → 등불이 
 let deathT = 0;
 let run = null, mode = 'title', world = createWorld({ room: 'arena' }), acc = 0, last = performance.now(), slowT = 0;
 // 테스트·디버그용 훅
-const lk = window.__lk = { get tut() { return tut; }, get world() { return world; }, get mode() { return mode; }, get run() { return run; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y), gotoBoss: reg => { setRegion(run, reg); enterRoom(run, 'boss'); play(); } };
+const lk = window.__lk = { get tut() { return tut; }, get world() { return world; }, get mode() { return mode; }, get run() { return run; }, setRoom, start, R, step: () => step(), spawn: (k, x, y) => spawnEnemy(world, k, x, y), gotoBoss: reg => { setRegion(run, reg); enterRoom(run, 'boss'); play(); },
+  screens: { reward: () => rewardScreen(() => {}), relic: () => relicScreen(() => {}), prep: () => prepScreen(), practice: () => practiceScreen(), records: () => recordsScreen(), settings: () => settingsScreen(), camp: () => campMenu(), pause: () => overlay('pause'), rest: () => restScreen(), shop: () => shopScreen(), intro: () => regionIntro(), result: () => finish(false) } };   // 테스트용: 화면 바로 열기
 
 function screen(html) { input.clear(); R.hud = !html; ui.innerHTML = html ? `<div class="screen">${html}</div>` : ''; }
 function bind(id, fn) { const b = document.getElementById(id); if (b) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); sfx.play('click'); fn(); }); }
@@ -342,8 +343,8 @@ function prepScreen() {   // 순례 제단: 어둠 단계·랜턴 기름 고르�
 function practiceScreen() {
   mode = 'practice';
   const bosses = REGIONS;   // 처음부터 모든 보스 연습 가능
-  screen(`<div class="card"><h2>연습장</h2><div class="line">기록되지 않는 연습. 패턴과 기믹을 익히세요</div><div class="picks">
-    ${bosses.map(g => `<button class="pick door t-ember" data-id="${g.id}"><div class="niche">${icon('boss', 'ember')}</div><b>${ENEMY_DEFS[g.boss].name}</b><span>${g.name}</span></button>`).join('') || '<div class="line">아직 쓰러뜨린 보스가 없다. 지역 보스를 쓰러뜨리면 여기서 다시 싸울 수 있다</div>'}
+  screen(`<div class="card wide"><h2>연습장</h2><div class="line">기록되지 않는 연습. 패턴과 기믹을 익히세요</div><div class="picks grid3">
+    ${bosses.map(g => `<button class="pick small t-ember" data-id="${g.id}"><div class="niche">${icon('boss', 'ember')}</div><b>${ENEMY_DEFS[g.boss].name}</b><span>${g.name}</span></button>`).join('') || '<div class="line">아직 쓰러뜨린 보스가 없다. 지역 보스를 쓰러뜨리면 여기서 다시 싸울 수 있다</div>'}
     </div><div class="btns"><button class="btn alt" data-id="back">돌아가기</button></div></div>`);
   bindPicks(id => { if (id === 'back') return town(); newPilgrimage(); setRegion(run, +id); enterRoom(run, 'boss'); practice = true; play(); });
 }

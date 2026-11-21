@@ -1,11 +1,11 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
-import { CFG } from './config.js?v=mwpvktog';
-import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwpvktog';
-import { updateLevel, dropPickups } from './level.js?v=mwpvktog';
-import { createPlayer, updatePlayer, overlap } from './player.js?v=mwpvktog';
-import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwpvktog';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk } from './combat.js?v=mwpvktog';
-import { ACTIONS } from './player.js?v=mwpvktog';
+import { CFG } from './config.js?v=mwpyhskc';
+import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwpyhskc';
+import { updateLevel, dropPickups } from './level.js?v=mwpyhskc';
+import { createPlayer, updatePlayer, overlap } from './player.js?v=mwpyhskc';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwpyhskc';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk } from './combat.js?v=mwpyhskc';
+import { ACTIONS } from './player.js?v=mwpyhskc';
 
 // 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판
 const walls = W => [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }];
@@ -17,7 +17,7 @@ export const BOSS_ARENAS = {
   spider:   { width: 1600, solids: [...walls(1600), hill(660, 280, 26), plat(220, 196), plat(420, 140), plat(1060, 140), plat(1260, 196), plat(740, 100, 120)], spawn: { x: 160, y: 230 } },   // 유리 광산: 가운데 바위 둔덕, 계단식 발판
   shadow:   { width: 1600, solids: [...walls(1600), plat(420, 194), plat(620, 140), plat(860, 140), plat(1060, 194)], spawn: { x: 160, y: 230 } },   // 무너진 성소: 가운데 높은 발판 둘
   forge:    { width: 1600, solids: [...walls(1600), plat(300, 194), plat(1180, 194), plat(740, 126, 120)], spawn: { x: 160, y: 230 } },   // 용광로: 양쪽 증기 밸브(420·1180) 사이 넓은 바닥
-  king:     { width: 1600, solids: [...walls(1600), hill(700, 200, 24), plat(480, 192), plat(1000, 192)], spawn: { x: 160, y: 230 } },   // 왕좌의 방: 가운데 낮은 단 · 사슬 닻 셋
+  king:     { width: 1600, solids: [...walls(1600), hill(960, 200, 24), plat(480, 192), plat(1040, 186)], spawn: { x: 160, y: 230 } },   // 왕좌의 방: 가운데 낮은 단 · 사슬 닻 셋
 };
 export const EMPTY_INPUT = Object.freeze({
   left: false, right: false, down: false, jumpHeld: false,

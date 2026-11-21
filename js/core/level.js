@@ -1,7 +1,7 @@
 // 레벨 요소: 수집품(불씨·회복·빛 구슬) · 항아리 · 가시 · 불기둥 분출구 · 움직이는 발판 · 레버와 철문 · 보물 상자 · 방 목표 시간
 // 모두 데이터(w.level)로 들고 있고 tick마다 updateLevel. DOM 없음 → Node 테스트 가능
-import { CFG } from './config.js?v=mwqhrbhm';
-import { overlap } from './player.js?v=mwqhrbhm';
+import { CFG } from './config.js?v=mwqhzqo0';
+import { overlap } from './player.js?v=mwqhzqo0';
 
 export const LV = {
   pickup: { magnetR: 96, magnetF: 24, life: 1200, grav: 0.35 },
@@ -131,12 +131,19 @@ export function populateArena(w, lvl, idx, rnd, tutorial = false) {
   // 레버와 철문: 지역 2부터 절반 확률 (지역 4는 항상). 방 왼쪽 끝 작은 방에 보물 상자
   // 철문 판정은 천장까지 (위로 넘어가지 못하게), 그림은 아래 140px
   if (lvl >= 2 && (lvl >= 4 || rnd() < 0.6)) {
-    const gx = 120, gate = { x: gx, y: 0, w: 16, h: 300, gate: true }, plat = w.solids.find(s => s.oneWay && !s.mover && s.x > 300 && s.x < W - 300);
-    w.solids.push(gate);
-    L.gates.push({ id: 1, x: gx + 8, y: 300, solid: gate, open: false, t: 0 });
-    L.chests.push({ x: 56, y: 300, open: false });
-    const lx = plat ? Math.round(plat.x + plat.w / 2) : Math.round(W * 0.5);
-    L.levers.push({ x: lx, y: plat ? plat.y : 300, on: false, gate: 1 });
+    const plats = w.solids.filter(s => s.oneWay && !s.mover && s.x > 260 && s.x + s.w < W - 260 && s.y > 150);
+    if (rnd() < 0.55 || !plats.length) {                                 // 왼쪽 금고: 문·상자 자리가 방마다 다름, 레버는 발판 위나 바닥 아무 곳
+      const gx = 110 + ((rnd() * 110) | 0), gate = { x: gx, y: 0, w: 16, h: 300, gate: true };
+      w.solids.push(gate);
+      L.gates.push({ id: 1, x: gx + 8, y: 300, solid: gate, open: false, t: 0 });
+      L.chests.push({ x: 40 + ((rnd() * Math.max(1, gx - 80)) | 0), y: 300, open: false });
+      const plat = plats.length && rnd() < 0.6 ? plats[(rnd() * plats.length) | 0] : null;
+      const lx = plat ? Math.round(plat.x + 12 + rnd() * (plat.w - 24)) : Math.round(W * (0.3 + rnd() * 0.45));
+      L.levers.push({ x: lx, y: plat ? plat.y : ground(lx), on: false, gate: 1 });
+    } else {                                                             // 문 없이: 높은 발판 위에 상자 (점프로 올라가 열기)
+      const pl = plats[(rnd() * plats.length) | 0];
+      L.chests.push({ x: Math.round(pl.x + 18 + rnd() * Math.max(1, pl.w - 36)), y: pl.y, open: false });
+    }
   }
   return L;
 }

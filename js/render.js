@@ -1,14 +1,14 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqhrbhm';
-import { CFG } from './core/config.js?v=mwqhrbhm';
-import { attackBox } from './core/player.js?v=mwqhrbhm';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqhrbhm';
-import { SPELLS } from './core/spells.js?v=mwqhrbhm';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqhrbhm';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqhrbhm';
-import { FxDirector } from './fxmap.js?v=mwqhrbhm';
-import { iconCanvas } from './icons.js?v=mwqhrbhm';
-import { bodyShade } from './shade.js?v=mwqhrbhm';
+import { clipBeam } from './core/gimmick.js?v=mwqhzqo0';
+import { CFG } from './core/config.js?v=mwqhzqo0';
+import { attackBox } from './core/player.js?v=mwqhzqo0';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqhzqo0';
+import { SPELLS } from './core/spells.js?v=mwqhzqo0';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqhzqo0';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqhzqo0';
+import { FxDirector } from './fxmap.js?v=mwqhzqo0';
+import { iconCanvas } from './icons.js?v=mwqhzqo0';
+import { bodyShade } from './shade.js?v=mwqhzqo0';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -134,6 +134,7 @@ export class Renderer {
       else if (ev.type === 'affinity') this.texts.push({ x: ev.x, y: ev.y - 34, t: 0, s: ev.aff > 0 ? '약점!' : '저항', life: 60, col: ev.aff > 0 ? EL_SLASH[ev.el][5] : '#8a8494' });   // 속성 상성
       else if (ev.type === 'alarm') { this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '경보!', life: 60, col: '#ff4f5e' }); (this.ripples = this.ripples || []).push({ x: ev.x, y: ev.y + 30, r: 6, t: 0, c: '255,79,94', max: ev.r }); }
       else if (ev.type === 'sigil') { this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '각인!', life: 50, col: EL_SLASH[ev.el][5] }); if (!this.sigilHint) { this.sigilHint = 1; this.say(`마법 각인 — 이 적을 처형하면 「${SPELLS[ev.spell] ? SPELLS[ev.spell].name : '마법'}」이 터진다`, 220); } }
+      else if (ev.type === 'execShock') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '무너짐!', life: 45, col: '#ffd27a' });   // 처형의 충격으로 흔들리던 적이 무너짐 → 연속 처형
       else if (ev.type === 'enrage') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '버팀!', life: 45, col: '#ff8a5a' });   // 연타당한 적이 버티고 반격
       else if (ev.type === 'enemyStrike' && ev.kind === 'moth') { const e = w.enemies.find(o => o.kind === 'moth' && o.st === 'active' && Math.abs(o.x + o.w / 2 - ev.x) < 40); if (e) e.dustT = 24; }   // 나방 돌진: 날개 가루가 흩날림 (아래 parts)
       else if (ev.type === 'dazzle') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '눈부심', life: 50, col: '#ffe9a0' });
@@ -296,8 +297,8 @@ export class Renderer {
     const hideChars = this.irisBusy() || (this.cine && this.cine.hideLira);
     for (const e of w.enemies) if (e.dummy) {                              // 마을 허수아비 이름표
       g.font = '10px Galmuri9, monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      const x = Math.round(e.x + e.w / 2), y = 214, tw = g.measureText('허수아비 (연습 상대)').width + 12;
-      g.fillStyle = 'rgba(13,10,17,.75)'; g.fillRect(Math.round(x - tw / 2), y - 7, Math.round(tw), 14); g.fillStyle = '#cfc6dc'; g.fillText('허수아비 (연습 상대)', x, y);
+      const x = Math.round(e.x + e.w / 2), y = 214;
+      g.fillStyle = '#0d0a11'; for (const [ddx, ddy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) g.fillText('허수아비 (연습 상대)', x + ddx, y + ddy); g.fillStyle = '#cfc6dc'; g.fillText('허수아비 (연습 상대)', x, y);
       g.textAlign = 'left'; g.textBaseline = 'top';
     }
     for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: gh.st || 'ghost', stateT: gh.stT ?? p.stateT, execMode: gh.mode, chainNext: null, iframes: 0 }); }
@@ -568,8 +569,7 @@ export class Renderer {
       const y = o.kind === 'merchant' ? 188 : o.kind === 'campfire' ? 196 : o.kind === 'altar' ? 180 : o.kind === 'keeper' ? 192 : o.kind === 'board' ? 218 : o.kind === 'rack' ? 222 : 214, txt = o.kind === 'exit' || gim || o.used ? label : `공격 버튼  ${label}`;
       g.font = '10px Galmuri9, monospace'; g.textBaseline = 'middle'; g.textAlign = 'center';
       const tw = g.measureText(txt).width + 14, bob = Math.round(Math.sin(w.t * 0.1) * 2), lx = Math.max(tw / 2 + 4, Math.min(w.width - tw / 2 - 4, o.x));   // 벽 가까이선 화면 안으로
-      g.fillStyle = 'rgba(13,10,17,.8)'; g.fillRect(Math.round(lx - tw / 2), y - 8 + bob, Math.round(tw), 16);
-      g.fillStyle = '#ffb347'; g.fillRect(Math.round(lx - tw / 2), y + 7 + bob, Math.round(tw), 1);
+      g.fillStyle = '#0d0a11'; for (const [ddx, ddy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) g.fillText(txt, lx + ddx, y + bob + ddy);   // 네모 상자 없이 글자에 검은 테두리만
       g.fillStyle = '#ffe2a8'; g.fillText(txt, lx, y + bob);
       g.textAlign = 'left'; g.textBaseline = 'top';
     }
@@ -648,6 +648,9 @@ export class Renderer {
     }
   }
   // 레벨 오브젝트 (게임 그림과 같은 픽셀 소품)
+  softGlow(g, x, y, r, rgb, a) {                                          // 둥근 은은한 빛 (네모 상자 대신)
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
   drawLevel(g, w, again = false) {
     const L = w.level, t = w.t, I = n => this.img(n);
     for (const s of L.spikes) { const im = I('spikes'); if (im) for (let x = 0; x < s.w; x += im.naturalWidth) { const ww = Math.min(im.naturalWidth, s.w - x); g.drawImage(im, 0, 0, ww, im.naturalHeight, s.x + x, 300 - im.naturalHeight + 1, ww, im.naturalHeight); } }
@@ -655,7 +658,7 @@ export class Renderer {
       const im = I('vent'), x = Math.round(v.x);
       if (im) g.drawImage(im, (im.naturalWidth - 40) >> 1, 0, 40, im.naturalHeight, x - 20, 300 - im.naturalHeight + 2, 40, im.naturalHeight);
       if (v.st === 'warn') {                                              // 예고: 틈새가 달아오르고 불씨·연기가 오름
-        const k = 0.4 + 0.6 * Math.abs(Math.sin(t * 0.25)); g.fillStyle = `rgba(255,120,40,${0.35 * k})`; g.fillRect(x - 14, 180, 28, 120);
+        const k = 0.4 + 0.6 * Math.abs(Math.sin(t * 0.25)), vg = g.createLinearGradient(0, 300, 0, 170); vg.addColorStop(0, `rgba(255,120,40,${0.4 * k})`); vg.addColorStop(1, 'rgba(255,120,40,0)'); g.fillStyle = vg; g.beginPath(); g.moveTo(x - 14, 300); g.lineTo(x - 5, 170); g.lineTo(x + 5, 170); g.lineTo(x + 14, 300); g.fill();   // 분출 예고: 아래에서 위로 옅어지는 불빛 (네모 상자 없이)
         g.fillStyle = `rgba(255,190,90,${k})`; g.fillRect(x - 16, 294, 32, 3);
         if (!again && t % 4 === 0) this.parts.push({ x: x - 10 + Math.random() * 20, y: 292, vx: (Math.random() - 0.5) * 0.4, vy: -1 - Math.random(), life: 30, col: Math.random() < 0.5 ? '#5a5060' : '#ffb347', s: 2 });
       }
@@ -663,10 +666,10 @@ export class Renderer {
     for (const m of L.movers) { const im = I('mover'), s = m.solid; if (im) g.drawImage(im, Math.round(s.x + s.w / 2 - im.naturalWidth / 2), Math.round(s.y - 2)); }
     for (const u of L.urns) if (!u.broken) { const im = I('urn'); if (im) g.drawImage(im, Math.round(u.x + u.w / 2 - im.naturalWidth / 2), Math.round(u.y + u.h - im.naturalHeight + 1)); }
     for (const c of L.chests) { const im = I(c.open ? 'chest-open' : 'chest'); if (im) g.drawImage(im, Math.round(c.x - im.naturalWidth / 2), Math.round(c.y - im.naturalHeight + 1));
-      if (!c.open) { const k = 0.5 + 0.5 * Math.sin(t * 0.1); g.fillStyle = `rgba(255,200,90,${0.25 * k})`; g.fillRect(c.x - 20, c.y - 30, 40, 30); } }
+      if (!c.open) { const k = 0.5 + 0.5 * Math.sin(t * 0.1); this.softGlow(g, c.x, c.y - 12, 22, `255,200,90`, 0.22 * k); if (t % 40 === 0) this.parts.push({ x: c.x + (Math.random() - 0.5) * 20, y: c.y - 18, vx: 0, vy: -0.3, life: 30, col: '#ffe08a', s: 1 }); } }   // 안 연 상자: 둥근 빛 + 반짝 (네모 상자 없이)
     for (const gt of L.gates) { const im = I('gate'); if (!im || (gt.open && !gt.solid)) continue; g.drawImage(im, Math.round(gt.x - im.naturalWidth / 2), Math.round(300 - im.naturalHeight + 1 - (gt.lift || 0))); }   // 열리면 위로 올라가며 사라짐
     for (const v of L.levers) { const im = I('lever'); if (!im) continue; g.save(); g.translate(Math.round(v.x), Math.round(v.y - im.naturalHeight + 1)); if (v.on) { g.scale(-1, 1); g.filter = 'hue-rotate(110deg)'; } g.drawImage(im, -im.naturalWidth / 2, 0); g.restore();
-      if (!v.on) { const k = 0.5 + 0.5 * Math.sin(t * 0.15); g.fillStyle = `rgba(255,179,71,${0.3 * k})`; g.fillRect(Math.round(v.x) - 14, Math.round(v.y) - 34, 28, 34); } }
+      if (!v.on) { const k = 0.5 + 0.5 * Math.sin(t * 0.15); this.softGlow(g, v.x, v.y - 16, 18, `255,179,71`, 0.26 * k); } }   // 안 당긴 레버: 둥근 빛
   }
   drawPickups(g, w) {
     for (const q of w.level.pickups) {

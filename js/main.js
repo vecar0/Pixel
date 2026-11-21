@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick, groundAt } from './core/world.js?v=mwqhrbhm';
-import { Renderer } from './render.js?v=mwqhrbhm';
-import { Input } from './input.js?v=mwqhrbhm';
-import { Sfx } from './sfx.js?v=mwqhrbhm';
-import { stepLoop } from './loop.js?v=mwqhrbhm';
-import { spawnEnemy } from './core/enemies.js?v=mwqhrbhm';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqhrbhm';
-import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqhrbhm';
-import { icon, RELIC_TONE } from './icons.js?v=mwqhrbhm';
-import { installPixelUI, roundBtn, gaugeBtn } from './pixelui.js?v=mwqhrbhm';
-import { startTitleScene } from './titlescene.js?v=mwqhrbhm';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwqhzqo0';
+import { Renderer } from './render.js?v=mwqhzqo0';
+import { Input } from './input.js?v=mwqhzqo0';
+import { Sfx } from './sfx.js?v=mwqhzqo0';
+import { stepLoop } from './loop.js?v=mwqhzqo0';
+import { spawnEnemy } from './core/enemies.js?v=mwqhzqo0';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqhzqo0';
+import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqhzqo0';
+import { icon, RELIC_TONE } from './icons.js?v=mwqhzqo0';
+import { installPixelUI, roundBtn, gaugeBtn } from './pixelui.js?v=mwqhzqo0';
+import { startTitleScene } from './titlescene.js?v=mwqhzqo0';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwqhrbhm';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqhrbhm';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqhrbhm';
-import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqhrbhm';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwqhrbhm';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqhrbhm';
+import { CFG } from './core/config.js?v=mwqhzqo0';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqhzqo0';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqhzqo0';
+import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqhzqo0';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwqhzqo0';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqhzqo0';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -217,8 +217,8 @@ const tierText = (el, t) => !el || t < 1 ? '게이지가 차면 약한 화상' :
 // 불꽃 점화 카드: 속성 · 단계 사다리 (14 각성 → 17 개화: 폭발 때 속성 마법 → 20 극의: 최종 마법)
 const enchantCard = () => { const el = run.element || null, E = ENCHANT[el], t = enchTier(run.stats, el);
   const ladder = el ? [1, 2, 3].map(k => `<div class="${t >= k ? '' : 'dim'}">${[0, 14, 17, 20][k]} ${TIER_NAME[k]} — ${tierText(el, k)}</div>`).join('') : '<div>스탯 하나가 14가 되면 그 속성으로 각성</div>';
-  return `<div class="spellcard t-${elTone(el)}"><div class="niche">${icon('ember', elTone(el))}</div><div class="sc-body"><div class="sc-top"><small>${el ? `등불 속성 · ${STAT_ELEMENT[el]} · ${TIER_NAME[t]}` : '각성 전'}</small><b>${E.name}</b><span class="sc-cost">빛 ${CFG.enchant.cost}</span></div><div class="sc-desc">마법 버튼으로 검에 불꽃을 붙여 피해 +12% (빛 20 이상이면 점화하고, 휘두를 때마다 빛 5 — 빛이 바닥나면 꺼짐). ${E.build} — 가득 차면 터진다. 소등했다 다시 켜면 섬광이 주변 게이지를 한 번에 채운다</div><div class="sc-perk">${ladder}</div></div></div>`; };
-const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 점화(빛 20 이상이면 점화, 휘두를 때마다 빛 5). 베면 속성 게이지가 쌓이고 차면 터진다. 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경) · 17 개화: 터진 적에게 마법 각인, 그 적을 처형하면 속성 마법 · 20 극의: 최종 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].slice(1).map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
+  return `<div class="spellcard t-${elTone(el)}"><div class="niche">${icon('ember', elTone(el))}</div><div class="sc-body"><div class="sc-top"><small>${el ? `등불 속성 · ${STAT_ELEMENT[el]} · ${TIER_NAME[t]}` : '각성 전'}</small><b>${E.name}</b><span class="sc-cost">빛 ${CFG.enchant.cost}</span></div><div class="sc-desc">마법 버튼으로 검에 불꽃을 붙여 피해 +12% (빛 10 이상이면 점화하고, 휘두를 때마다 빛 5 — 빛이 바닥나면 꺼짐). ${E.build} — 가득 차면 터진다. 소등했다 다시 켜면 섬광이 주변 게이지를 한 번에 채운다</div><div class="sc-perk">${ladder}</div></div></div>`; };
+const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 점화(빛 10 이상이면 점화, 휘두를 때마다 빛 5). 베면 속성 게이지가 쌓이고 차면 터진다. 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경) · 17 개화: 터진 적에게 마법 각인, 그 적을 처형하면 속성 마법 · 20 극의: 최종 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].slice(1).map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
 // 단련 미리 보기: 지금(run.stats) → 찍은 뒤(draft). 바뀌는 수치, 열리고 잃는 능력·약점·공명, 마법 변화
 function trainPreview(draft, lastUp) {
   const st0 = run.stats, ch = STATS.filter(S => draft[S.id] !== st0[S.id]);

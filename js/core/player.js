@@ -1,6 +1,6 @@
 // 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
-import { CFG } from './config.js?v=mwqhrbhm';
-import { statMods, startStats } from './stats.js?v=mwqhrbhm';
+import { CFG } from './config.js?v=mwqhzqo0';
+import { statMods, startStats } from './stats.js?v=mwqhzqo0';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, FL = CFG.flurry;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
@@ -80,7 +80,7 @@ function start(w, p, action, inp) {
     case 'flask':
       if (p.flasks <= 0 || p.hp >= p.maxHp) return false;
       setState(p, 'flask'); return true;
-    case 'skill': {                                 // 불꽃 점화: 빛이 점화 기준(20) 이상이면 점화할 수 있음 (점화할 때는 빛을 안 씀). 점화한 채 휘두를 때마다 빛이 줄고, 바닥나면 꺼짐
+    case 'skill': {                                 // 불꽃 점화: 빛이 점화 기준(10) 이상이면 점화할 수 있음 (점화할 때는 빛을 안 씀). 점화한 채 휘두를 때마다 빛이 줄고, 바닥나면 꺼짐
       if (p.enchantT > 0 && !p.enchLast) return false;                // 이미 점화한 상태
       if (p.light < enchMin(p)) return false;
       p.spell = 'enchant'; p.elB = 0; setState(p, 'cast'); w.events.push({ type: 'castStart', spell: 'enchant', el: p.element || null }); return true;

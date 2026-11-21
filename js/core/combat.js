@@ -1,10 +1,10 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqhrbhm';
-import { hitLevel } from './level.js?v=mwqhrbhm';
-import { STAT_SPELL } from './spells.js?v=mwqhrbhm';
-import { CFG } from './config.js?v=mwqhrbhm';
-import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT, telegraphOf } from './enemies.js?v=mwqhrbhm';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqhrbhm';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqhzqo0';
+import { hitLevel } from './level.js?v=mwqhzqo0';
+import { STAT_SPELL } from './spells.js?v=mwqhzqo0';
+import { CFG } from './config.js?v=mwqhzqo0';
+import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT, telegraphOf } from './enemies.js?v=mwqhzqo0';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqhzqo0';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -364,6 +364,10 @@ export function updateExecute(w) {
       w.events.push({ type: 'execChain', n: p.execChain, x: e.x + e.w / 2, y: e.y });
     }
     p.execTarget = null;
+    // 처형의 충격: 근처에서 이미 흔들리던 적(자세 절반 이상 또는 체력 35% 이하) 하나가 무너짐 → 연속 처형으로 이어짐
+    { const cx0 = e.x + e.w / 2, weak = w.enemies.filter(o => o !== e && !o.dead && !o.boss && !o.dummy && !(o.spawnT > 0) && !(o.stunT > 0) && !o.executing && o.poiseMax && Math.abs(o.x + o.w / 2 - cx0) < X.chainRange && Math.abs(o.y - e.y) < 140 && (o.poise >= 0.45 || o.hp <= o.maxHp * 0.35))
+        .sort((a, b) => Math.abs(a.x - cx0) - Math.abs(b.x - cx0))[0];
+      if (weak) { addPoise(w, weak, 1); w.events.push({ type: 'execShock', x: weak.x + weak.w / 2, y: weak.y }); } }
     // 근처에 그로기 적이 또 있으면 이어서 처형 (놓치지 않게 미리 붙잡아 둠)
     const cx = e.x + e.w / 2, nx = w.enemies.filter(o => o !== e && !o.dead && o.stunT > 0 && !o.executing && Math.abs(o.x + o.w / 2 - cx) < X.chainRange && Math.abs(o.y - e.y) < 140)
       .sort((a, b) => Math.abs(a.x - cx) - Math.abs(b.x - cx))[0];

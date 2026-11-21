@@ -179,7 +179,7 @@ test('불꽃 두르기: 빛 20 이상이면 공짜로 두름, 휘두를 때마�
   const d = makeDummy(w, { hp: 300 }); d.x = w.player.x + 30;
   tick(w, I({ attack: true })); steps(w, 20); ok(d.elB > 0, '속성 게이지'); eq(d.hp, 300 - Math.round(CFG.attack.dmg[0] * CFG.enchant.dmgMul)); eq(w.player.light, 40 - CFG.enchant.swingCost, '휘두르면 빛 5');
   w.player.light = 7; steps(w, 30); tick(w, I({ attack: true })); steps(w, 3); ok(w.player.enchantT > 0, '마지막 베기 동안은 두른 채'); steps(w, 40); eq(w.player.enchantT, 0, '빛이 바닥나 꺼짐');
-  w.player.light = 10; tick(w, I({ skill: true })); ok(w.player.state !== 'cast', '빛 부족');
+  w.player.light = CFG.enchant.cost - 1; tick(w, I({ skill: true })); ok(w.player.state !== 'cast', '빛 부족');
 });
 test('두르기 단계: 17 개화는 터진 적에게 마법 각인 → 그 적을 처형하면 속성 마법 (저절로 나가지 않음)', () => {
   const w = W(); settle(w); w.player.face = 1; w.player.element = 'str'; w.player.enchTier = 2; w.player.enchantT = 600; w.player.spells = ['bolt'];
@@ -680,5 +680,12 @@ test('암살자: 어둠은 보지만 다시 켜는 섬광에 눈이 멂', () => 
 test('두른 상태와 빛은 다음 방으로 이어짐', () => {
   const r = newRun(3); enterRoom(r, 'combat'); const w = buildRoomWorld(r); w.player.enchantT = 1; w.player.light = 50;
   saveFromWorld(r, w); enterRoom(r, 'combat'); const p2 = buildRoomWorld(r).player; ok(p2.enchantT > 0); eq(p2.light, 50);
+});
+test('연속 처형: 처형의 충격이 근처의 흔들리던 적(자세 절반↑)을 무너뜨려 이어서 처형', () => {
+  const w = W(); settle(w); const p = w.player; p.face = 1;
+  const a = makeDummy(w, { hp: 50, poise: true }); a.x = p.x + p.w + 4; a.stunT = 200; a.poise = 1;
+  const b = makeDummy(w, { hp: 50, poise: true }); b.x = p.x + 160; b.poise = 0.6; b.poiseRegenT = 999;
+  tick(w, I({ attack: true })); steps(w, 140);
+  ok(a.dead, '첫 처형'); ok(b.dead, '이어서 처형 ' + b.hp + '/' + b.stunT);
 });
 run();

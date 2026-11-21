@@ -49,7 +49,10 @@ for (let guard = 0; guard < 2000; guard++) {
     const md = await mode();
     if (st.room === 'boss') {
       if (md !== 'won') fail('보스 뒤 won 아님: ' + md);
-      if (await p.evaluate(() => !!document.querySelector('#next'))) { await tap('#next'); await p.waitForTimeout(300); await tap('.pick'); await p.waitForTimeout(300); continue; }
+      if (await p.evaluate(() => !!document.querySelector('#next'))) { await tap('#next'); await p.waitForTimeout(300);   // 보스 보상: 단련 2점
+        for (let k = 0; k < 4 && await p.evaluate(() => !!document.querySelector('#train') && document.querySelector('#train').disabled); k++) { await tap('.arw:not([disabled]):not(.back)'); await p.waitForTimeout(100); }
+        if (await p.evaluate(() => !!document.querySelector('#train'))) await tap('#train');
+        await p.waitForTimeout(300); continue; }
       break;                                                                  // 마지막 보스 → 결과 화면
     }
     md === 'play' || fail('방을 비운 뒤 바로 보상 화면이 뜸(출구 뒤로 미뤄야 함): ' + md);

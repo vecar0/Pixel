@@ -152,10 +152,9 @@ test('흑염의 순례자: 리라의 공격을 패링하고 반격 예고', () =
   }
   ok(parried);
 });
-test('청유: 푸른 결계 후 5초간 늦은 패링도 완벽', () => {
-  const w = createWorld({ room: 'test', solids: [{ x: -1000, y: 300, w: 4000, h: 40 }] }); steps(w, 30);
-  w.player.spells = ['ward']; w.player.light = 100; w.player.enchantT = 5; tick(w, I({ skill: true })); steps(w, 31);   // 두른 상태 → 풀기
-  ok(w.player.blueT > 0);
+test('랜턴 기름: 각성 전 두르기 속성 (성유 = 빛, 귀화유 = 귀화, 정제유 = 등불 불꽃)', () => {
+  const el = oil => { const r = newRun(1, { oil }); enterRoom(r, 'combat'); return buildRoomWorld(r).player.element; };
+  eq(el('blue'), 'wil'); eq(el('black'), 'lmp'); eq(el('refined'), null);
 });
 test('영구 진행: 조각으로 해금, 해금 각인이 풀에 들어감, 클리어 시 어둠 단계 해금', () => {
   const s = defaultSave(); s.shards = 10;

@@ -1,9 +1,10 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqah9fo';
-import { hitLevel } from './level.js?v=mwqah9fo';
-import { CFG } from './config.js?v=mwqah9fo';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwqah9fo';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqah9fo';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqan6ii';
+import { hitLevel } from './level.js?v=mwqan6ii';
+import { STAT_SPELL } from './spells.js?v=mwqan6ii';
+import { CFG } from './config.js?v=mwqan6ii';
+import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwqan6ii';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqan6ii';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -190,18 +191,20 @@ export function spellPerk(w, e, spell, killed) {
 export function elBuild(w, e, amt) {
   const p = w.player, E = CFG.enchant, el = p.element || null;
   e.elB = (e.elB || 0) + amt; e.elK = el;
-  if (e.elB < (e.boss ? E.needBoss : E.need)) return;
-  e.elB = 0; const B = e.boss ? 0.4 : 1, cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+  if (e.elB < (e.boss ? E.needBoss : E.need[p.enchTier || 0])) return;
+  e.elB = 0; const B = e.boss ? 0.4 : 1, cx = e.x + e.w / 2, cy = e.y + e.h / 2, T = p.enchTier >= 2 ? 1.5 : 1;   // 17 이상: 폭발 1.5배
   switch (el) {
-    case 'str': e.burnT = Math.max(e.burnT || 0, 241); break;                                       // 화상: 초당 3 × 4초
+    case 'str': e.burnT = Math.max(e.burnT || 0, Math.round(241 * T)); break;                                       // 화상: 초당 3 × 4초
     case 'agi': e.staggerT = Math.max(e.staggerT || 0, Math.round(90 * B)); e.brittleT = Math.max(e.brittleT || 0, 180); e.frozenT = Math.round(90 * B); break;   // 빙결
-    case 'wil': addPoise(w, e, e.boss ? 0.3 : 0.7); break;                                          // 심판의 빛: 자세 붕괴
-    case 'lmp': p.light = Math.min(CFG.light.max, p.light + 30); e.slowT = Math.max(e.slowT || 0, 150); break;   // 혼 뽑기
+    case 'wil': addPoise(w, e, (e.boss ? 0.3 : 0.7) * T); break;                                          // 심판의 빛: 자세 붕괴
+    case 'lmp': p.light = Math.min(CFG.light.max, p.light + Math.round(30 * T)); e.slowT = Math.max(e.slowT || 0, 150); break;   // 혼 뽑기
     case 'vit': if ((p.healBurst || 0) < 2 && p.hp < p.maxHp) { p.healBurst = (p.healBurst || 0) + 1; const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); } break;   // 흡수
     case 'fury': for (const o of liveOf(w).filter(o => o !== e && Math.abs(o.x + o.w / 2 - cx) < 170).slice(0, 2)) { damageEnemy(w, o, 22, 0.15); o.staggerT = Math.max(o.staggerT || 0, 20); w.events.push({ type: 'zap', x0: cx, y0: cy, x1: o.x + o.w / 2, y1: o.y + o.h / 2 }); } e.staggerT = Math.max(e.staggerT || 0, 20); break;   // 방전
     default: e.burnT = Math.max(e.burnT || 0, 121);                                                  // 등불 불꽃: 약한 화상
   }
   w.events.push({ type: 'elBurst', el, x: cx, y: cy, boss: !!e.boss, ent: e });
+  const sp = el && p.enchTier >= 2 ? STAT_SPELL[el][p.enchTier >= 3 ? 2 : 1] : null;   // 17: 속성 마법 · 20: 최종 마법이 폭발과 함께 저절로
+  if (sp) { const ev = { type: 'skill', spell: sp, x: p.x + p.w / 2, y: p.y + 24, face: p.face, auto: true }; w.events.push(ev); resolveSkill(w, ev); }
 }
 // 가까운 적 (앞쪽 우선). 없으면 null
 function nearestTarget(w, range) {
@@ -212,9 +215,6 @@ function nearestTarget(w, range) {
 }
 export function resolveSkill(w, ev) {
   const p = w.player, S = CFG.skill[ev.spell], M = p.mods.spellMul || 1, cx = p.x + p.w / 2, PM = p.mods.poiseMul || 1;
-  if ((p.mods.res || {}).warmLamp && ++p.castCount % 3 === 0 && p.hp < p.maxHp) {   // 공명 따스한 등불
-    const hp0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: hp0, x: cx, y: p.y + p.h });
-  }
   p.blastHeal = 0;
   const PK = { meteor: [300, 0.3], heal: [300, 0.25] }[ev.spell];          // 운석: 힘 강화 / 치유의 빛: 약한 투지 보완 — 공격 피해 +%
   if (PK) { p.powT = PK[0]; p.powK = PK[1]; }
@@ -224,7 +224,8 @@ export function resolveSkill(w, ev) {
   if (ev.spell === 'sanctum') p.shieldT = 600;                            // 성광 기둥: 10초 보호막 1회
   if (ev.spell === 'drain') p.powT = 0;
   const aim = nearestTarget(w, 520);                                    // 자동 조준: 가장 가까운 적(앞쪽 우선) 쪽으로 돌아서 쏜다
-  if (aim) { p.face = Math.sign(aim.x + aim.w / 2 - cx) || p.face; ev.face = p.face; }
+  if (aim && !ev.auto) { p.face = Math.sign(aim.x + aim.w / 2 - cx) || p.face; ev.face = p.face; }
+  else if (aim) ev.face = Math.sign(aim.x + aim.w / 2 - cx) || p.face;   // 속성 폭발 마법: 리라는 그대로, 마법만 적 쪽으로
   const live = liveOf(w);
   if (ev.spell === 'bolt' || ev.spell === 'lance' || ev.spell === 'wisps') {
     const n = S.n || (ev.spell === 'bolt' && p.mods.lmp7 ? 2 : 1);  // 등불 14: 등불 탄 두 발 · 도깨비불 3발

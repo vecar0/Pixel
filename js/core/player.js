@@ -1,6 +1,6 @@
 // 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
-import { CFG } from './config.js?v=mwqah9fo';
-import { statMods, startStats } from './stats.js?v=mwqah9fo';
+import { CFG } from './config.js?v=mwqan6ii';
+import { statMods, startStats } from './stats.js?v=mwqan6ii';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, FL = CFG.flurry;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
@@ -80,10 +80,7 @@ function start(w, p, action, inp) {
     case 'flask':
       if (p.flasks <= 0 || p.hp >= p.maxHp) return false;
       setState(p, 'flask'); return true;
-    case 'skill': {                                 // 등불 마법: 두르기(빛 소모, 검에 속성 불꽃) → 두른 상태에서 다시 누르면 풀기(속성 마법, 추가 비용 없음)
-      const spell = (p.spells || [])[0];
-      if (!spell) return false;
-      if (p.enchantT > 0) { p.enchantT = 0; p.spell = spell; setState(p, 'cast'); w.events.push({ type: 'castStart', spell, release: true }); return true; }
+    case 'skill': {                                 // 등불 마법 = 불꽃 두르기: 빛을 써서 검에 속성 불꽃 (두른 중에 누르면 시간을 다시 채움). 마법은 속성 게이지가 터질 때 저절로 나간다
       const cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));
       if (p.light < cost) return false;
       p.light -= cost; p.spell = 'enchant'; p.elB = 0; setState(p, 'cast'); w.events.push({ type: 'castStart', spell: 'enchant', el: p.element || null }); return true;
@@ -136,7 +133,9 @@ export function updatePlayer(w, inp) {
   if (p.state === 'execute' && !p.chainNext && t >= (p.execMode === 'chain' ? CFG.execute.chainTotalF : CFG.execute.totalF)) { setState(p, 'idle'); p.execMode = null; }
   if (p.state === 'cast') {
     const S = CFG.skill[p.spell];
-    if (t === S.fireF) { if (p.spell === 'enchant') { p.enchantT = CFG.enchant.dur; p.healBurst = 0; w.events.push({ type: 'enchant', el: p.element || null, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); } else w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); }
+    if (t === S.fireF) { if (p.spell === 'enchant') { p.enchantT = Math.round(CFG.enchant.dur * (p.mods.enchDur || 1)); p.healBurst = 0;
+      if ((p.mods.res || {}).warmLamp && ++p.castCount % 3 === 0 && p.hp < p.maxHp) { const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); }   // 공명 따스한 등불: 두르기 3번마다
+      w.events.push({ type: 'enchant', el: p.element || null, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); } else w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); }
     if (t >= S.castF) setState(p, 'idle');
   }
 

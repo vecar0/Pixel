@@ -1,10 +1,10 @@
 // 한 판(런)의 진행: 서약 → 방 → 각인 → 문 선택 → … → 보스. 순수 로직 (DOM 없음)
-import { CFG } from './config.js?v=mwqah9fo';
-import { createWorld } from './world.js?v=mwqah9fo';
-import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwqah9fo';
-import { startStats, statMods, train } from './stats.js?v=mwqah9fo';
-import { OIL_SPELL, spellFor, elementSpell, awakenPick } from './spells.js?v=mwqah9fo';
-import { populateArena, parTime } from './level.js?v=mwqah9fo';
+import { CFG } from './config.js?v=mwqan6ii';
+import { createWorld } from './world.js?v=mwqan6ii';
+import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwqan6ii';
+import { startStats, statMods, train } from './stats.js?v=mwqan6ii';
+import { OIL_SPELL, OIL_EL, spellFor, elementSpell, awakenPick } from './spells.js?v=mwqan6ii';
+import { populateArena, parTime } from './level.js?v=mwqan6ii';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -216,7 +216,8 @@ export function buildRoomWorld(r) {
   const p = w.player;
   applyRelics(p, r.relics);
   applyStats(p, r.stats || startStats());
-  p.spells = [runSpell(r)]; p.element = r.element || null;
+  p.spells = [runSpell(r)]; p.element = r.element || OIL_EL[r.oil] || null;
+  const v = r.element ? r.stats[r.element] : 0; p.enchTier = !r.element ? 0 : v >= 20 ? 3 : v >= 17 ? 2 : v >= 14 ? 1 : 0;   // 두르기 단계
   p.oil = r.oil;
   if (r.dark >= 5) p.maxFlasks = Math.max(1, p.maxFlasks - 1);   // 어둠 5+: 기름병 -1
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);

@@ -15,8 +15,8 @@ export const STATS = [
     tiers: [[12, '일반 패링도 빛 +5 더'], [14, '완벽 패링한 적이 1.5배 오래 무방비'], [16, '일반 패링도 완벽 패링만큼 자세 피해'], [18, '그로기 시간 +50%'], [20, '모든 패링이 완벽 판정']],
     weak: [[6, '헛 패링 후딜 +6프레임'], [3, '완벽 패링 판정 추가 -1프레임']] },
   { id: 'lmp', name: '등불', icon: 'ult', tone: 'amber', per: '점마다 마법 피해 ±7.5%, 빛 획득 ±5%',
-    tiers: [[12, '마법 비용 -10%'], [14, '등불 탄이 두 발'], [16, '모든 마법 시전 중 무적'], [18, '마법 비용 -20% (12와 합쳐 -20%)'], [20, '처치할 때마다 빛 +15']],
-    weak: [[6, '마법 비용 +25%'], [3, '빛 획득 추가 -20%']] },
+    tiers: [[12, '두르기 빛 -10%'], [14, '두르기 시간 +50%'], [16, '두르는 동작 중 무적'], [18, '두르기 빛 -20% (12와 합쳐 -20%)'], [20, '처치할 때마다 빛 +15']],
+    weak: [[6, '두르기 빛 +25%'], [3, '빛 획득 추가 -20%']] },
   { id: 'vit', name: '생명', icon: 'heart', tone: 'red', per: '2점마다 최대 체력 ±1',
     tiers: [[12, '기름병을 30% 빨리 마신다'], [14, '기름병 회복 +1'], [16, '새 방에 들어갈 때 체력 1 회복'], [18, '맞은 뒤 무적 시간 +50%'], [20, '기름병 +1개']],
     weak: [[6, '기름병 회복 -1'], [3, '기름병 -1개']] },
@@ -52,7 +52,7 @@ export function statMods(s) {
     poiseMul: Math.max(0.4, 1 + 0.12 * d('wil')), perfectExtra: Math.trunc(d('wil')) - (lo('wil', 3) ? 1 : 0), parryLight: at('wil', 12) ? 5 : 0,
     staggerMul: at('wil', 14) ? 1.5 : 1, normalAsPerfect: at('wil', 16), stunMul: at('wil', 18) ? 1.5 : 1, allPerfect: at('wil', 20), whiffLag: lo('wil', 6) ? 6 : 0,
     spellMul: Math.max(0.4, 1 + 0.15 * d('lmp')), lightStat: Math.max(0.5, 1 + 0.1 * d('lmp')) * (lo('lmp', 3) ? 0.8 : 1),
-    costMul: lo('lmp', 6) ? 1.25 : at('lmp', 18) ? 0.8 : at('lmp', 12) ? 0.9 : 1, lmp7: at('lmp', 14), spellInv: at('lmp', 16), lmp10: at('lmp', 20),
+    costMul: lo('lmp', 6) ? 1.25 : at('lmp', 18) ? 0.8 : at('lmp', 12) ? 0.9 : 1, lmp7: at('lmp', 14), enchDur: at('lmp', 14) ? 1.5 : 1, spellInv: at('lmp', 16), lmp10: at('lmp', 20),
     hpBonus: Math.trunc(d('vit')), flaskSpeed: at('vit', 12) ? 0.7 : 1, flaskBonus: at('vit', 14) ? 1 : lo('vit', 6) ? -1 : 0, roomHeal: at('vit', 16),
     hurtIMul: at('vit', 18) ? 1.5 : 1, flaskCount: (at('vit', 20) ? 1 : 0) - (lo('vit', 3) ? 1 : 0),
     critChance: Math.max(0, 0.06 * d('fury')), critMul: at('fury', 20) ? 3 : at('fury', 12) ? 2.5 : 2, killCrit: at('fury', 14), critLight: at('fury', 16) ? 10 : 0,
@@ -77,8 +77,8 @@ export const RESONANCES = [
   { id: 'gale',     a: 'agi', b: 'fury', name: '질풍', desc: '구르기 직후 첫 공격 치명타 확률 +35%' },
   { id: 'aegis',    a: 'wil', b: 'vit',  name: '수호', desc: '방마다 한 번, 맞을 피해를 막는다' },
   { id: 'retribute',a: 'wil', b: 'fury', name: '응징', desc: '완벽 패링하면 다음 공격이 치명타' },
-  { id: 'warmLamp', a: 'lmp', b: 'vit',  name: '따스한 등불', desc: '마법을 3번 쓸 때마다 체력 1 회복' },
-  { id: 'wildfire', a: 'lmp', b: 'fury', name: '폭주 등불', desc: '마법도 치명타가 난다 (투지 치명타 확률·배율 적용)' },
+  { id: 'warmLamp', a: 'lmp', b: 'vit',  name: '따스한 등불', desc: '불꽃 두르기 3번마다 체력 1 회복' },
+  { id: 'wildfire', a: 'lmp', b: 'fury', name: '폭주 등불', desc: '속성 폭발 마법도 치명타가 난다 (투지 치명타 확률·배율 적용)' },
 ];
 export const resonancesOf = s => RESONANCES.filter(r => s[r.a] >= T_ABILITY && s[r.b] >= T_ABILITY);
 // 극의: 20에 도달한 스탯의 칭호

@@ -38,6 +38,7 @@ export const SPELL_PERK = {
 export const SPELL_TAGS = { bolt: ['유도'], lance: ['유도', '관통'], pillar: ['조준', '범위'], thunder: ['조준', '자세 파괴'], stars: ['넓은 범위', '3연타'], tornado: ['조준', '3연타'], spikes: ['앞쪽 직선', '바닥'], smite: ['조준', '자세 파괴'], wisps: ['유도', '3발'], thorns: ['앞쪽 직선', '자세 피해'], drain: ['조준', '흡혈 1'],
   meteor: ['조준', '큰 범위', '무적'], ring: ['주변', '탄 지우기', '무적'], ward: ['주변', '완벽 패링 5초', '무적'], spear: ['관통 광선', '무적'],
   chain: ['조준', '최대 3명'], blast: ['조준', '큰 범위', '무적'], heal: ['회복 2'], sanctum: ['주변', '회복 1', '무적'] };
+export const OIL_EL = { refined: null, blue: 'wil', black: 'lmp' };   // 각성 전 등불 기름 = 각성 전 두르기 속성
 export const OIL_SPELL = { refined: 'bolt', blue: 'ward', black: 'spear' };
 // 스탯 → 마법: [14 이상, 17 이상, 20]
 export const SPELL_AT = [14, 17, 20];

@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick, groundAt } from './core/world.js?v=mwqah9fo';
-import { Renderer } from './render.js?v=mwqah9fo';
-import { Input } from './input.js?v=mwqah9fo';
-import { Sfx } from './sfx.js?v=mwqah9fo';
-import { stepLoop } from './loop.js?v=mwqah9fo';
-import { spawnEnemy } from './core/enemies.js?v=mwqah9fo';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqah9fo';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwqah9fo';
-import { icon, RELIC_TONE } from './icons.js?v=mwqah9fo';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwqah9fo';
-import { startTitleScene } from './titlescene.js?v=mwqah9fo';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwqan6ii';
+import { Renderer } from './render.js?v=mwqan6ii';
+import { Input } from './input.js?v=mwqan6ii';
+import { Sfx } from './sfx.js?v=mwqan6ii';
+import { stepLoop } from './loop.js?v=mwqan6ii';
+import { spawnEnemy } from './core/enemies.js?v=mwqan6ii';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqan6ii';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwqan6ii';
+import { icon, RELIC_TONE } from './icons.js?v=mwqan6ii';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwqan6ii';
+import { startTitleScene } from './titlescene.js?v=mwqan6ii';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwqah9fo';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqah9fo';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqah9fo';
-import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqah9fo';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwqah9fo';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqah9fo';
+import { CFG } from './core/config.js?v=mwqan6ii';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqan6ii';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqan6ii';
+import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqan6ii';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwqan6ii';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqan6ii';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -37,10 +37,10 @@ function syncTouch() {
     const sp = (p.spells || [])[i], b = $('#b-' + id);
     if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + '<small>두르기</small>' : '<small>두르기</small>'; }   // 글씨는 늘 '마법' (그림이 지금 마법을 보여 줌)
     if (!sp) { b.style.setProperty('--fill', '0%'); b.classList.remove('ready'); return; }
-    const lit = p.enchantT > 0, cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));   // 두른 동안: 버튼 = 풀기, 테두리 = 남은 두르기 시간 / 아니면: 두르기 비용만큼 빛이 차오름
-    const f = lit ? p.enchantT / CFG.enchant.dur : Math.min(1, p.light / cost);
+    const lit = p.enchantT > 0, cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));   // 두른 동안: 테두리 = 남은 두르기 시간 / 아니면: 두르기 비용만큼 빛이 차오름
+    const f = lit ? p.enchantT / Math.round(CFG.enchant.dur * (p.mods.enchDur || 1)) : Math.min(1, p.light / cost);
     b.style.setProperty('--p', (f * 100).toFixed(1)); b.classList.toggle('ready', lit || p.light >= cost); b.classList.toggle('lit', lit);
-    const lab = b.querySelector('small'); if (lab) lab.textContent = lit ? '풀기' : '두르기';
+    const lab = b.querySelector('small'); if (lab) lab.textContent = '두르기';
   });
   const f = $('#b-flask'); f.querySelector('b').textContent = p.flasks; f.classList.toggle('empty', p.flasks <= 0);
   f.style.setProperty('--p', (Math.min(1, p.flasks / Math.max(1, p.maxFlasks)) * 100).toFixed(1));   // 남은 기름병 = 테두리 게이지
@@ -69,7 +69,7 @@ function play() {
   const ST = { combat: '전투', elite: '강적', shop: '떠돌이 상인', rest: '작은 등불', boss: ENEMY_DEFS[regionOf(run).boss].name };
   if (run.room === 'boss') { R.startCine(ST.boss, `${regionOf(run).name}의 대등을 지키는 자`); R.banner = null; }
   else R.banner = { s: ST[run.room] || '', sub: `${regionOf(run).name} · ${run.roomIdx + 1} / ${run.length}`, t: 150, dur: 150 };
-  if (run.justAwakened) { const el = run.justAwakened; run.justAwakened = null; R.banner = { s: `등불 각성 — ${STAT_ELEMENT[el]}`, sub: `${ENCHANT[el].name} · 마법 버튼: 두르기 → 다시 누르면 풀기`, t: 220, dur: 220 }; }
+  if (run.justAwakened) { const el = run.justAwakened; run.justAwakened = null; R.banner = { s: `등불 각성 — ${STAT_ELEMENT[el]}`, sub: `${ENCHANT[el].name} · 마법 버튼으로 검에 불꽃을 두르고 베어 속성을 터뜨려라`, t: 220, dur: 220 }; }
   world.player.lagTicks = Math.max(0, Math.min(6, Math.round(save.settings.offsetMs / 16.7)));   // 타이밍 보정
   if (world.player.roomHealed) R.healFx(world.player, 1, world.player.hp - 1);                 // 생명 16
   sfx.musicFor(run.region, run.room === 'boss'); acc = 0; slowT = 0; mode = 'play'; screen(''); showTouch();
@@ -78,7 +78,7 @@ function play() {
 const TALK = {
   keeper: { name: '등대지기 노라', img: 'assets/keeper.png', lines: [
     ['등대의 불이 꺼진 지 오래야.', '네 등불로 여섯 대등을 다시 켜 주렴.'],
-    ['기름은 제단에서 골라 가렴.', '성유는 빛의 결계, 귀화유는 귀화 창으로 시작하지.'],
+    ['기름은 제단에서 골라 가렴.', '기름에 따라 각성 전 등불 불꽃의 성질이 달라지지.'],
     ['허수아비로 손을 풀고 가렴.', '패링은 적이 번쩍이는 그 순간이 전부야.'],
     ['어둠이 깊을수록 보상도 크다네.', '자신이 생기면 제단에서 어둠을 올려 봐.'],
     ['방마다 목표 시간이 있어.', '빨리 정리하면 불씨를 더 얹어 주지.'],
@@ -149,7 +149,7 @@ const runStat = () => {
   const path = run.route.map((t, i) => `<b class="${i < run.roomIdx ? 'done' : i === run.roomIdx ? 'now' : ''}">${icon(...(RI[t] || RI.combat))}</b>`).join('');
   return `<div class="runbar"><span>${regionOf(run).name}</span><span class="path">${path}</span>
     <span class="em">${icon('ember', 'amber')}${run.embers}</span>
-    <span class="spells" title="등불 속성 · 풀기 마법">${icon(SPELLS[runSpell(run)].icon, SPELLS[runSpell(run)].tone)}${run.element ? STAT_ELEMENT[run.element] : '등불'} · ${SPELLS[runSpell(run)].name}</span></div>`;
+    <span class="spells" title="등불 속성 · 두르기 단계">${icon('ember', elTone(run.element))}${run.element ? STAT_ELEMENT[run.element] : '각성 전'} · ${TIER_NAME[enchTier(run.stats, run.element)]}</span></div>`;
 };
 // 스탯 판: 반대 스탯 쌍마다 한 칸(위 스탯 카드 · 20칸 저울 · 아래 스탯 카드). 글은 줄바꿈되어 잘리지 않는다
 // 카드 한 장 = 이름·값·능력 사다리(12~20) / 지금 수치 / 다음 능력 / 약점
@@ -207,8 +207,15 @@ function spellCard(id, label = '지금 마법') {
     <div class="sc-desc">${S.desc}${delay}</div>${SPELL_PERK[id] ? `<div class="sc-perk">${SPELL_PERK[id]}</div>` : ''}</div></div>`;
 }
 // 불꽃 두르기 카드: 각성 속성 · 게이지가 찼을 때 효과
-const enchantCard = () => { const el = run.element || null, E = ENCHANT[el]; return `<div class="spellcard t-${el ? SPELLS[STAT_SPELL[el][0]].tone : 'amber'}"><div class="niche">${icon('ember', el ? SPELLS[STAT_SPELL[el][0]].tone : 'amber')}</div><div class="sc-body"><div class="sc-top"><small>${el ? `등불 각성 · ${STAT_ELEMENT[el]}` : '각성 전 (스탯 하나가 14가 되면 각성)'}</small><b>${E.name}</b><span class="sc-cost">빛 ${CFG.enchant.cost}</span></div><div class="sc-desc">검에 불꽃을 둘러 15초 동안 피해 +12%. 벨 때마다 속성 게이지가 쌓이고, ${E.desc}. 두른 채 다시 누르면 풀기 마법</div></div></div>`; };
-const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 두르기(빛 30, 15초, 베면 속성 게이지) → 다시 누르면 풀기(속성 마법). 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경), 14·17·20마다 풀기 마법이 강해진다 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
+const TIER_NAME = ['각성 전', '각성', '개화', '극의'];
+const elTone = el => el ? SPELLS[STAT_SPELL[el][0]].tone : 'amber';
+const enchTier = (st, el) => !el ? 0 : st[el] >= 20 ? 3 : st[el] >= 17 ? 2 : st[el] >= 14 ? 1 : 0;
+const tierText = (el, t) => !el || t < 1 ? '게이지가 차면 약한 화상' : t === 1 ? ENCHANT[el].desc : `${ENCHANT[el].burst} 1.5배 + 「${SPELLS[STAT_SPELL[el][t >= 3 ? 2 : 1]].name}」이 함께 터짐`;
+// 불꽃 두르기 카드: 속성 · 단계 사다리 (14 각성 → 17 개화: 폭발 때 속성 마법 → 20 극의: 최종 마법)
+const enchantCard = () => { const el = run.element || null, E = ENCHANT[el], t = enchTier(run.stats, el);
+  const ladder = el ? [1, 2, 3].map(k => `<div class="${t >= k ? '' : 'dim'}">${[0, 14, 17, 20][k]} ${TIER_NAME[k]} — ${tierText(el, k)}</div>`).join('') : '<div>스탯 하나가 14가 되면 그 속성으로 각성</div>';
+  return `<div class="spellcard t-${elTone(el)}"><div class="niche">${icon('ember', elTone(el))}</div><div class="sc-body"><div class="sc-top"><small>${el ? `등불 속성 · ${STAT_ELEMENT[el]} · ${TIER_NAME[t]}` : '각성 전'}</small><b>${E.name}</b><span class="sc-cost">빛 ${CFG.enchant.cost}</span></div><div class="sc-desc">마법 버튼으로 검에 불꽃을 둘러 15초 동안 피해 +12%. 벨 때마다 속성 게이지가 쌓이고 가득 차면 터진다</div><div class="sc-perk">${ladder}</div></div></div>`; };
+const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 두르기(빛 30, 15초). 베면 속성 게이지가 쌓이고 차면 터진다. 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경) · 17 개화: 터질 때 속성 마법 · 20 극의: 최종 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].slice(1).map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
 // 단련 미리 보기: 지금(run.stats) → 찍은 뒤(draft). 바뀌는 수치, 열리고 잃는 능력·약점·공명, 마법 변화
 function trainPreview(draft, lastUp) {
   const st0 = run.stats, ch = STATS.filter(S => draft[S.id] !== st0[S.id]);
@@ -224,10 +231,11 @@ function trainPreview(draft, lastUp) {
   const r0 = resonancesOf(st0).map(r => r.id), r1 = resonancesOf(draft);
   for (const r of r1) if (!r0.includes(r.id)) notes.push(`<b class="res">공명 「${r.name}」</b> ${r.desc}`);
   for (const id of r0) if (!r1.some(r => r.id === id)) notes.push(`<b class="bad">공명 「${RESONANCES.find(r => r.id === id).name}」 잃음</b>`);
-  const el1 = run.element || awakenPick(draft, lastUp), s0 = runSpell(run), s1 = elementSpell(draft, el1, run.baseSpell);
+  const el1 = run.element || awakenPick(draft, lastUp), t0 = enchTier(run.stats, run.element), t1 = enchTier(draft, el1);
   if (!run.element && el1) notes.push(`<b class="res">등불 각성 — ${STAT_ELEMENT[el1]}</b> ${ENCHANT[el1].name}: ${ENCHANT[el1].desc}`);
+  else if (t1 > t0) notes.push(`<b class="res">두르기 ${TIER_NAME[t1]}</b> ${tierText(el1, t1)}`); else if (t1 < t0) notes.push(`<b class="bad">두르기 단계 내려감</b> ${tierText(el1, t1)}`);
   return `<div class="tprev"><div class="tls">${lines.join('')}</div>${notes.map(n => `<div class="note">${n}</div>`).join('')}
-    ${s1 !== s0 ? spellCard(s1, `풀기 마법이 바뀐다 (${SPELLS[s0].name} →)`) : ''}</div>`;
+    </div>`;
 }
 // 단련: 점수를 ▲▼ 화살표로 자유롭게 찍고(반대 화살표로 되돌림) '단련 완료'로 확정. 전투방 1점, 강적방·보스 2점 (각인은 없음)
 function rewardScreen(after, draft = null, lastUp = null, total = 1) {   // 단련은 한 번에 1점
@@ -419,7 +427,7 @@ const attuneTargets = () => Object.keys(STAT_SPELL).filter(k => run.stats[k] >= 
 function attuneScreen() {
   const p = world.player, list = attuneTargets();
   screen(`<div class="card wide"><h2>등불 다시 붙이기</h2><div class="quote">지금: ${run.element ? STAT_ELEMENT[run.element] : '각성 전'} — 어떤 불꽃으로 탈까</div><div class="picks">
-    ${list.map(k => { const sp = elementSpell(run.stats, k, run.baseSpell), S = SPELLS[sp]; return `<button class="pick door t-${S.tone}" data-id="${k}"><div class="niche">${icon(S.icon, S.tone)}</div><b>${STAT_ELEMENT[k]} · ${ENCHANT[k].name}</b><span>${ENCHANT[k].desc}<br>풀기: ${S.name}</span></button>`; }).join('')}
+    ${list.map(k => { const sp = elementSpell(run.stats, k, run.baseSpell), S = SPELLS[sp]; return `<button class="pick door t-${S.tone}" data-id="${k}"><div class="niche">${icon(S.icon, S.tone)}</div><b>${STAT_ELEMENT[k]} · ${ENCHANT[k].name}</b><span>${tierText(k, enchTier(run.stats, k))}</span></button>`; }).join('')}
     </div><div class="btns"><button class="btn alt" data-id="back">그대로 둔다</button></div></div>`);
   bindPicks(id => {
     if (id !== 'back' && STAT_SPELL[id]) { run.element = id; p.element = id; p.spells = [runSpell(run)]; p.enchantT = 0; hudKey = ''; R.say(`등불이 ${STAT_ELEMENT[id]}의 불꽃으로 탄다`); sfx.play('ignite'); }
@@ -506,7 +514,7 @@ function overlay(kind) {
     saveFromWorld(run, world); finish(false);
   } else if (kind === 'pause') {
     screen(`<div class="card board pausecard">${runStat()}<div class="sboard"><div>${statGrid()}${spellMap()}</div>
-      <div class="spanel"><h2>잠시 멈춤</h2>${enchantCard()}${spellCard(runSpell(run), '풀기 마법')}${resonanceBlock()}
+      <div class="spanel"><h2>잠시 멈춤</h2>${enchantCard()}${resonanceBlock()}
       <div class="btns"><button class="btn" id="resume">계속</button><button class="btn alt" id="home">순례 포기</button></div></div></div></div>`);
     bindInfo(run.stats, run.stats); bind('resume', resume); bind('home', () => { saveFromWorld(run, world); finish(false); });
   }

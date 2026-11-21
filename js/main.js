@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick, groundAt } from './core/world.js?v=mwqgl5y0';
-import { Renderer } from './render.js?v=mwqgl5y0';
-import { Input } from './input.js?v=mwqgl5y0';
-import { Sfx } from './sfx.js?v=mwqgl5y0';
-import { stepLoop } from './loop.js?v=mwqgl5y0';
-import { spawnEnemy } from './core/enemies.js?v=mwqgl5y0';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqgl5y0';
-import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqgl5y0';
-import { icon, RELIC_TONE } from './icons.js?v=mwqgl5y0';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwqgl5y0';
-import { startTitleScene } from './titlescene.js?v=mwqgl5y0';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwqh1f3g';
+import { Renderer } from './render.js?v=mwqh1f3g';
+import { Input } from './input.js?v=mwqh1f3g';
+import { Sfx } from './sfx.js?v=mwqh1f3g';
+import { stepLoop } from './loop.js?v=mwqh1f3g';
+import { spawnEnemy } from './core/enemies.js?v=mwqh1f3g';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqh1f3g';
+import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqh1f3g';
+import { icon, RELIC_TONE } from './icons.js?v=mwqh1f3g';
+import { installPixelUI, roundBtn, gaugeBtn } from './pixelui.js?v=mwqh1f3g';
+import { startTitleScene } from './titlescene.js?v=mwqh1f3g';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwqgl5y0';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqgl5y0';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqgl5y0';
-import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqgl5y0';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwqgl5y0';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqgl5y0';
+import { CFG } from './core/config.js?v=mwqh1f3g';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqh1f3g';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqh1f3g';
+import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqh1f3g';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwqh1f3g';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqh1f3g';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -30,6 +30,7 @@ input.onAny = () => sfx.unlock();
 const TB = { attack: ['sword', 'bone', '공격'], parry: ['parry', 'amber', '패링'], roll: ['roll', 'moon', '회피'], jump: ['jump', 'moon', '점프'], skill: ['ember', 'amber', '마법'], snuff: ['wick', 'bone', '소등'], flask: ['flask', 'heal', ''], pause: ['pause', 'bone', ''] };
 for (const [k, [ic, t, name]] of Object.entries(TB)) { const b = $('#b-' + k); b.setAttribute('aria-label', b.textContent); b.innerHTML = icon(ic, t) + (name ? `<small>${name}</small>` : '') + (k === 'flask' ? '<b>3</b>' : ''); }
 let hudKey = '';
+const setGauge = (el, color, frac, glow) => { const u = `url(${gaugeBtn(color, frac, { glow })})`; if (el._g !== u) { el._g = u; el.style.setProperty('--g', u); } };   // 픽셀 게이지 테두리
 function syncTouch() {
   const p = world.player, key = (p.light | 0) + '/' + p.flasks + '/' + (p.spells || []).join() + '/' + Math.ceil(p.enchantT || 0) + '/' + (p.dark ? 'd' + Math.ceil(p.darkT / 10) : 'c' + Math.ceil((p.snuffCd || 0) / 10));
   if (key === hudKey) return; hudKey = key;
@@ -39,13 +40,13 @@ function syncTouch() {
     if (!sp) { b.style.setProperty('--fill', '0%'); b.classList.remove('ready'); return; }
     const lit = p.enchantT > 0, cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));   // 두른 동안: 테두리 = 남은 두르기 시간 / 아니면: 두르기 비용만큼 빛이 차오름
     const f = lit ? Math.min(1, p.light / CFG.light.max) : Math.min(1, p.light / cost);   // 두른 동안: 남은 빛 / 아니면: 두르기 기준까지 찬 정도
-    b.style.setProperty('--p', (f * 100).toFixed(1)); b.classList.toggle('ready', lit || p.light >= cost); b.classList.toggle('lit', lit);
+    b.style.setProperty('--p', (f * 100).toFixed(1)); setGauge(b, lit ? '#ffd27a' : '#ffb347', f, lit || p.light >= cost); b.classList.toggle('ready', lit || p.light >= cost); b.classList.toggle('lit', lit);
     const lab = b.querySelector('small'); if (lab) lab.textContent = '두르기';
   });
   const sn = $('#b-snuff'); if (sn) { const lab = sn.querySelector('small'); if (lab) lab.textContent = p.dark ? '켜기' : '소등'; sn.classList.toggle('lit', !!p.dark); sn.classList.toggle('cool', !p.dark && p.snuffCd > 0);   // 소등 버튼: 꺼진 동안 '켜기' + 남은 어둠 시간 테두리
-    sn.style.setProperty('--p', (p.dark ? p.darkT / (CFG.snuff.maxF + (p.mods.darkExtra || 0)) * 100 : p.snuffCd > 0 ? (1 - p.snuffCd / CFG.snuff.cdF) * 100 : 100).toFixed(1)); }
+    const sf = p.dark ? p.darkT / (CFG.snuff.maxF + (p.mods.darkExtra || 0)) : p.snuffCd > 0 ? 1 - p.snuffCd / CFG.snuff.cdF : 1; sn.style.setProperty('--p', (sf * 100).toFixed(1)); setGauge(sn, '#b070e0', sf, !!p.dark); }
   const f = $('#b-flask'); f.querySelector('b').textContent = p.flasks; f.classList.toggle('empty', p.flasks <= 0);
-  f.style.setProperty('--p', (Math.min(1, p.flasks / Math.max(1, p.maxFlasks)) * 100).toFixed(1));   // 남은 기름병 = 테두리 게이지
+  const ff = Math.min(1, p.flasks / Math.max(1, p.maxFlasks)); f.style.setProperty('--p', (ff * 100).toFixed(1)); setGauge(f, '#7fe08a', ff, false);   // 남은 기름병 = 픽셀 테두리 게이지
 }
 
 // 저장 (등불 조각·해금·기록·설정)
@@ -286,26 +287,26 @@ function title() {
 }
 // 등대 마을: 왼쪽은 리라와 기록, 오른쪽은 출발 · 조정 · 메뉴
 // 마을: 걸어 다니는 방. 왼쪽부터 등대지기의 창고(해금) · 허수아비(연습 상대) · 순례 제단(출발 준비) · 모닥불(기록·연습장·설정), 오른쪽 끝 길 = 순례 준비
-const TOWN_W = 1700;
+const TOWN_W = 1250;                                               // 좁혀서 촘촘하게 (기능 소품 간격 ~150)
 // 마을 장식 (상호작용 없음): 통·상자 더미 · 가로등 · 손수레 · 벤치와 화분 — 빈 곳을 채워 사람 사는 동네처럼
-const TOWN_DECO = [['deco-barrels', 120], ['lamp', 200], ['deco-bench', 420], ['lamp', 610], ['deco-cart', 760], ['lamp', 1000], ['deco-barrels', 1190], ['deco-bench', 1390], ['lamp', 1460]];
+const TOWN_DECO = [['deco-barrels', 70], ['lamp', 140], ['urn', 190], ['deco-bench', 345], ['urn', 392], ['lamp', 495], ['deco-cart', 625], ['urn', 760], ['lamp', 775], ['deco-barrels', 915], ['lamp', 1060], ['urn', 1110], ['post', 1150], ['deco-barrels', 1205], ['lamp', 1230]];
 function buildTown() {
   const W = TOWN_W, w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }], spawn: { x: 180, y: 240 } });   // 화면 왼쪽 끝(폰 노치·스틱) 뒤에 가리지 않게
   w.haven = 'town'; w.town = true; w.decor = TOWN_DECO.map(([img, x]) => ({ img, x }));
   // 기능은 하나씩: 이야기 · 보스 연습 · 준비(어둠·기름) · 기록과 오늘의 시련 · 쉬기(설정) · 출발
   w.props = [
-    { kind: 'keeper', x: 300, label: '등대지기 (이야기)' },
-    { kind: 'rack', x: 520, label: '연습장 (보스 연습)' },
-    { kind: 'altar', x: 900, label: '순례 제단 (어둠·기름)' },
-    { kind: 'board', x: 1100, label: '게시판 (기록·오늘의 시련)' },
-    { kind: 'campfire', x: 1290, label: '모닥불 (설정)' },
-    { kind: 'exit', x: W - 200, label: '순례 길 → 출발' },
+    { kind: 'keeper', x: 255, label: '등대지기 (이야기)' },
+    { kind: 'rack', x: 430, label: '연습장 (보스 연습)' },
+    { kind: 'altar', x: 700, label: '순례 제단 (어둠·기름)' },
+    { kind: 'board', x: 850, label: '게시판 (기록·오늘의 시련)' },
+    { kind: 'campfire', x: 990, label: '모닥불 (설정)' },
+    { kind: 'exit', x: W - 160, label: '순례 길 → 출발' },
   ];
   townDummy(w);
   return w;
 }
 function townDummy(w) {   // 허수아비: 공격하지 않는 연습 상대 (쓰러지면 다시 선다)
-  const e = spawnEnemy(w, 'ghoul', 680, 300 - ENEMY_DEFS.ghoul.h - 2, { hpMul: 30 });
+  const e = spawnEnemy(w, 'ghoul', 555, 300 - ENEMY_DEFS.ghoul.h - 2, { hpMul: 30 });
   e.cd = 1e9; e.speed = 0; e.dummy = true; e.spawnT = 0;
 }
 function town() {
@@ -318,7 +319,7 @@ function town() {
     R.say('등대지기·연습장·제단·게시판·모닥불 앞에서 공격 버튼 · 오른쪽 길로 출발', 260);
   }
   world.exited = false;
-  if (world.player.x > TOWN_W - 140) world.player.x = TOWN_W - 160;
+  if (world.player.x > TOWN_W - 240) world.player.x = TOWN_W - 240;   // 출구(W-160) 바로 앞에 (닿으면 곧장 출발하지 않게)
   deathT = 0; R.death = 0; R.cine = null; if (R.irisMode === 'close') R.irisMode = null;   // 전투에서 남은 연출 상태가 마을 리라를 가리지 않게
   const tp = world.player; tp.iframes = 0; if (tp.state === 'dead' || tp.state === 'ghost' || !(tp.y < 300)) { tp.state = 'idle'; tp.stateT = 0; tp.x = 180; tp.y = 300 - tp.h; tp.vx = tp.vy = 0; }
   screen(''); showTouch(); last = performance.now(); acc = 0;

@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwqgl5y0';
-import { CFG } from './core/config.js?v=mwqgl5y0';
-import { groundAt } from './core/world.js?v=mwqgl5y0';
+import { preload } from './fx.js?v=mwqh1f3g';
+import { CFG } from './core/config.js?v=mwqh1f3g';
+import { groundAt } from './core/world.js?v=mwqh1f3g';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -93,10 +93,10 @@ export class FxDirector {
     for (const id of a.screen) R.weather.spawn(id, 160, 170, {});   // 날씨 원점 = 화면 하단 중앙 (meta.origin)
     if (w.haven) {                                                       // 쉼터 오브젝트: 모닥불(휴식) · 출구 포탈 (밝게 = 상호작용 가능)
       for (const o of w.props) {
-        if (o.kind === 'campfire') { R.fx.spawn('fire/campfire', o.x, 300, { light: 0.5 }); for (const d of [-110, 110]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
-        if (o.kind === 'merchant') { R.bgfx.spawn('fire/brazier', o.x + 90, 300, { light: 0.35 }); R.bgfx.spawn('fire/candle', o.x - 100, 300, { light: 0.3 }); }
+        if (o.kind === 'campfire') { R.propfx.spawn('fire/campfire', o.x, 300, { light: 0.5 }); for (const d of [-110, 110]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }
+        if (o.kind === 'merchant') { R.propfx.spawn('fire/brazier', o.x + 90, 300, { light: 0.35 }); R.bgfx.spawn('fire/candle', o.x - 100, 300, { light: 0.3 }); }
         if (o.kind === 'keeper' || o.kind === 'board') R.bgfx.spawn('fire/candle', o.x + (o.kind === 'keeper' ? -60 : 40), 300, { light: 0.3 });
-        if (o.kind === 'altar') { R.fx.spawn('fire/brazier', o.x - 10, 234, { light: 0.55, iron: NO_IRON }); for (const d of [-70, 70]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }   // 불: 제단 그림의 그릇(왼쪽 10px, 꼭대기) 위
+        if (o.kind === 'altar') { R.propfx.spawn('fire/brazier', o.x - 10, 234, { light: 0.55, iron: NO_IRON }); for (const d of [-70, 70]) R.bgfx.spawn('fire/candle', o.x + d, 300, { light: 0.3 }); }   // 불: 제단 그림의 그릇(왼쪽 10px, 꼭대기) 위
       }
     }
     R.trans.clear(); if (!boss) R.iris(w, 'open');   // 방 입장: 리라를 중심으로 아이리스가 열림 (보스방은 등장 연출이 대신)

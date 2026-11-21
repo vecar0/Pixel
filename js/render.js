@@ -1,14 +1,14 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqgl5y0';
-import { CFG } from './core/config.js?v=mwqgl5y0';
-import { attackBox } from './core/player.js?v=mwqgl5y0';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqgl5y0';
-import { SPELLS } from './core/spells.js?v=mwqgl5y0';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqgl5y0';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqgl5y0';
-import { FxDirector } from './fxmap.js?v=mwqgl5y0';
-import { iconCanvas } from './icons.js?v=mwqgl5y0';
-import { bodyShade } from './shade.js?v=mwqgl5y0';
+import { clipBeam } from './core/gimmick.js?v=mwqh1f3g';
+import { CFG } from './core/config.js?v=mwqh1f3g';
+import { attackBox } from './core/player.js?v=mwqh1f3g';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqh1f3g';
+import { SPELLS } from './core/spells.js?v=mwqh1f3g';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqh1f3g';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqh1f3g';
+import { FxDirector } from './fxmap.js?v=mwqh1f3g';
+import { iconCanvas } from './icons.js?v=mwqh1f3g';
+import { bodyShade } from './shade.js?v=mwqh1f3g';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -50,7 +50,7 @@ export class Renderer {
   constructor(canvas) {
     this.cv = canvas; this.ctx = canvas.getContext('2d');
     this.dark = document.createElement('canvas'); this.dctx = this.dark.getContext('2d');
-    this.fx = new FxLayer(); this.mfx = new FxLayer(1.5) /* 마법 이펙트: 1.5배 굵은 픽셀 (캐릭터 크기에 맞춤) */; this.bgfx = new FxLayer(); this.pfx = new FxLayer(); /* pfx: 리라 베기 (리라 뒤에 그림) */ this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
+    this.fx = new FxLayer(); this.mfx = new FxLayer(1.5) /* 마법 이펙트: 1.5배 굵은 픽셀 (캐릭터 크기에 맞춤) */; this.bgfx = new FxLayer(); this.pfx = new FxLayer(); /* pfx: 리라 베기 (리라 뒤에 그림) */ this.propfx = new FxLayer(); /* 소품에 붙은 불(모닥불·화로): 소품 바로 위, 인물 뒤 */ this.weather = new ScreenFx(); this.trans = new ScreenFx(); this.dir = new FxDirector(this); this.fxid = 0;
     this.parts = []; this.texts = [];
     this.ghosts = [];             // 회피 잔상
     this.tail = null;             // 포니테일 스프링
@@ -85,13 +85,13 @@ export class Renderer {
     this.vw = Math.min(CFG.VIEW_W_MAX, Math.max(CFG.VIEW_W, Math.floor(iw / s)));
     this.cv.width = this.vw; this.cv.height = H;
     this.dark.width = this.vw; this.dark.height = H;
-    this.fx.resize(this.vw, H); this.mfx.resize(this.vw, H); this.bgfx.resize(this.vw, H); this.pfx.resize(this.vw, H);
+    this.fx.resize(this.vw, H); this.mfx.resize(this.vw, H); this.bgfx.resize(this.vw, H); this.pfx.resize(this.vw, H); this.propfx.resize(this.vw, H);
     this.cv.style.width = Math.round(this.vw * s) + 'px';
     this.cv.style.height = Math.round(H * s) + 'px';
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.mfx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.corpses = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; this.death = 0; }
+  reset() { this.propfx.clear(); this.fx.clear(); this.mfx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.corpses = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; this.death = 0; }
 
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
@@ -177,7 +177,7 @@ export class Renderer {
   stepFx(w) {
     const frozen = w.hitstop > 0;
     if (!frozen) { this.fx.update(1 / CFG.TICK); this.mfx.update(1 / CFG.TICK); this.pfx.update(1 / CFG.TICK); }
-    this.bgfx.update(1 / CFG.TICK);
+    this.bgfx.update(1 / CFG.TICK); this.propfx.update(1 / CFG.TICK);
     this.weather.update(1 / CFG.TICK); this.trans.update(1 / CFG.TICK);
     if (this.irisMode) { this.irisClock += IRIS_SPEED / CFG.TICK; if (this.irisMode === 'open' && this.irisClock >= 2.2) this.irisMode = null; }
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
@@ -218,14 +218,25 @@ export class Renderer {
     if (p.state === 'parry' && p.stateT < 4) L.a = -p.face * 1.2;   // 패링: 랜턴을 앞으로 휘두름
   }
 
+  // 그리기 안전망: 어느 한 그림에서 오류가 나도 리라는 반드시 그린다 (마을·방에서 캐릭터가 사라지던 버그 대비)
   draw(w) {
+    this._liraDone = false;
+    try { this.drawFrame(w); }
+    catch (err) {
+      if (!this._errLogged) { this._errLogged = true; console.warn('draw error', err); }
+      const g = this.ctx; for (let i = 0; i < 24; i++) g.restore();      // 쌓인 save를 모두 풀고 (남는 restore는 아무 일도 안 함)
+      g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; g.filter = 'none';
+      if (!this._liraDone && this._cam) { g.save(); g.translate(this._cam[0], this._cam[1]); try { this.drawLira(g, w, w.player); } catch (_) { } g.restore(); }
+    }
+  }
+  drawFrame(w) {
     const g = this.ctx, H = CFG.VIEW_H, vw = this.vw, p = w.player;
     const boss = this.cine && this.cine.focusBoss && w.enemies.find(e => e.boss);
     const camX = Math.max(0, Math.min(w.width - vw, boss ? boss.x + boss.w / 2 - vw / 2 : p.x + p.w / 2 - vw * 0.4));   // 등장 연출 중엔 보스를 비춤
     const still = this.hud === false;                                   // 메뉴 화면이 열려 있으면 뒤 배경은 멈춘 그림 (흔들림·확대 없음)
     const sh = !still && !this.death && p.state !== 'dead' && w.shake > 0 ? Math.min(5, w.shake / 2) : 0;   // 죽는 중엔 흔들지 않음 (세계가 멈춰 흔들림이 계속되던 문제)
     const sx = Math.round((Math.random() - 0.5) * 2 * sh), sy = Math.round((Math.random() - 0.5) * 2 * sh);
-    const ox = Math.round(-camX) + sx, oy = sy;
+    const ox = Math.round(-camX) + sx, oy = sy; this._cam = [ox, oy];
 
     g.save();
     // 완벽 패링 줌인: 리라를 중심으로 살짝 당김
@@ -280,6 +291,7 @@ export class Renderer {
     g.save(); g.translate(ox, oy);
     if (!w.town) this.drawGroundEdge(g, w, 0.16);                         // 멀리 있는 땅의 윤곽
     if (w.props) this.drawProps(g, w);                                    // 쉼터 오브젝트 (상인 등)
+    g.translate(-ox, -oy); this.propfx.draw(g, camX, sx, sy); g.translate(ox, oy);   // 모닥불·제단 불: 소품과 한 몸으로, 인물 뒤에
     if (w.level) this.drawLevel(g, w);                                    // 항아리·가시·분출구·발판·레버·철문·상자
     const hideChars = this.irisBusy() || (this.cine && this.cine.hideLira);
     for (const e of w.enemies) if (e.dummy) {                              // 마을 허수아비 이름표
@@ -320,6 +332,7 @@ export class Renderer {
     g.globalAlpha = 1;
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);
     if (!hideChars) this.drawLira(g, w, p);
+    this._liraDone = true;
     if (this.lampFlash) {                                                  // 섬광: 등불에서 짧게 번쩍 (빛 + 짧은 빛살 8줄, 두른 상태면 속성 색)
       const F = this.lampFlash, k = F.t / 18, x = this.lampX, y = this.lampY, P = EL_SLASH[F.el === undefined ? null : F.el] || EL_SLASH[null];
       const rgb = F.el === undefined ? '255,214,140' : EL_RGB[F.el || null], R = 10 + 30 * Math.min(1, k * 2);

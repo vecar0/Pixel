@@ -25,7 +25,9 @@ export class Input {
       const k = e.code;
       for (const [act, ks] of Object.entries(KEYS)) if (ks.includes(k)) this.held.delete(act);
     });
-    addEventListener('blur', () => { this.held.clear(); this.btnHeld = {}; });
+    const drop = () => { this.held.clear(); this.btnHeld = {}; this.releaseStick && this.releaseStick(); };   // 창을 벗어나거나 앱을 내리면 누르던 것 모두 뗌 (혼자 계속 걸어가는 버그 방지)
+    addEventListener('blur', drop); addEventListener('pagehide', drop);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) drop(); });
     if (touchRoot) this.setupTouch(touchRoot);
   }
 
@@ -47,7 +49,11 @@ export class Input {
       move(e.clientX, e.clientY);
     });
     zone.addEventListener('pointermove', e => { if (e.pointerId === st.id) move(e.clientX, e.clientY); });
-    const end = e => { if (e.pointerId !== st.id) return; st.id = null; st.x = st.y = 0; knob.style.transform = ''; stick.classList.remove('on'); stick.style.left = stick.style.top = ''; };   // 손을 떼면 제자리로
+    addEventListener('pointerup', e => { if (e.pointerId === st.id) release(); }, true);   // 화면 밖·다른 요소에서 떼도 풀림
+    addEventListener('pointercancel', e => { if (e.pointerId === st.id) release(); }, true);
+    const release = () => { st.id = null; st.x = st.y = 0; knob.style.transform = ''; stick.classList.remove('on'); stick.style.left = stick.style.top = ''; };
+    this.releaseStick = release;
+    const end = e => { if (e.pointerId !== st.id) return; release(); };   // 손을 떼면 제자리로
     zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end); zone.addEventListener('lostpointercapture', end);
 
     for (const b of root.querySelectorAll('[data-btn]')) {
@@ -78,7 +84,7 @@ export class Input {
   }
   // 화면이 바뀔 때 남은 입력 비우기 (이전 화면의 키가 새 화면에서 실행되지 않게)
   clear() {
-    this.pressed.clear(); this.btnHeld = {};
+    this.pressed.clear(); this.btnHeld = {}; this.held.clear(); this.releaseStick && this.releaseStick();   // 화면이 바뀌면 스틱·키도 뗀 것으로 (메뉴가 열린 사이 손 뗀 신호가 사라져 혼자 걸어가던 버그)
     for (const b of document.querySelectorAll('[data-btn].down')) b.classList.remove('down');
   }
   // 메뉴용 (일시정지·확인)

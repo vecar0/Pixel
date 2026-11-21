@@ -33,6 +33,40 @@ export function roundBtn(ring, { fill = -1, down = false, size = 24 } = {}) {
   cache.set(key, url); return url;
 }
 
+// v3 터치 버튼(픽셀): 테두리 없는 반투명 원판 (눌리면 등불빛)
+export function discBtn({ down = false, size = 32 } = {}) {
+  const key = `d${down}${size}`; if (cache.has(key)) return cache.get(key);
+  const R = size / 2, BODY = down ? [70, 50, 30] : [13, 10, 17], INK = [4, 3, 8];
+  const url = canvasOf(size, size, set => {
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const dx = x + 0.5 - R, dy = y + 0.5 - R, d = Math.hypot(dx, dy);
+      if (d > R) continue;
+      if (d > R - 1) { set(x, y, INK, down ? 200 : 120); continue; }
+      set(x, y, dy < -R * 0.5 && d < R * 0.8 ? mix(BODY, [255, 255, 255], 0.06) : BODY, down ? 190 : 110);
+    }
+  }).toDataURL();
+  cache.set(key, url); return url;
+}
+// 게이지 버튼(픽셀): 두께 3px 테두리가 위에서부터 시계 방향으로 frac만큼 color로 차오름 (24칸으로 끊어 픽셀답게)
+export function gaugeBtn(color, frac, { size = 32, glow = false } = {}) {
+  const q = Math.max(0, Math.min(24, Math.round(frac * 24))), key = `g${color}${q}${size}${glow}`; if (cache.has(key)) return cache.get(key);
+  const R = size / 2, C = hex(color), LIT = mix(C, [255, 255, 255], 0.45), SH = mix(C, [0, 0, 0], 0.35), EMPTY = [70, 64, 78], INK = [4, 3, 8], BODY = [13, 10, 17];
+  const url = canvasOf(size, size, set => {
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const dx = x + 0.5 - R, dy = y + 0.5 - R, d = Math.hypot(dx, dy);
+      if (d > R) continue;
+      if (d > R - 1) { set(x, y, INK, 200); continue; }
+      if (d > R - 4) {
+        const ang = (Math.atan2(dx, -dy) + Math.PI * 2) % (Math.PI * 2), on = ang < q / 24 * Math.PI * 2 - 1e-6;
+        set(x, y, on ? (d > R - 2 ? (dx + dy < 0 ? LIT : C) : SH) : EMPTY, on ? 255 : 150); continue;
+      }
+      if (d > R - 5) { set(x, y, INK, 170); continue; }
+      set(x, y, glow ? mix(BODY, C, 0.18) : BODY, 160);
+    }
+  }).toDataURL();
+  cache.set(key, url); return url;
+}
+
 // 메뉴 버튼 9-slice (12x12, 테두리 4px): 모서리 2px 깎음, 위 하이라이트, 아래 두꺼운 그림자
 export function panelBtn(face, { down = false } = {}) {
   const key = `p${face}${down}`; if (cache.has(key)) return cache.get(key);
@@ -57,5 +91,6 @@ export function installPixelUI() {
   root.setProperty('--px-row', u(panelBtn('#2a2232'))); root.setProperty('--px-row-down', u(panelBtn('#3a3046', { down: true })));
   const ring = { attack: '#d9cfc0', parry: '#ffb347', roll: '#8fc8ff', jump: '#6aa0d0', flask: '#7fe08a', pause: '#9a8fa6', stick: '#9a8fa6', skill: '#ffb347', snuff: '#9a5cc4' };
   for (const [k, c] of Object.entries(ring)) { root.setProperty(`--px-${k}`, u(roundBtn(c))); root.setProperty(`--px-${k}-down`, u(roundBtn(c, { down: true }))); }
+  root.setProperty('--px-disc', u(discBtn())); root.setProperty('--px-disc-down', u(discBtn({ down: true })));
   root.setProperty('--px-knob', u(roundBtn('#ece3d3', { size: 12, down: true })));
 }

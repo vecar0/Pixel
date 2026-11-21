@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick, groundAt } from './core/world.js?v=mwqh6v9s';
-import { Renderer } from './render.js?v=mwqh6v9s';
-import { Input } from './input.js?v=mwqh6v9s';
-import { Sfx } from './sfx.js?v=mwqh6v9s';
-import { stepLoop } from './loop.js?v=mwqh6v9s';
-import { spawnEnemy } from './core/enemies.js?v=mwqh6v9s';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqh6v9s';
-import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqh6v9s';
-import { icon, RELIC_TONE } from './icons.js?v=mwqh6v9s';
-import { installPixelUI, roundBtn, gaugeBtn } from './pixelui.js?v=mwqh6v9s';
-import { startTitleScene } from './titlescene.js?v=mwqh6v9s';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwqhrbhm';
+import { Renderer } from './render.js?v=mwqhrbhm';
+import { Input } from './input.js?v=mwqhrbhm';
+import { Sfx } from './sfx.js?v=mwqhrbhm';
+import { stepLoop } from './loop.js?v=mwqhrbhm';
+import { spawnEnemy } from './core/enemies.js?v=mwqhrbhm';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqhrbhm';
+import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqhrbhm';
+import { icon, RELIC_TONE } from './icons.js?v=mwqhrbhm';
+import { installPixelUI, roundBtn, gaugeBtn } from './pixelui.js?v=mwqhrbhm';
+import { startTitleScene } from './titlescene.js?v=mwqhrbhm';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwqh6v9s';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqh6v9s';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqh6v9s';
-import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqh6v9s';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwqh6v9s';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqh6v9s';
+import { CFG } from './core/config.js?v=mwqhrbhm';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqhrbhm';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqhrbhm';
+import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqhrbhm';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwqhrbhm';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqhrbhm';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -152,7 +152,7 @@ const runStat = () => {
   const path = run.route.map((t, i) => `<b class="${i < run.roomIdx ? 'done' : i === run.roomIdx ? 'now' : ''}">${icon(...(RI[t] || RI.combat))}</b>`).join('');
   return `<div class="runbar"><span>${regionOf(run).name}</span><span class="path">${path}</span>
     <span class="em">${icon('ember', 'amber')}${run.embers}</span>
-    <span class="spells" title="등불 속성 · 점화 단계">${icon('ember', elTone(run.element))}${run.element ? STAT_ELEMENT[run.element] : '각성 전'} · ${TIER_NAME[enchTier(run.stats, run.element)]}</span></div>`;
+    <span class="spells" title="등불 속성 · 점화 단계">${icon('ember', elTone(run.element))}${run.element ? `${STAT_ELEMENT[run.element]} · ${TIER_NAME[enchTier(run.stats, run.element)]}` : '각성 전'}</span></div>`;
 };
 // 스탯 판: 반대 스탯 쌍마다 한 칸(위 스탯 카드 · 20칸 저울 · 아래 스탯 카드). 글은 줄바꿈되어 잘리지 않는다
 // 카드 한 장 = 이름·값·능력 사다리(12~20) / 지금 수치 / 다음 능력 / 약점

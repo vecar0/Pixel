@@ -175,7 +175,7 @@ button { font-family: inherit; color: inherit; }
 .card:has(.picks) { width: min(94vw, 820px); }
 .card:has(.pick.door):not(:has(.pick.small)) { width: auto; }
 .picks:has(.pick.door:not(.small)) { flex-wrap: nowrap; }
-.picks .pick.door:not(.small) { flex: 0 0 160px; }
+.picks .pick.door:not(.small) { flex: 1 1 150px; min-width: 0; max-width: 170px; }   /* 화면이 좁으면 카드가 줄어듦 (잘리지 않게) */
 .card > .picks { align-self: stretch; }
 .card:has(.pick.door):not(:has(.pick.small)) > .picks { align-self: center; }
 @media (min-height: 600px) and (min-width: 900px) { #ui > .screen > *:not(.titlescene) { zoom: 1.35; } }
@@ -518,3 +518,12 @@ button.scard:disabled { opacity: .45; cursor: default; }
 #b-snuff { --img: var(--px-snuff); --img-down: var(--px-snuff-down); --c: #b070e0; width: calc(var(--u) * .86); height: calc(var(--u) * .86); right: calc(var(--r0) + var(--u) * 2.82); bottom: calc(var(--b0) + var(--u) * 2.25); top: auto; }   /* 소등: 마법 버튼 위 */
 #b-snuff.lit { filter: drop-shadow(0 0 6px rgba(176,112,224,.8)); } #b-snuff.cool { opacity: .3; }
 .pick span.aff { color: #e8c37a; font-size: 10px; }
+
+/* 선택 카드가 테두리 밖으로 잘리지 않게: 카드 묶음은 늘 카드 폭 안에서 줄어들고, 글은 줄바꿈 */
+.card > .picks:not(.grid3), .card.wide > .picks:not(.grid3) { --n: 3; width: min(calc(var(--n) * 170px + (var(--n) - 1) * 8px), 100vw - 2 * max(16px, env(safe-area-inset-left), env(safe-area-inset-right)) - 44px) !important; max-width: none; align-self: center !important; box-sizing: border-box; }   /* 카드 수만큼 넓게, 좁은 화면이면 화면 폭에 맞춰 줄어듦 */
+.card > .picks:not(.grid3):has(> .pick:nth-child(4)) { --n: 4; }
+.card > .picks:not(.grid3):has(> .pick:nth-child(5)) { --n: 5; }
+.card > .picks:not(.grid3):not(:has(> .pick:nth-child(3))) { --n: 2; }
+.picks .pick { box-sizing: border-box; }
+.picks .pick b, .picks .pick span { max-width: 100%; overflow-wrap: anywhere; word-break: keep-all; }
+.card:has(.picks), .card.wide { max-width: calc(100vw - 2 * max(16px, env(safe-area-inset-left), env(safe-area-inset-right))); }

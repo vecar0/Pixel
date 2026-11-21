@@ -1,19 +1,20 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqf2rs4';
-import { CFG } from './core/config.js?v=mwqf2rs4';
-import { attackBox } from './core/player.js?v=mwqf2rs4';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqf2rs4';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqf2rs4';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqf2rs4';
-import { FxDirector } from './fxmap.js?v=mwqf2rs4';
-import { iconCanvas } from './icons.js?v=mwqf2rs4';
-import { bodyShade } from './shade.js?v=mwqf2rs4';
+import { clipBeam } from './core/gimmick.js?v=mwqf8e7h';
+import { CFG } from './core/config.js?v=mwqf8e7h';
+import { attackBox } from './core/player.js?v=mwqf8e7h';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqf8e7h';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqf8e7h';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqf8e7h';
+import { FxDirector } from './fxmap.js?v=mwqf8e7h';
+import { iconCanvas } from './icons.js?v=mwqf8e7h';
+import { bodyShade } from './shade.js?v=mwqf8e7h';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
 const SLASH = [['melee/sword-slash', 22, 0], ['melee/uppercut', 20, 0], ['melee/spear-sweep', 64, -26]];
 const STEEL = ['#14121c', '#2a2838', '#4a4860', '#7a7890', '#b0aec4', '#dcdae8', '#ffffff'];   // 은빛 칼 (색 과하지 않게)
 // 두른 불꽃 속성별 색 (속성 = 각성한 스탯): 칼 궤적·등불빛·게이지
+const EYE_COL = { moth: '#ee8b18', priest: '#86bbc4', bellBoss: '#d5f0ea', forge: '#f4b92f', shadow: '#a93ad4', spider: '#ca82d9', ghoul: '#cfd8a0', spearman: '#e7e0cf', assassin: '#d8b8a8', shellguard: '#f0d8ed', saint: '#d8f0ff', king: '#c8d0c0' };   // 눈 색이 따로 없는 적(빈 눈구멍·투구)의 희미한 눈빛
 const EL_RGB = { null: '255,170,70', str: '255,166,58', agi: '122,192,240', wil: '255,214,120', lmp: '150,92,196', vit: '127,224,138', fury: '255,226,74' };
 const EL_SLASH = {
   null: ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], str: ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'],   // 속성 이펙트(fxmap AMBER·ICE·GOLD·GHOST·GREEN·VOLT)와 같은 팔레트
@@ -794,10 +795,22 @@ export class Renderer {
     if (e._eye && w.t - e._eye[2] <= 1) return [Math.round(e._eye[0]), Math.round(e._eye[1])];
     return [Math.round(e.x + e.w / 2 + e.face * e.w * 0.22), Math.round(e.y + Math.min(e.h * 0.2, 22))];
   }
+  // 어둠 속 눈빛: 스프라이트에 그려진 원래 눈 픽셀을 그대로 (눈 색이 따로 없는 해골·투구류는 몸 색에 맞춘 희미한 빛 두 점)
+  //   못 봄 = 흐리게, 봄 = 또렷 + 은은한 빛, 공격 중 = 깜빡이며 붉은 빛 (피할 신호)
   drawEyes(g, w, e, a) {
     if (e.dead || e.spawnT > 0) return;
-    const [x, y] = this.eyePos(w, e);
-    g.globalAlpha = a; g.fillStyle = e.unaware ? '#d8b060' : '#ff4f5e'; g.fillRect(x - 1, y - 1, 2, 2); g.fillRect(x - 1 + e.face * 4, y - 1, 2, 2); g.globalAlpha = 1;
+    const [x, y] = this.eyePos(w, e), atk = e.st === 'telegraph' || e.st === 'active', E = e._eye && w.t - e._eye[2] <= 1 ? e._eye : null;
+    const px = E && E[5][2], col = px ? '#' + px[(px.length / 2) | 0][2] : (EYE_COL[e.kind] || '#d8c8a8');
+    const rgb = [1, 3, 5].map(i => parseInt(col.slice(i, i + 2), 16)).join(','), r = e.boss ? 12 : 8;
+    if (!e.unaware || atk) { const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, atk ? `rgba(255,79,94,${0.5 * a})` : `rgba(${rgb},${0.35 * a})`); gl.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
+    g.globalAlpha = a * (atk ? ((w.t >> 2) & 1 ? 1 : 0.55) : e.unaware ? 0.6 : 1);
+    if (E) {
+      const [, , , M, f, EY] = E; g.save(); g.transform(M.a, M.b, M.c, M.d, M.e, M.f);
+      if (px) for (const [dx, dy, c] of px) { g.fillStyle = '#' + c; g.fillRect(EY[0] + dx - f.ax, EY[1] + dy - f.ay, 1, 1); }
+      else { g.fillStyle = col; g.fillRect(EY[0] - f.ax - 1, EY[1] - f.ay - 1, 2, 2); g.fillRect(EY[0] - f.ax - 5, EY[1] - f.ay - 1, 2, 2); }   // 그림은 왼쪽을 봄: 먼 눈은 앞(왼)쪽
+      g.restore();
+    } else { g.fillStyle = col; g.fillRect(x - 1, y - 1, 2, 2); g.fillRect(x - 1 + e.face * 4, y - 1, 2, 2); }
+    g.globalAlpha = 1;
   }
   drawGroundEdge(g, w, a) {                                               // 걷는 면 테두리 (은은한 달빛 선)
     g.fillStyle = `rgba(200,206,232,${a})`;
@@ -814,11 +827,7 @@ export class Renderer {
     if (w.level) { g.globalAlpha = 0.55 * k; this.drawLevel(g, w, true); g.globalAlpha = 1; }   // 장애물(가시·분출구·항아리·문)은 어둠 속에서도 윤곽이 보이게
     for (const e of w.enemies) {
       if (e.dead || e.spawnT > 0) continue;
-      const atk = e.st === 'telegraph' || e.st === 'active', [x, y] = this.eyePos(w, e);
-      const col = atk ? ((w.t >> 2) & 1 ? '#ffffff' : '#ff4f5e') : e.unaware ? '#d8b060' : '#ff4f5e', s = atk ? 3 : 2;
-      { const gl0 = g.createRadialGradient(x, y, 0, x, y, 6); gl0.addColorStop(0, 'rgba(216,176,96,.25)'); gl0.addColorStop(1, 'rgba(216,176,96,0)'); g.fillStyle = gl0; g.fillRect(x - 6, y - 6, 12, 12); }
-      if (!e.unaware || atk) { const gl = g.createRadialGradient(x, y, 0, x, y, 8); gl.addColorStop(0, atk ? 'rgba(255,79,94,.55)' : 'rgba(255,79,94,.3)'); gl.addColorStop(1, 'rgba(255,79,94,0)'); g.fillStyle = gl; g.fillRect(x - 8, y - 8, 16, 16); }
-      g.fillStyle = col; g.fillRect(x - (s >> 1), y - (s >> 1), s, s); g.fillRect(x - (s >> 1) + e.face * 4, y - (s >> 1), s, s);   // 두 눈 (실제 눈 자리)
+      this.drawEyes(g, w, e, k);                                          // 원래 눈빛 그대로
       if (Math.abs(e.vx) > 0.3 && (w.t + (e.x | 0)) % 26 === 0) (this.ripples = this.ripples || []).push({ x: e.x + e.w / 2, y: e.y + e.h, r: 4, t: 0, c: '184,144,58' });   // 발소리
     }
     for (const b of w.projectiles) if (b.owner === 'enemy') { g.fillStyle = '#ff4f5e'; g.fillRect(Math.round(b.x + b.w / 2) - 1, Math.round(b.y + b.h / 2) - 1, 3, 3); }   // 날아오는 탄은 보이게
@@ -959,7 +968,7 @@ export class Renderer {
     }
     g.drawImage(img, -f.ax, -f.ay);
     const EY = this.eyes && this.eyes[f.src];                               // 이 프레임의 실제 눈 위치 → 세계 좌표로 기억 (어둠 속 눈빛)
-    if (EY) { const q = M0.inverse().transformPoint(g.getTransform().transformPoint(new DOMPoint(EY[0] - f.ax, EY[1] - f.ay))); e._eye = [q.x, q.y, w.t]; }
+    if (EY) { const M = M0.inverse().multiply(g.getTransform()), q = M.transformPoint(new DOMPoint(EY[0] - f.ax, EY[1] - f.ay)); e._eye = [q.x, q.y, w.t, M, f, EY]; }
     this.applyLight(g, f.img, f.ax, f.ay, e.x + e.w / 2, e.y + e.h / 2, e.face > 0);
     if (e.frozenT > 0) { g.globalAlpha = 0.5; g.drawImage(this.tinted('#a8dcff', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }   // 빙결: 얼음빛
     if (e.hot) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.13 + 0.07 * Math.sin(w.t * 0.18); g.drawImage(this.tinted('#ff6a1a', f.img), -f.ax, -f.ay); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }   // 달아오른 갑옷
@@ -1028,8 +1037,11 @@ export class Renderer {
       const E = this.eyes && this.eyes[fr.src];
       if (E) {
         const ex = E[0] - fr.ax, ey = E[1] - fr.ay;
-        const gl = g.createRadialGradient(ex, ey, 0, ex, ey, 7); gl.addColorStop(0, `rgba(255,176,80,${0.35 * dk})`); gl.addColorStop(1, 'rgba(255,176,80,0)'); g.fillStyle = gl; g.fillRect(ex - 7, ey - 7, 14, 14);
-        g.globalAlpha = dk; g.fillStyle = '#ffc070'; g.fillRect(ex - 4, ey, 2, 2); g.fillRect(ex + 2, ey, 2, 2); g.globalAlpha = 1;
+        const gl = g.createRadialGradient(ex, ey + 1, 0, ex, ey + 1, 7); gl.addColorStop(0, `rgba(234,146,66,${0.3 * dk})`); gl.addColorStop(1, 'rgba(234,146,66,0)'); g.fillStyle = gl; g.fillRect(ex - 7, ey - 7, 14, 14);
+        g.globalAlpha = dk;
+        if (E[2]) for (const [dx, dy, c] of E[2]) { g.fillStyle = '#' + c; g.fillRect(ex + dx, ey + dy, 1, 1); }   // 원래 그림의 주황 눈동자 그대로
+        else { g.fillStyle = '#ea9242'; g.fillRect(ex - 4, ey + 1, 2, 2); g.fillRect(ex + 3, ey + 1, 2, 2); }
+        g.globalAlpha = 1;
       }
     }   // 손에 든 등불: 앞쪽 림, 등쪽 그림자 (속성 색으로 다시 칠한 그림 기준 — 원본을 덧칠하면 색이 되돌아감)
     if (p.enchantT > 0 && p.state !== 'ghost') { const o = this.bladeOutline(fr, p.element || null); if (o) { g.globalAlpha = 0.8 + 0.2 * Math.sin(w.t * 0.3); g.drawImage(o, -fr.ax, -fr.ay); g.globalAlpha = 1; } }   // 두른 칼: 속성 색 테두리

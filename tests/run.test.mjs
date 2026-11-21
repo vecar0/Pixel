@@ -107,7 +107,7 @@ function arenaWith(kind, dx = 120) {
 }
 test('해골 창병: 3연 찌르기 간격 ≥16틱', () => {
   const { w, e } = arenaWith('spearman', 60); e.cd = 0; let starts = [], last = null;
-  for (let i = 0; i < 400 && starts.length < 3; i++) {
+  for (let i = 0; i < 3000 && starts.length < 3; i++) {
     tick(w, I()); if (e.st === 'idle' && e.cd <= 0) e.atk = null;
     const h = w.hitboxes.find(h => h.owner === e); if (h && h.src !== last) { starts.push(w.t); last = h.src; }
     if (e.st === 'recover' && e.atk !== 'triple') starts = [];

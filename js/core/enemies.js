@@ -2,15 +2,20 @@
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
-import { clipBeam } from './gimmick.js?v=mwqg4kpo';
-import { CFG } from './config.js?v=mwqg4kpo';
-import { moveAndCollide, overlap } from './player.js?v=mwqg4kpo';
-import { BOSSES, bossPick, bossWant } from './boss.js?v=mwqg4kpo';
+import { clipBeam } from './gimmick.js?v=mwqg9aps';
+import { CFG } from './config.js?v=mwqg9aps';
+import { moveAndCollide, overlap } from './player.js?v=mwqg9aps';
+import { BOSSES, bossPick, bossWant } from './boss.js?v=mwqg9aps';
 
 export const ENEMY_DEFS = {
-  ghoul: {
-    hp: 30, w: 24, h: 54, speed: 1.05, range: 54, cooldown: [40, 80],
-    attacks: { slash: { name: 'slash', telegraphF: 20, activeF: 4, recoverF: 24, dmg: 1, parryable: true, reach: 46 } },
+  // 소울류 조정: 적 하나하나가 위협 (체력↑ · 공격 2~3종 · 늦게 내려치는 공격 · 콤보) / flinch: 맞으면 움찔(예고 초반 끊김), 연타당하면 버티고 반격
+  ghoul: { flinch: true,
+    hp: 55, w: 24, h: 54, speed: 1.05, range: 54, cooldown: [40, 90],
+    attacks: {
+      slash: { name: 'slash', telegraphF: 20, activeF: 4, recoverF: 24, dmg: 1, parryable: true, reach: 46 },
+      double: { name: 'double', telegraphF: 22, activeF: 4, recoverF: 34, dmg: 1, parryable: true, reach: 46, hits: 2, gapF: 16 },          // 두 번 할퀴기
+      lunge: { name: 'lunge', telegraphF: 26, delay: 22, activeF: 5, recoverF: 48, dmg: 2, parryable: true, reach: 58 },                    // 늦게 내려치기 (예고가 길었다 짧았다, 크게 빗나가면 긴 틈)
+    },
   },
   moth: {
     hp: 12, w: 20, h: 16, speed: 1.6, fly: true, oneHit: true, range: 190, cooldown: [60, 110],   // oneHit: 무엇에 맞든 한 방
@@ -18,28 +23,32 @@ export const ENEMY_DEFS = {
   },
   // 지역 2: 침수 대성당
   spearman: {
-    hp: 40, w: 24, h: 58, speed: 0.9, range: 74, cooldown: [45, 85],
+    hp: 75, w: 24, h: 58, speed: 0.9, range: 74, cooldown: [45, 90],
     attacks: {
-      thrust: { name: 'thrust', telegraphF: 20, activeF: 5, recoverF: 26, dmg: 1, parryable: true, reach: 62, height: 22 },
-      triple: { name: 'triple', telegraphF: 22, activeF: 4, recoverF: 32, dmg: 1, parryable: true, reach: 62, height: 22, hits: 3, gapF: 16 },
+      thrust: { name: 'thrust', telegraphF: 20, delay: 14, activeF: 5, recoverF: 26, dmg: 1, parryable: true, reach: 62, height: 22 },   // 찌르기: 때때로 한 박자 늦게
+      triple: { name: 'triple', telegraphF: 22, activeF: 4, recoverF: 40, dmg: 1, parryable: true, reach: 62, height: 22, hits: 3, gapF: 16 },
+      sweep: { name: 'sweep', telegraphF: 30, activeF: 6, recoverF: 50, dmg: 2, parryable: false, reach: 70, height: 22 },                 // 휩쓸기: 패링 불가 → 구르기로 넘기고 긴 틈을 벌함
     },
   },
-  priest: {
-    hp: 25, w: 24, h: 56, speed: 0.7, range: 280, keepAway: 140, cooldown: [70, 110],
-    attacks: { bolts: { name: 'bolts', telegraphF: 24, activeF: 1, recoverF: 40, dmg: 1, parryable: true, hits: 3, gapF: 22, bolt: { speed: 2.8, w: 10, h: 10 } } },
+  priest: { flinch: true,
+    hp: 40, w: 24, h: 56, speed: 0.7, range: 280, keepAway: 140, cooldown: [70, 110],
+    attacks: { bolts: { name: 'bolts', telegraphF: 24, activeF: 1, recoverF: 40, dmg: 1, parryable: true, hits: 3, gapF: 22, bolt: { speed: 2.8, w: 10, h: 10 } },
+      shove: { name: 'shove', telegraphF: 18, activeF: 4, recoverF: 30, dmg: 1, parryable: true, reach: 38, near: 60 } },              // 가까이 붙으면 지팡이로 밀침
   },
   // 지역 3: 유리 광산
   shellguard: {
-    hp: 70, w: 34, h: 54, speed: 0.6, range: 60, shield: true, cooldown: [50, 90],
+    hp: 110, w: 34, h: 54, speed: 0.6, range: 60, shield: true, cooldown: [50, 95],
     attacks: {
       bash: { name: 'bash', telegraphF: 22, activeF: 5, recoverF: 28, dmg: 1, parryable: true, reach: 40 },
-      grab: { name: 'grab', telegraphF: 26, activeF: 6, recoverF: 36, dmg: 2, parryable: false, reach: 34 },
+      grab: { name: 'grab', telegraphF: 26, activeF: 6, recoverF: 44, dmg: 2, parryable: false, reach: 34 },
+      crush: { name: 'crush', telegraphF: 34, delay: 18, activeF: 6, recoverF: 60, dmg: 2, parryable: true, reach: 46 },               // 크게 내려찍기 (늦게, 빗나가면 긴 틈)
     },
   },
   // 지역 4: 꺼진 태양의 심연
-  assassin: { darkSight: true,
-    hp: 35, w: 22, h: 52, speed: 1.4, range: 46, blink: true, cooldown: [70, 120],
-    attacks: { cut: { name: 'cut', telegraphF: 18, activeF: 4, recoverF: 26, dmg: 1, parryable: true, reach: 40 } },
+  assassin: { darkSight: true, flinch: true,
+    hp: 60, w: 22, h: 52, speed: 1.4, range: 46, blink: true, cooldown: [60, 110],
+    attacks: { cut: { name: 'cut', telegraphF: 18, delay: 12, activeF: 4, recoverF: 26, dmg: 1, parryable: true, reach: 40 },
+      frenzy: { name: 'frenzy', telegraphF: 20, activeF: 3, recoverF: 46, dmg: 1, parryable: true, reach: 40, hits: 3, gapF: 16 } },      // 빠른 3연속 베기 → 끝나면 긴 틈
   },
   ...BOSSES,
 };
@@ -134,7 +143,7 @@ export function updateElite(w, e) {
 }
 
 // 공격 템포: 예고·후딜에 CFG.enemy.tempo 배율 (판정 길이는 그대로)
-export const telegraphOf = (e, a) => Math.round(a.telegraphF * CFG.enemy.tempo) - (e.boss && e.hp <= e.maxHp / 2 ? 4 : 0);
+export const telegraphOf = (e, a) => Math.round(a.telegraphF * CFG.enemy.tempo) - (e.boss && e.hp <= e.maxHp / 2 ? 4 : 0) + (a.delay ? e.tgExtra || 0 : 0);   // delay: 같은 자세로 더 오래 끌다 내려침 (막판 깜빡임은 실제 타이밍에 맞춤)
 export const recoverOf = a => Math.round(a.recoverF * CFG.enemy.tempo);
 
 const onScreen = (w, e) => e.x + e.w > w.camX && e.x < w.camX + CFG.VIEW_W;
@@ -144,6 +153,7 @@ function setSt(e, st) { e.st = st; e.stT = 0; }
 
 function startAttack(w, e, d, dx, name) {
   e.atk = name; e.face = Math.sign(dx) || e.face;
+  const a0 = d.attacks[name]; e.tgExtra = a0.delay && rng(w) < 0.5 ? Math.round(a0.delay * (0.5 + 0.5 * rng(w))) : 0;   // 절반은 늦게
   setSt(e, 'telegraph');
   w.events.push({ type: 'telegraph', boss: e.boss, parryable: d.attacks[name].parryable, kind: e.kind, atk: name });
 }
@@ -169,7 +179,7 @@ export function updateEnemy(w, e) {
   const d = ENEMY_DEFS[e.kind], p = w.player;
   let dx = (p.x + p.w / 2) - (e.x + e.w / 2);
   e.stT++;
-  if (e.blindT > 0) e.blindT--;
+  if (e.blindT > 0) e.blindT--; if (e.hitT > 0) e.hitT--; if (e.armorT > 0) e.armorT--;
   const vis = seesPlayer(w, e), was = e.unaware; e.unaware = !vis;        // 소등: 리라를 못 보면 마지막으로 본 자리를 뒤진다
   if (vis) { e.lastX = p.x + p.w / 2; e.searchT = 0; }
   const RX = DARK_REACT[e.kind];
@@ -198,7 +208,7 @@ export function updateEnemy(w, e) {
     const want = vis && (e.boss ? bossWant(w, e, dx) : Math.abs(dx) < e.range && Math.abs(p.y - e.y) < 120);   // 못 보면 공격을 시작하지 않음
     const tokenOk = e.boss || attackers(w) < CFG.enemy.maxAttackers;
     if (e.cd <= 0 && want && tokenOk && onScreen(w, e) && p.state !== 'dead') {
-      const names = Object.keys(d.attacks);
+      const ad = Math.abs((p.x + p.w / 2) - (e.x + e.w / 2)), names = Object.keys(d.attacks).filter(n => !d.attacks[n].near || ad < d.attacks[n].near);
       startAttack(w, e, d, (p.x + p.w / 2) - (e.x + e.w / 2), e.boss ? bossPick(w, e, dx) : names[(rng(w) * names.length) | 0]);
     }
   } else if (e.st === 'telegraph') {
@@ -243,6 +253,7 @@ export function updateEnemy(w, e) {
     if (e.stT >= recoverOf(d.attacks[e.atk])) {
       setSt(e, 'idle');
       const [lo, hi] = d.cooldown; e.cd = Math.round((lo + Math.floor(rng(w) * (hi - lo))) * e.cdMul * CFG.enemy.tempo);
+      if (!e.boss && !d.fly && !d.keepAway && rng(w) < 0.45) e.backT = 18;          // 공격 뒤 한 걸음 물러나 간격을 잼
     }
   }
 }
@@ -297,7 +308,10 @@ function physics(w, e) {
 
 function walkToward(w, e, dx) {
   e.face = Math.sign(dx) || e.face;
-  e.vx = Math.abs(dx) > e.range * 0.6 && Math.abs(dx) < CFG.enemy.aggro ? e.face * e.speed : 0;
+  const ad = Math.abs(dx);
+  if (e.backT > 0) { e.backT--; e.vx = -e.face * e.speed * 1.3; }                                    // 물러나기
+  else if (e.cd > 0 && ad < e.range * 1.5 && !e.unaware) e.vx = e.face * e.speed * 0.45 * Math.sin((w.t + (e.x | 0) * 3) / 34);   // 간 보기: 공격 전 앞뒤로 어르며 거리 재기
+  else e.vx = ad > e.range * 0.6 && ad < CFG.enemy.aggro ? e.face * e.speed : 0;
   physics(w, e);
 }
 

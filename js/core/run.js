@@ -1,10 +1,10 @@
 // 한 판(런)의 진행: 서약 → 방 → 각인 → 문 선택 → … → 보스. 순수 로직 (DOM 없음)
-import { CFG } from './config.js?v=mwqg4kpo';
-import { createWorld } from './world.js?v=mwqg4kpo';
-import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwqg4kpo';
-import { startStats, statMods, train } from './stats.js?v=mwqg4kpo';
-import { OIL_SPELL, OIL_EL, spellFor, elementSpell, awakenPick } from './spells.js?v=mwqg4kpo';
-import { populateArena, parTime } from './level.js?v=mwqg4kpo';
+import { CFG } from './config.js?v=mwqg9aps';
+import { createWorld } from './world.js?v=mwqg9aps';
+import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwqg9aps';
+import { startStats, statMods, train } from './stats.js?v=mwqg9aps';
+import { OIL_SPELL, OIL_EL, spellFor, elementSpell, awakenPick } from './spells.js?v=mwqg9aps';
+import { populateArena, parTime } from './level.js?v=mwqg9aps';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -203,9 +203,9 @@ export function buildRoomWorld(r) {
     const kinds = g.enemies, mods = Object.keys(ELITE_MODS);
     const pick = () => kinds[(rand(r) * kinds.length) | 0];
     const wave = n => Array.from({ length: n }, () => [pick(), xs()]);
-    w.waves = [wave(2 + (lvl > 2 ? 1 : 0)), wave(2 + (lvl > 1 ? 1 : 0))];
+    w.waves = [wave(1 + (lvl > 2 ? 1 : 0)), wave(2)];                // 소울류: 적은 적게, 하나하나 단단하게 (방마다 3~4마리)
     if (r.tutorial && r.region === 1 && lvl === 0) { w.waves = [[['ghoul', 620]], [['ghoul', 760], ['moth', 900]]]; w.holdWaves = true; w.tutorial = true; }   // 첫 순례 첫 방: 튜토리얼 (적 적게, 준비되면 등장)
-    if (lvl > 3 || r.dark >= 4) w.waves.push(wave(3));
+    if (lvl > 3 || r.dark >= 4) w.waves.push(wave(2));
     const mod = () => mods[(rand(r) * mods.length) | 0];
     if (r.dark >= 3 && rand(r) < 0.3) w.waves[1][0] = [w.waves[1][0][0], w.waves[1][0][1], 'elite', mod()];
     if (type === 'elite') { const m = w.width / 2; w.waves = [[[kinds[0], m, 'elite', mod()], [pick(), m + 220]], [[pick(), m - 80], [kinds[0], m + 140, 'elite', mod()]]]; }

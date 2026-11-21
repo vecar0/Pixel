@@ -1,7 +1,7 @@
 // 레벨 요소: 수집품(불씨·회복·빛 구슬) · 항아리 · 가시 · 불기둥 분출구 · 움직이는 발판 · 레버와 철문 · 보물 상자 · 방 목표 시간
 // 모두 데이터(w.level)로 들고 있고 tick마다 updateLevel. DOM 없음 → Node 테스트 가능
-import { CFG } from './config.js?v=mwqg4kpo';
-import { overlap } from './player.js?v=mwqg4kpo';
+import { CFG } from './config.js?v=mwqg9aps';
+import { overlap } from './player.js?v=mwqg9aps';
 
 export const LV = {
   pickup: { magnetR: 96, magnetF: 24, life: 1200, grav: 0.35 },

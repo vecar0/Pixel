@@ -1,10 +1,10 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqg4kpo';
-import { hitLevel } from './level.js?v=mwqg4kpo';
-import { STAT_SPELL } from './spells.js?v=mwqg4kpo';
-import { CFG } from './config.js?v=mwqg4kpo';
-import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT } from './enemies.js?v=mwqg4kpo';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqg4kpo';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqg9aps';
+import { hitLevel } from './level.js?v=mwqg9aps';
+import { STAT_SPELL } from './spells.js?v=mwqg9aps';
+import { CFG } from './config.js?v=mwqg9aps';
+import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT, telegraphOf } from './enemies.js?v=mwqg9aps';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqg9aps';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -98,6 +98,13 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
   e.hp -= dmg;
   e.flash = 6;
   addPoise(w, e, poiseFrac);
+  const D = ENEMY_DEFS[e.kind];
+  if (D && D.flinch && !e.boss && dmg > 0 && !(e.stunT > 0) && !e.dead) {      // 잔챙이: 맞으면 움찔 (예고 초반이면 공격이 끊김). 1초 안에 3번 맞으면 버티고(강인도) 곧장 반격
+    e.hitN = (e.hitT > 0 ? e.hitN || 0 : 0) + 1; e.hitT = 60;
+    if (e.armorT > 0) {}
+    else if (e.hitN >= 3) { e.armorT = 50; e.hitN = 0; if (e.st === 'idle') e.cd = Math.min(e.cd || 0, 4); w.events.push({ type: 'enrage', x: e.x + e.w / 2, y: e.y }); }
+    else if (e.st === 'idle' || (e.st === 'telegraph' && e.stT < telegraphOf(e, D.attacks[e.atk]) * 0.4)) { e.st = 'idle'; e.stT = 0; e.atk = null; e.staggerT = Math.max(e.staggerT || 0, 12); }
+  }
   if (e.hp <= 0) {
     e.hp = 0; e.dead = true;
     w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill * w.player.mods.lightMul + (w.player.mods.lmp10 ? 15 : 0));   // 등불 10: 처치마다 빛 +15

@@ -1,14 +1,14 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqg4kpo';
-import { CFG } from './core/config.js?v=mwqg4kpo';
-import { attackBox } from './core/player.js?v=mwqg4kpo';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqg4kpo';
-import { SPELLS } from './core/spells.js?v=mwqg4kpo';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqg4kpo';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqg4kpo';
-import { FxDirector } from './fxmap.js?v=mwqg4kpo';
-import { iconCanvas } from './icons.js?v=mwqg4kpo';
-import { bodyShade } from './shade.js?v=mwqg4kpo';
+import { clipBeam } from './core/gimmick.js?v=mwqg9aps';
+import { CFG } from './core/config.js?v=mwqg9aps';
+import { attackBox } from './core/player.js?v=mwqg9aps';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqg9aps';
+import { SPELLS } from './core/spells.js?v=mwqg9aps';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqg9aps';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqg9aps';
+import { FxDirector } from './fxmap.js?v=mwqg9aps';
+import { iconCanvas } from './icons.js?v=mwqg9aps';
+import { bodyShade } from './shade.js?v=mwqg9aps';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -134,6 +134,7 @@ export class Renderer {
       else if (ev.type === 'affinity') this.texts.push({ x: ev.x, y: ev.y - 34, t: 0, s: ev.aff > 0 ? '약점!' : '저항', life: 60, col: ev.aff > 0 ? EL_SLASH[ev.el][5] : '#8a8494' });   // 속성 상성
       else if (ev.type === 'alarm') { this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '경보!', life: 60, col: '#ff4f5e' }); (this.ripples = this.ripples || []).push({ x: ev.x, y: ev.y + 30, r: 6, t: 0, c: '255,79,94', max: ev.r }); }
       else if (ev.type === 'sigil') { this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '각인!', life: 50, col: EL_SLASH[ev.el][5] }); if (!this.sigilHint) { this.sigilHint = 1; this.say(`마법 각인 — 이 적을 처형하면 「${SPELLS[ev.spell] ? SPELLS[ev.spell].name : '마법'}」이 터진다`, 220); } }
+      else if (ev.type === 'enrage') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '버팀!', life: 45, col: '#ff8a5a' });   // 연타당한 적이 버티고 반격
       else if (ev.type === 'dazzle') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '눈부심', life: 50, col: '#ffe9a0' });
       else if (ev.type === 'assassinate') { this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: ev.elite ? '급습!' : '암살!', life: 50 }); this.flash = Math.max(this.flash, 0.3); }
       else if (ev.type === 'flash') { this.flash = Math.max(this.flash, 0.3); this.zoom = Math.max(this.zoom || 0, 0.15); this.lampFlash = { t: 0, el: ev.el }; }   // 다시 켬: 등불에서 작은 섬광

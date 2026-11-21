@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwq3x0e8';
-import { CFG } from './core/config.js?v=mwq3x0e8';
-import { attackBox } from './core/player.js?v=mwq3x0e8';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwq3x0e8';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwq3x0e8';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwq3x0e8';
-import { FxDirector } from './fxmap.js?v=mwq3x0e8';
-import { iconCanvas } from './icons.js?v=mwq3x0e8';
-import { bodyShade } from './shade.js?v=mwq3x0e8';
+import { clipBeam } from './core/gimmick.js?v=mwq47wq7';
+import { CFG } from './core/config.js?v=mwq47wq7';
+import { attackBox } from './core/player.js?v=mwq47wq7';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwq47wq7';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwq47wq7';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwq47wq7';
+import { FxDirector } from './fxmap.js?v=mwq47wq7';
+import { iconCanvas } from './icons.js?v=mwq47wq7';
+import { bodyShade } from './shade.js?v=mwq47wq7';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -80,7 +80,7 @@ export class Renderer {
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  reset() { this.fx.clear(); this.mfx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; this.death = 0; }
+  reset() { this.fx.clear(); this.mfx.clear(); this.bgfx.clear(); this.pfx.clear(); this.weather.clear(); this.trans.clear(); this.parts = []; this.texts = []; this.ghosts = []; this.corpses = []; this.tail = null; this.stunFx.clear(); this.sayMsg = null; this.irisMode = null; this.cine = null; this.death = 0; }
 
   // 이번 틱 이벤트 → 이펙트 (pixelfx 연결은 fxmap.js의 FxDirector, 여기는 화면 연출·글자·작은 입자)
   spawnFx(w) {
@@ -115,6 +115,11 @@ export class Renderer {
       else if (ev.type === 'debris' && !(this.debrisHint = this.debrisHint || {})[w.room + ev.crystal + ev.star]) { this.debrisHint[w.room + ev.crystal + ev.star] = 1; this.say(ev.crystal || ev.star ? '떨어지는 것 — 바닥의 금빛 원 자리에 떨어진다. 피하거나 패링하라' : '천장이 무너진다 — 바닥의 붉은 원 자리에 돌이 떨어진다. 비켜서라', 220); }
       else if (ev.type === 'bossDying') { this.flash = 1; this.zoom = 1; }
       else if (ev.type === 'bossFall') { this.flash = 1; this.zoom = 1; this.banner = { s: `${ENEMY_DEFS[ev.kind].name} 격파`, sub: '대등에 다시 불이 붙는다', t: 170, dur: 170, y: 120 }; }
+      else if (ev.type === 'kill' && !ev.boss && ev.ent) {                 // 일반 적 쓰러짐: 지금 프레임을 붙잡아 번쩍 → 가라앉으며 흩어짐
+        const e = ev.ent, f = this.enemyFrame(w, { ...e, st: 'idle', vx: 0, atk: null }, ENEMY_DEFS[e.kind]);
+        if (f) (this.corpses = this.corpses || []).push({ f, x: e.x + e.w / 2, y: e.y + e.h, face: e.face, w: e.w, h: e.h, t: 0, fly: !!ENEMY_DEFS[e.kind].fly });
+      }
+      else if (ev.type === 'spawn' && !ev.boss) for (let i = 0; i < 10; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 30, y: ev.y - 2, vx: (Math.random() - 0.5) * 1.2, vy: -0.4 - Math.random() * 0.8, life: 24 + Math.random() * 12, col: Math.random() < 0.5 ? '#3a3640' : '#5e5866', s: 2 });   // 등장: 발밑 흙먼지
       else if (ev.type === 'heatUp') { this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '달아올랐다!', life: 60 }); this.say('거인이 달아올랐다 — 밸브 옆으로 유인해 밸브를 베어라', 200); }
       else if (ev.type === 'quench') { this.flash = ev.hot ? 0.8 : 0.3; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: ev.hot ? '식었다! 갑옷에 금이 갔다' : '증기!', life: 70 }); }
       else if (ev.type === 'steam' && !ev.hit) this.texts.push({ x: ev.x, y: 210, t: 0, s: '쉬익—', life: 30 });
@@ -162,6 +167,7 @@ export class Renderer {
     if (pl.state === 'execute' && pl.execMode === 'chain' && pl.stateT < CFG.execute.chainHitF && pl.stateT % 2 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 14, st: 'execute', stT: pl.stateT, mode: 'chain', amber: true });   // 연속 처형 돌진 잔상
     for (const g of this.ghosts) g.life--;
     this.ghosts = this.ghosts.filter(g => g.life > 0);
+    if (this.corpses) { for (const c of this.corpses) c.t++; this.corpses = this.corpses.filter(c => c.t < 24); }
     for (const t of this.texts) t.t++;
     this.texts = this.texts.filter(t => t.t < (t.life || 40));
     if (this.hpGain && --this.hpGain.t <= 0) this.hpGain = null;
@@ -281,6 +287,15 @@ export class Renderer {
       g.fillStyle = gl; g.beginPath(); g.arc(bx, by, r * 2.2, 0, Math.PI * 2); g.fill();
     }
     this.drawDebris(g, w);
+    for (const c of this.corpses || []) {                                  // 쓰러진 적: 4틱 하얀 번쩍임 → 20틱 동안 가라앉으며 옅어지고 조각이 흩어짐
+      const T = 24, k = Math.max(0, (c.t - 4) / (T - 4)), im = c.f.img;
+      g.save(); g.translate(Math.round(c.x), Math.round(c.y + (c.fly ? 0 : k * 6))); g.scale(c.face > 0 ? -1 : 1, 1 - (c.fly ? 0 : k * 0.15));
+      g.globalAlpha = 1 - k; g.drawImage(c.t < 4 ? this.tinted('#ffffff', im) : im, -c.f.ax, -c.f.ay);
+      if (c.t >= 4) { g.globalAlpha = (1 - k) * 0.6; g.drawImage(this.tinted('#1a1420', im), -c.f.ax, -c.f.ay); }   // 식어 가는 어두운 빛
+      g.restore();
+      if (c.t >= 4 && c.t % 2 === 0) for (let i = 0; i < 3; i++) this.parts.push({ x: c.x + (Math.random() - 0.5) * c.w, y: c.y - Math.random() * c.h * (1 - k), vx: (Math.random() - 0.5) * 0.8, vy: -0.3 - Math.random() * 0.6, life: 18, col: Math.random() < 0.6 ? '#2a2433' : '#8a8494', s: 2 });
+    }
+    g.globalAlpha = 1;
     for (const q of this.parts) { g.fillStyle = q.col; g.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s); }
     if (w.level) this.drawPickups(g, w);
     if (this.beamBack && this.beamBack.t > 0) {                            // 거울에서 거미로 되돌아가는 광선

@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwq3x0e8';
-import { CFG } from './core/config.js?v=mwq3x0e8';
-import { groundAt } from './core/world.js?v=mwq3x0e8';
+import { preload } from './fx.js?v=mwq47wq7';
+import { CFG } from './core/config.js?v=mwq47wq7';
+import { groundAt } from './core/world.js?v=mwq47wq7';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -67,7 +67,7 @@ const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], wisp: ['fire/fireball',
 
 export const ALL_IDS = [...new Set([
   ...Object.values(AMBIENT).flatMap(a => [...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]),
-  ...Object.values(SPAWN), ...Object.values(STRIKE).map(x => x[0]), ...Object.values(DEATH).map(x => x[0]), ...Object.values(BOLT).map(x => x[0]),
+  ...Object.values(STRIKE).map(x => x[0]), ...Object.values(BOLT).map(x => x[0]),
   'melee/sword-slash', 'melee/uppercut', 'melee/heavy-cleave', 'impacts/hit-spark', 'impacts/crit-hit', 'impacts/parry', 'impacts/impact-frame', 'impacts/blunt-hit',
   'impacts/shield-block', 'impacts/heavy-landing', 'impacts/ground-slam', 'nature/quake', 'ui/damage-quiet', 'ui/crit-number', 'ui/heart-lost', 'ui/combo-counter',
   'ui/quest-complete', 'ui/achievement', 'nature/healing-bloom', 'fire/fire-ring', 'holy/sunburst', 'holy/feather-burst', 'shadow/dark-explosion', 'spawn/soul-rise',
@@ -144,14 +144,10 @@ export class FxDirector {
       case 'hurt': P('ui/heart-lost', p.x + p.w / 2, p.y - 8, {}, 3); break;   // 붉은 화면·파편은 렌더러가 그림
       case 'kill': {
         if (ev.boss) { P('impacts/crit-hit', ev.x, ev.y + 20, { light: 0.5 }, 3); break; }   // 큰 폭발은 사망 연출 끝(bossFall)에
-        const d = DEATH[ev.kind];
-        P(d ? d[0] : 'spawn/poof', ev.x, ev.y + 16, { ...(d && d[1] ? { palette: d[1] } : {}), life: 90, light: 0.3 }, 2);
-        break;
+        break;                                                              // 일반 적: 큰 이펙트 없이 렌더러가 몸을 하얗게 번쩍인 뒤 픽셀로 흩어지게 그림 (render.corpses)
       }
       case 'spawn':
-        if (ev.boss) P('lightning/lightning-strike', ev.x, ev.y, { life: 90, light: 0.5 }, 3);
-        else if (SPAWN[ev.kind]) P(SPAWN[ev.kind], ev.x, ev.y, { life: 70, light: 0.3 }, 2);
-        break;
+        break;                                                              // 등장: 렌더러의 '땅에서 솟아오르기'와 발밑 흙먼지만 (종류별 큰 이펙트 없음)
       case 'enemyStrike': {                                               // 적 공격 궤적: 판정 범위를 보여 주는 정보라 유지, 빛은 약하게
         const s = STRIKE[ev.kind]; if (s) P(s[0], ev.x, ev.y, { flip: ev.face < 0, palette: s[1], life: 40, light: 0.25 }, 2);
         break;

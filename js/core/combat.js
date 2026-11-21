@@ -1,9 +1,9 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwq3x0e8';
-import { hitLevel } from './level.js?v=mwq3x0e8';
-import { CFG } from './config.js?v=mwq3x0e8';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwq3x0e8';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwq3x0e8';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwq47wq7';
+import { hitLevel } from './level.js?v=mwq47wq7';
+import { CFG } from './config.js?v=mwq47wq7';
+import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwq47wq7';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwq47wq7';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -98,7 +98,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
     e.hp = 0; e.dead = true;
     w.player.light = Math.min(CFG.light.max, w.player.light + CFG.light.kill * w.player.mods.lightMul + (w.player.mods.lmp10 ? 15 : 0));   // 등불 10: 처치마다 빛 +15
     if (w.player.mods.killCrit) w.player.crit = true;                   // 투지 7: 처치하면 다음 공격 치명타
-    w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss, elite: !!e.elite, dummy: !!e.dummy || !!e.decoy, decoy: !!e.decoy });
+    w.events.push({ type: 'kill', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss, elite: !!e.elite, dummy: !!e.dummy || !!e.decoy, decoy: !!e.decoy, ent: e });   // ent: 쓰러지는 모습을 그리려고 (렌더러 전용)
   }
   return dmg;
 }

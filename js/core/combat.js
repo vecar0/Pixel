@@ -233,8 +233,8 @@ export function elBuild(w, e, amt) {
     default: e.burnT = Math.max(e.burnT || 0, 121);                                                  // 등불 불꽃: 약한 화상
   }
   w.events.push({ type: 'elBurst', el, x: cx, y: cy, boss: !!e.boss, ent: e });
-  const sp = el && p.enchTier >= 2 ? STAT_SPELL[el][p.enchTier >= 3 ? 2 : 1] : null;   // 17: 속성 마법 · 20: 최종 마법이 폭발과 함께 저절로
-  if (sp) { const ev = { type: 'skill', spell: sp, x: p.x + p.w / 2, y: p.y + 24, face: p.face, auto: true }; w.events.push(ev); resolveSkill(w, ev); }
+  const sp = el && p.enchTier >= 2 ? STAT_SPELL[el][p.enchTier >= 3 ? 2 : 1] : null;   // 17: 속성 마법 · 20: 최종 마법 → 적에게 '마법 각인'. 그 적을 처형하면 처형 끝에 마법이 터진다
+  if (sp && !e.dead && !e.sigil) { e.sigil = sp; e.sigilEl = el; w.events.push({ type: 'sigil', x: cx, y: e.y, spell: sp, el }); }
 }
 // 다시 켠 등불의 섬광: 주변 적이 눈이 부셔 휘청 (의지가 높을수록 넓게). 두른 상태면 속성 게이지가 한 번에 차오른다
 export function relightFlash(w) {
@@ -345,6 +345,10 @@ export function updateExecute(w) {
     if (p.mods.str10) for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 320) addPoise(w, o, 0.4);   // 힘 10
     if ((p.mods.res || {}).slayer) { p.light = Math.min(CFG.light.max, p.light + 30); p.crit = true; }   // 공명 처단
     w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
+    if (e.sigil) {                                                        // 마법 각인이 새겨진 적을 처형: 처형의 일격과 함께 속성 마법이 터진다
+      const ev = { type: 'skill', spell: e.sigil, x: p.x + p.w / 2, y: p.y + 24, face: p.face, auto: true, exec: true }; e.sigil = null;
+      w.events.push(ev); resolveSkill(w, ev);
+    }
     // 연속 처형: 5초 안에 다음 처형 → 단계마다 빛 +20, 3연속부터 체력 1 (점수도 단계만큼)
     p.execChain = p.execChainT > 0 ? (p.execChain || 1) + 1 : 1; p.execChainT = X.chainF;
     if (p.execChain >= 2) {

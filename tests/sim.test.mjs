@@ -180,12 +180,15 @@ test('불꽃 두르기: 빛 30 소모, 15초 동안 베기 피해 +12%·속성 �
   tick(w, I({ attack: true })); steps(w, 20); ok(d.elB > 0, '속성 게이지'); eq(d.hp, 300 - Math.round(CFG.attack.dmg[0] * CFG.enchant.dmgMul));
   w.player.enchantT = 0; w.player.light = 10; tick(w, I({ skill: true })); ok(w.player.state !== 'cast', '빛 부족');
 });
-test('두르기 단계: 17 개화는 게이지가 터질 때 속성 마법이 저절로 나감 (버튼으로 쏘지 않음)', () => {
+test('두르기 단계: 17 개화는 터진 적에게 마법 각인 → 그 적을 처형하면 속성 마법 (저절로 나가지 않음)', () => {
   const w = W(); settle(w); w.player.face = 1; w.player.element = 'str'; w.player.enchTier = 2; w.player.enchantT = 600; w.player.spells = ['bolt'];
   const d = makeDummy(w, { hp: 2000 }); d.x = w.player.x + 30;
   let sk = []; for (let i = 0; i < 10; i++) { tick(w, I({ attack: true })); sk.push(...w.events.filter(e => e.type === 'skill').map(e => e.spell)); for (let k = 0; k < 24; k++) { tick(w, I()); sk.push(...w.events.filter(e => e.type === 'skill').map(e => e.spell)); } }
-  ok(sk.includes('tornado'), 'tornado ' + sk.join());
-  w.player.light = 100; tick(w, I({ skill: true })); steps(w, CFG.skill.enchant.castF + 2); ok(w.player.enchantT > 800, '다시 누르면 두르기 시간만 다시 채움'); ok(!w.events.some(e => e.type === 'skill'));
+  ok(!sk.length, '저절로 나가지 않음 ' + sk.join()); eq(d.sigil, 'tornado');
+  steps(w, 40); w.enemies.splice(w.enemies.indexOf(d), 1); const g = makeDummy(w, { hp: 50, poise: true }); g.x = w.player.x + w.player.w + 4; g.sigil = 'tornado'; g.sigilEl = 'str'; g.stunT = 120; g.poise = 1;
+  let got = false; tick(w, I({ attack: true })); for (let k = 0; k < 90 && !got; k++) { tick(w, I()); got = w.events.some(e => e.type === 'skill' && e.spell === 'tornado' && e.exec); }
+  ok(got, '처형 끝에 회오리'); ok(!g.sigil);
+  w.player.light = 100; w.player.state = 'idle'; tick(w, I({ skill: true })); steps(w, CFG.skill.enchant.castF + 2); ok(w.player.enchantT > 800, '다시 누르면 두르기 시간만 다시 채움');
 });
 test('속성 게이지는 스탯 방식대로 쌓임: 화염=3타, 얼음=구르기로 흘림, 빛=패링, 귀화=등 뒤, 생명=맞기, 번개=연속 타격', () => {
   const setup = el => { const w = W(); settle(w); const p = w.player; p.face = 1; p.element = el; p.enchantT = 900; p.hp = 9; p.maxHp = 9;

@@ -3,6 +3,7 @@ import { clipBeam } from './core/gimmick.js?v=mwqfu7ia';
 import { CFG } from './core/config.js?v=mwqfu7ia';
 import { attackBox } from './core/player.js?v=mwqfu7ia';
 import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqfu7ia';
+import { SPELLS } from './core/spells.js?v=mwqfu7ia';
 import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqfu7ia';
 import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqfu7ia';
 import { FxDirector } from './fxmap.js?v=mwqfu7ia';
@@ -132,6 +133,7 @@ export class Renderer {
       else if (ev.type === 'spawn' && !ev.boss) { this.reactHint(w, ev); for (let i = 0; i < 10; i++) this.parts.push({ x: ev.x + (Math.random() - 0.5) * 30, y: ev.y - 2, vx: (Math.random() - 0.5) * 1.2, vy: -0.4 - Math.random() * 0.8, life: 24 + Math.random() * 12, col: Math.random() < 0.5 ? '#3a3640' : '#5e5866', s: 2 }); }   // 등장: 발밑 흙먼지
       else if (ev.type === 'affinity') this.texts.push({ x: ev.x, y: ev.y - 34, t: 0, s: ev.aff > 0 ? '약점!' : '저항', life: 60, col: ev.aff > 0 ? EL_SLASH[ev.el][5] : '#8a8494' });   // 속성 상성
       else if (ev.type === 'alarm') { this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '경보!', life: 60, col: '#ff4f5e' }); (this.ripples = this.ripples || []).push({ x: ev.x, y: ev.y + 30, r: 6, t: 0, c: '255,79,94', max: ev.r }); }
+      else if (ev.type === 'sigil') { this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '각인!', life: 50, col: EL_SLASH[ev.el][5] }); if (!this.sigilHint) { this.sigilHint = 1; this.say(`마법 각인 — 이 적을 처형하면 「${SPELLS[ev.spell] ? SPELLS[ev.spell].name : '마법'}」이 터진다`, 220); } }
       else if (ev.type === 'dazzle') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '눈부심', life: 50, col: '#ffe9a0' });
       else if (ev.type === 'assassinate') { this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: ev.elite ? '급습!' : '암살!', life: 50 }); this.flash = Math.max(this.flash, 0.3); }
       else if (ev.type === 'flash') { this.flash = Math.max(this.flash, 0.3); this.zoom = Math.max(this.zoom || 0, 0.15); this.lampFlash = { t: 0, el: ev.el }; }   // 다시 켬: 등불에서 작은 섬광
@@ -300,6 +302,11 @@ export class Renderer {
       const [, ey] = this.eyePos(w, e), x = Math.round(e.x + e.w / 2), y = Math.round(Math.min(e.y - 10, ey - 22) - (e.elB > 0 ? 8 : 0) - (af > 0 ? Math.abs(Math.sin(w.t * 0.12)) * 2 : 0));   // 머리 위 (그림 꼭대기 근처)
       const tri = (r, up) => { g.beginPath(); if (up) { g.moveTo(x - r, y + r * 0.6); g.lineTo(x + r, y + r * 0.6); g.lineTo(x, y - r); } else { g.moveTo(x - r, y - r * 0.6); g.lineTo(x + r, y - r * 0.6); g.lineTo(x, y + r); } g.fill(); };
       g.fillStyle = 'rgba(8,6,14,.85)'; tri(7, af > 0); g.fillStyle = af > 0 ? EL_SLASH[p.element][5] : '#8a8494'; tri(4.5, af > 0);
+    }
+    for (const e of w.enemies) if (e.sigil && !e.dead && this.farK(w, e) < 0.6) {   // 마법 각인: 몸 둘레를 도는 속성 색 고리 (처형하면 마법)
+      const P = EL_SLASH[e.sigilEl || null], cx = e.x + e.w / 2, cy = e.y + e.h * 0.55, rx = e.w / 2 + 10, ry = 7, a0 = w.t * 0.06;
+      g.strokeStyle = `rgba(${EL_RGB[e.sigilEl || null]},${0.35 + 0.15 * Math.sin(w.t * 0.15)})`; g.lineWidth = 2; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1;
+      for (let i = 0; i < 12; i++) { const a = a0 + i * Math.PI / 6, x = Math.round(cx + Math.cos(a) * rx), y = Math.round(cy + Math.sin(a) * ry), sz = i % 3 ? 2 : 4; g.fillStyle = Math.sin(a) > 0 ? P[6] || P[5] : P[4]; g.fillRect(x - (sz >> 1), y - (sz >> 1), sz, sz); }
     }
     for (const e of w.enemies) if (e.barrier > 0 && !e.dead) this.drawBarrier(g, w, e);   // 강적 수호 방패
     if (w.props) this.drawGimmickFront(g, w);                             // 대종은 보스 위에 (가둠)

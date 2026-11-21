@@ -212,12 +212,12 @@ function spellCard(id, label = '지금 마법') {
 const TIER_NAME = ['각성 전', '각성', '개화', '극의'];
 const elTone = el => el ? SPELLS[STAT_SPELL[el][0]].tone : 'amber';
 const enchTier = (st, el) => !el ? 0 : st[el] >= 20 ? 3 : st[el] >= 17 ? 2 : st[el] >= 14 ? 1 : 0;
-const tierText = (el, t) => !el || t < 1 ? '게이지가 차면 약한 화상' : t === 1 ? `${ENCHANT[el].build} → ${ENCHANT[el].desc}` : `${ENCHANT[el].burst} 1.5배 + 「${SPELLS[STAT_SPELL[el][t >= 3 ? 2 : 1]].name}」이 함께 터짐`;
+const tierText = (el, t) => !el || t < 1 ? '게이지가 차면 약한 화상' : t === 1 ? `${ENCHANT[el].build} → ${ENCHANT[el].desc}` : `${ENCHANT[el].burst} 1.5배 + 적에게 마법 각인 → 그 적을 처형하면 「${SPELLS[STAT_SPELL[el][t >= 3 ? 2 : 1]].name}」`;
 // 불꽃 두르기 카드: 속성 · 단계 사다리 (14 각성 → 17 개화: 폭발 때 속성 마법 → 20 극의: 최종 마법)
 const enchantCard = () => { const el = run.element || null, E = ENCHANT[el], t = enchTier(run.stats, el);
   const ladder = el ? [1, 2, 3].map(k => `<div class="${t >= k ? '' : 'dim'}">${[0, 14, 17, 20][k]} ${TIER_NAME[k]} — ${tierText(el, k)}</div>`).join('') : '<div>스탯 하나가 14가 되면 그 속성으로 각성</div>';
   return `<div class="spellcard t-${elTone(el)}"><div class="niche">${icon('ember', elTone(el))}</div><div class="sc-body"><div class="sc-top"><small>${el ? `등불 속성 · ${STAT_ELEMENT[el]} · ${TIER_NAME[t]}` : '각성 전'}</small><b>${E.name}</b><span class="sc-cost">빛 ${CFG.enchant.cost}</span></div><div class="sc-desc">마법 버튼으로 검에 불꽃을 둘러 15초 동안 피해 +12%. ${E.build} — 가득 차면 터진다. 소등했다 다시 켜면 섬광이 주변 게이지를 한 번에 채운다</div><div class="sc-perk">${ladder}</div></div></div>`; };
-const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 두르기(빛 30, 15초). 베면 속성 게이지가 쌓이고 차면 터진다. 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경) · 17 개화: 터질 때 속성 마법 · 20 극의: 최종 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].slice(1).map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
+const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 두르기(빛 30, 15초). 베면 속성 게이지가 쌓이고 차면 터진다. 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경) · 17 개화: 터진 적에게 마법 각인, 그 적을 처형하면 속성 마법 · 20 극의: 최종 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].slice(1).map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
 // 단련 미리 보기: 지금(run.stats) → 찍은 뒤(draft). 바뀌는 수치, 열리고 잃는 능력·약점·공명, 마법 변화
 function trainPreview(draft, lastUp) {
   const st0 = run.stats, ch = STATS.filter(S => draft[S.id] !== st0[S.id]);

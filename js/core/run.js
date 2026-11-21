@@ -1,10 +1,10 @@
 // 한 판(런)의 진행: 서약 → 방 → 각인 → 문 선택 → … → 보스. 순수 로직 (DOM 없음)
-import { CFG } from './config.js?v=mwqfu7ia';
-import { createWorld } from './world.js?v=mwqfu7ia';
-import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwqfu7ia';
-import { startStats, statMods, train } from './stats.js?v=mwqfu7ia';
-import { OIL_SPELL, OIL_EL, spellFor, elementSpell, awakenPick } from './spells.js?v=mwqfu7ia';
-import { populateArena, parTime } from './level.js?v=mwqfu7ia';
+import { CFG } from './config.js?v=mwqg1ynu';
+import { createWorld } from './world.js?v=mwqg1ynu';
+import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwqg1ynu';
+import { startStats, statMods, train } from './stats.js?v=mwqg1ynu';
+import { OIL_SPELL, OIL_EL, spellFor, elementSpell, awakenPick } from './spells.js?v=mwqg1ynu';
+import { populateArena, parTime } from './level.js?v=mwqg1ynu';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -223,6 +223,7 @@ export function buildRoomWorld(r) {
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);
   p.flasks = r.flasks == null ? p.maxFlasks : r.flasks;
   p.light = Math.min(CFG.light.max, r.light || 0);                 // 스킬 게이지(빛)는 다음 방으로 이어짐
+  p.enchantT = r.enchant || 0;                      // 두르기 남은 횟수도 다음 방·다음 지역으로 이어짐
   if (p.mods.roomHeal && r.hp != null && p.hp < p.maxHp) { p.hp++; p.roomHealed = true; }   // 생명 16: 새 방 들어갈 때 체력 1
   return w;
 }
@@ -231,6 +232,6 @@ export function buildRoomWorld(r) {
 export function saveFromWorld(r, w) {
   const p = w.player;
   r.regionFlasksUsed += p.flasksUsed || 0;
-  r.hp = p.hp; r.flasks = p.flasks; r.light = p.light; r.perfect += p.perfectParries; r.executes += p.executes || 0;
+  r.hp = p.hp; r.flasks = p.flasks; r.light = p.light; r.enchant = p.enchLast ? 0 : Math.floor(p.enchantT || 0); r.perfect += p.perfectParries; r.executes += p.executes || 0;
   if (r.room === 'boss' && w.won && !p.hurtCount) r.noHitBoss = true;
 }

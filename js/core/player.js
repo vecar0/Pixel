@@ -1,6 +1,6 @@
 // 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
-import { CFG } from './config.js?v=mwqfu7ia';
-import { statMods, startStats } from './stats.js?v=mwqfu7ia';
+import { CFG } from './config.js?v=mwqg1ynu';
+import { statMods, startStats } from './stats.js?v=mwqg1ynu';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, FL = CFG.flurry;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
@@ -66,12 +66,12 @@ function start(w, p, action, inp) {
       return true;
     case 'attack': {
       const stunNear = w.enemies.some(e => !e.dead && e.stunT > 0 && Math.abs((e.x + e.w / 2) - (p.x + p.w / 2)) < 90);   // 그로기 적이 가까우면 연참 대신 처형
-      if (p.counterT > 0 && p.onGround && !stunNear) { p.counterT = 0; setState(p, 'flurry'); w.events.push({ type: 'flurryStart', x: p.x + p.w / 2, y: p.y + p.h, face: p.face }); return true; }   // 완벽 패링 직후 = 반격 연참
+      if (p.counterT > 0 && p.onGround && !stunNear) { p.counterT = 0; useSwing(p); setState(p, 'flurry'); w.events.push({ type: 'flurryStart', x: p.x + p.w / 2, y: p.y + p.h, face: p.face }); return true; }   // 완벽 패링 직후 = 반격 연참
       if (!p.onGround && p.airAttacked) return false;
       const chain = (p.state === 'attack') || p.comboT > 0;
       p.combo = chain ? (p.combo + 1) % 3 : 0;
       if (!p.onGround) { p.airAttacked = true; p.combo = 0; }
-      p.swing++; setState(p, 'attack'); return true;
+      p.swing++; useSwing(p); setState(p, 'attack'); return true;
     }
     case 'parry': setState(p, 'parry'); p.parryOk = false; p.recoverWait = 0; return true;
     case 'roll':
@@ -90,6 +90,12 @@ function start(w, p, action, inp) {
 }
 
 // 다시 켜기 시작 (땅·공중 어디서든). 끝나면 섬광 (world가 relightFlash 처리)
+// 두르기 = 휘두를 수 있는 횟수 (베기·연참 시작마다 1). 마지막 한 번은 그 베기가 끝날 때까지 불꽃이 남는다
+export const enchMax = p => Math.round(CFG.enchant.swings * (p.mods.enchDur || 1));
+function useSwing(p) {
+  if (!(p.enchantT > 0) || p.enchLast) return;
+  if (--p.enchantT <= 0) { p.enchantT = 0.5; p.enchLast = true; }
+}
 function relight(w, p) { p.dark = false; p.darkT = 0; p.buffer = null; setState(p, 'relight'); w.events.push({ type: 'relight', x: p.x + p.w / 2, y: p.y + p.h / 2 }); }
 export function updatePlayer(w, inp) {
   const p = w.player;
@@ -99,7 +105,7 @@ export function updatePlayer(w, inp) {
   if (p.recoverWait > 0) p.recoverWait--;
   if (p.dropT > 0) p.dropT--;
   if (p.blueT > 0) p.blueT--;
-  if (p.enchantT > 0 && p.state !== 'cast' && !p.dark && --p.enchantT === 0) w.events.push({ type: 'enchantEnd' });   // 두른 불꽃이 꺼짐 (소등 중엔 등불 안에 숨어 멈춤)
+  if (p.enchLast && p.state !== 'attack' && p.state !== 'flurry') { p.enchLast = false; p.enchantT = 0; w.events.push({ type: 'enchantEnd' }); }   // 마지막으로 두른 베기가 끝나면 불꽃이 꺼짐
   // 소등: 버튼 한 번에 끄기 / 다시 누르면(또는 시간이 다 되면) 다시 켬 → 무방비 동작 뒤 섬광
   const SN = CFG.snuff; if (p.snuffCd > 0) p.snuffCd--; if (p.noiseT > 0) p.noiseT--;
   if (inp.snuff && p.state !== 'dead' && p.state !== 'relight' && p.state !== 'execute') {
@@ -146,7 +152,7 @@ export function updatePlayer(w, inp) {
   }
   if (p.state === 'cast') {
     const S = CFG.skill[p.spell];
-    if (t === S.fireF) { if (p.spell === 'enchant') { p.enchantT = Math.round(CFG.enchant.dur * (p.mods.enchDur || 1)); p.healBurst = 0;
+    if (t === S.fireF) { if (p.spell === 'enchant') { p.enchantT = enchMax(p); p.enchLast = false; p.healBurst = 0;
       if ((p.mods.res || {}).warmLamp && ++p.castCount % 3 === 0 && p.hp < p.maxHp) { const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); }   // 공명 따스한 등불: 두르기 3번마다
       w.events.push({ type: 'enchant', el: p.element || null, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); } else w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); }
     if (t >= S.castF) setState(p, 'idle');

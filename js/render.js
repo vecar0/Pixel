@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqan6ii';
-import { CFG } from './core/config.js?v=mwqan6ii';
-import { attackBox } from './core/player.js?v=mwqan6ii';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqan6ii';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqan6ii';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqan6ii';
-import { FxDirector } from './fxmap.js?v=mwqan6ii';
-import { iconCanvas } from './icons.js?v=mwqan6ii';
-import { bodyShade } from './shade.js?v=mwqan6ii';
+import { clipBeam } from './core/gimmick.js?v=mwqazull';
+import { CFG } from './core/config.js?v=mwqazull';
+import { attackBox } from './core/player.js?v=mwqazull';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqazull';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqazull';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqazull';
+import { FxDirector } from './fxmap.js?v=mwqazull';
+import { iconCanvas } from './icons.js?v=mwqazull';
+import { bodyShade } from './shade.js?v=mwqazull';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -60,6 +60,7 @@ export class Renderer {
     // 동작 포즈 (Higgsfield 포즈 생성 → 기준 리라 격자로 읽음). 모두 132x111, 발 기준점 (69, 111)
     this.bgs = {}; this.region = 1;   // 지역별 배경은 처음 쓸 때 불러온다
     // 리라 8프레임 애니메이션 (Higgsfield GIF 생성 → 게임 크기·팔레트로 변환). 프레임마다 발 기준점(ax, ay)
+    fetch('assets/blade.json' + VQ()).then(r => r.json()).then(J => { this.blade = J; }).catch(() => {});   // 프레임마다 칼날 둘레 픽셀 (두르기 테두리용)
     fetch('assets/anims.json' + VQ()).then(r => r.json()).then(J => {
       for (const k in J) for (const n in J[k]) for (const f of J[k][n]) { f.img = loadImg(f.src + VQ()); }
       this.anims = J.lira; this.enemyAnims = J;
@@ -755,6 +756,16 @@ export class Renderer {
     g.restore(); g.globalAlpha = 1;
     if (k > 0 && t % 2 === 0) for (let i = 0; i < 4; i++) this.parts.push({ x: e.x + Math.random() * e.w, y: e.y + e.h * (1 - k) + Math.random() * 10, vx: (Math.random() - 0.5) * 0.6, vy: -0.8 - Math.random() * 1.2, life: 30, col: Math.random() < 0.5 ? '#fff2d8' : '#ffb347', s: 2 });
   }
+  // 칼날 테두리 그림 (프레임·속성마다 한 번 만들어 재사용): 안쪽 1px = 밝은 속성 색, 바깥 1px = 반투명
+  bladeOutline(fr, el) {
+    const B = this.blade && this.blade[fr.src]; if (!B || !fr.img.naturalWidth) return null;
+    this.bladeCache = this.bladeCache || new Map(); const key = fr.src + '|' + el;
+    let c = this.bladeCache.get(key); if (c) return c;
+    c = document.createElement('canvas'); c.width = fr.img.naturalWidth; c.height = fr.img.naturalHeight; const x = c.getContext('2d'), P = EL_SLASH[el];
+    x.fillStyle = P[3]; x.globalAlpha = 0.55; for (const [y, xs] of B.r2) for (const px of xs) x.fillRect(px, y, 1, 1);
+    x.fillStyle = P[5]; x.globalAlpha = 1; for (const [y, xs] of B.r1) for (const px of xs) x.fillRect(px, y, 1, 1);
+    this.bladeCache.set(key, c); return c;
+  }
   // 떨어지는 잔해: 무덤종 = 돌덩이(굴러 떨어지는 바위 조각), 용광로 = 쇳물 방울, 왕 = 죽은 별, 성녀 = 물방울 (수정은 fx)
   drawDebris(g, w) {
     for (const b of w.projectiles) {
@@ -925,6 +936,7 @@ export class Renderer {
     g.save(); g.translate(cx, feet); g.scale(sx * f, sy);
     g.drawImage(img, -fr.ax, -fr.ay);
     if (p.state !== 'ghost') this.applyLight(g, fr.img, fr.ax, fr.ay, cx, feet - 40, false, true);   // 손에 든 등불: 앞쪽 림, 등쪽 그림자
+    if (p.enchantT > 0 && p.state !== 'ghost') { const o = this.bladeOutline(fr, p.element || null); if (o) { g.globalAlpha = 0.8 + 0.2 * Math.sin(w.t * 0.3); g.drawImage(o, -fr.ax, -fr.ay); g.globalAlpha = 1; } }   // 두른 칼: 속성 색 테두리
     g.restore();
     this.drawParryArc(g, p, cx, feet, f);
   }

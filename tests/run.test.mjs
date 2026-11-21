@@ -279,7 +279,7 @@ test('공명 효과: 철벽 반격·수호·따스한 등불', () => {
   const e = spawnEnemy(w2, 'ghoul', p2.x + p2.w + 2, p2.y); e.update = () => {}; e.maxHp = e.hp = 500; e.poiseMax = false;
   tick(w2, I({ attack: true })); steps(w2, CFG.attack.startupF + 2); eq(500 - e.hp, Math.round(10 * p2.mods.atkMul * 1.6)); ok(!p2.riposte);
   const w3 = mk({ lmp: 14, wil: 6, vit: 14, fury: 6 }), p3 = w3.player; p3.hp = 2;
-  for (let i = 0; i < 3; i++) { p3.light = 100; p3.state = 'idle'; p3.enchantT = 5; tick(w3, I({ skill: true })); steps(w3, 40); }
+  for (let i = 0; i < 3; i++) { p3.light = 100; p3.state = 'idle'; p3.enchantT = 0; tick(w3, I({ skill: true })); steps(w3, 40); }
   eq(p3.hp, 3);
 });
 

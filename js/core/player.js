@@ -1,6 +1,6 @@
 // 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
-import { CFG } from './config.js?v=mwqg9aps';
-import { statMods, startStats } from './stats.js?v=mwqg9aps';
+import { CFG } from './config.js?v=mwqgfj2i';
+import { statMods, startStats } from './stats.js?v=mwqgfj2i';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, FL = CFG.flurry;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
@@ -80,10 +80,10 @@ function start(w, p, action, inp) {
     case 'flask':
       if (p.flasks <= 0 || p.hp >= p.maxHp) return false;
       setState(p, 'flask'); return true;
-    case 'skill': {                                 // 등불 마법 = 불꽃 두르기: 빛을 써서 검에 속성 불꽃 (두른 중에 누르면 시간을 다시 채움). 마법은 속성 게이지가 터질 때 저절로 나간다
-      const cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));
-      if (p.light < cost) return false;
-      p.light -= cost; p.spell = 'enchant'; p.elB = 0; setState(p, 'cast'); w.events.push({ type: 'castStart', spell: 'enchant', el: p.element || null }); return true;
+    case 'skill': {                                 // 불꽃 두르기: 빛이 두르기 기준(20) 이상이면 두를 수 있음 (두를 때는 빛을 안 씀). 두른 채 휘두를 때마다 빛이 줄고, 바닥나면 꺼짐
+      if (p.enchantT > 0 && !p.enchLast) return false;                // 이미 두른 상태
+      if (p.light < enchMin(p)) return false;
+      p.spell = 'enchant'; p.elB = 0; setState(p, 'cast'); w.events.push({ type: 'castStart', spell: 'enchant', el: p.element || null }); return true;
     }
   }
   return false;
@@ -91,10 +91,12 @@ function start(w, p, action, inp) {
 
 // 다시 켜기 시작 (땅·공중 어디서든). 끝나면 섬광 (world가 relightFlash 처리)
 // 두르기 = 휘두를 수 있는 횟수 (베기·연참 시작마다 1). 마지막 한 번은 그 베기가 끝날 때까지 불꽃이 남는다
-export const enchMax = p => Math.round(CFG.enchant.swings * (p.mods.enchDur || 1));
-function useSwing(p) {
+export const enchMin = p => Math.round(CFG.enchant.cost * (p.mods.costMul || 1));          // 두르기를 켤 수 있는 빛 (HUD 막대의 눈금)
+export const swingCost = p => Math.max(1, Math.round(CFG.enchant.swingCost * (p.mods.costMul || 1)));
+function useSwing(p) {                                                 // 두른 채 휘두르면 빛을 씀. 다음 한 번 휘두를 빛이 안 남으면 이번 베기를 끝으로 꺼짐
   if (!(p.enchantT > 0) || p.enchLast) return;
-  if (--p.enchantT <= 0) { p.enchantT = 0.5; p.enchLast = true; }
+  const c = swingCost(p); p.light = Math.max(0, p.light - c);
+  if (p.light < c) p.enchLast = true;
 }
 function relight(w, p) { p.dark = false; p.darkT = 0; p.buffer = null; setState(p, 'relight'); w.events.push({ type: 'relight', x: p.x + p.w / 2, y: p.y + p.h / 2 }); }
 export function updatePlayer(w, inp) {
@@ -152,7 +154,7 @@ export function updatePlayer(w, inp) {
   }
   if (p.state === 'cast') {
     const S = CFG.skill[p.spell];
-    if (t === S.fireF) { if (p.spell === 'enchant') { p.enchantT = enchMax(p); p.enchLast = false; p.healBurst = 0;
+    if (t === S.fireF) { if (p.spell === 'enchant') { p.enchantT = 1; p.enchLast = false; p.healBurst = 0;
       if ((p.mods.res || {}).warmLamp && ++p.castCount % 3 === 0 && p.hp < p.maxHp) { const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); }   // 공명 따스한 등불: 두르기 3번마다
       w.events.push({ type: 'enchant', el: p.element || null, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); } else w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); }
     if (t >= S.castF) setState(p, 'idle');

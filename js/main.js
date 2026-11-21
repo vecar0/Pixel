@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick, groundAt } from './core/world.js?v=mwqg9aps';
-import { Renderer } from './render.js?v=mwqg9aps';
-import { Input } from './input.js?v=mwqg9aps';
-import { Sfx } from './sfx.js?v=mwqg9aps';
-import { stepLoop } from './loop.js?v=mwqg9aps';
-import { spawnEnemy } from './core/enemies.js?v=mwqg9aps';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqg9aps';
-import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqg9aps';
-import { icon, RELIC_TONE } from './icons.js?v=mwqg9aps';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwqg9aps';
-import { startTitleScene } from './titlescene.js?v=mwqg9aps';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwqgfj2i';
+import { Renderer } from './render.js?v=mwqgfj2i';
+import { Input } from './input.js?v=mwqgfj2i';
+import { Sfx } from './sfx.js?v=mwqgfj2i';
+import { stepLoop } from './loop.js?v=mwqgfj2i';
+import { spawnEnemy } from './core/enemies.js?v=mwqgfj2i';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqgfj2i';
+import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqgfj2i';
+import { icon, RELIC_TONE } from './icons.js?v=mwqgfj2i';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwqgfj2i';
+import { startTitleScene } from './titlescene.js?v=mwqgfj2i';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwqg9aps';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqg9aps';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqg9aps';
-import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqg9aps';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwqg9aps';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqg9aps';
+import { CFG } from './core/config.js?v=mwqgfj2i';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqgfj2i';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqgfj2i';
+import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqgfj2i';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwqgfj2i';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqgfj2i';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -38,7 +38,7 @@ function syncTouch() {
     if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + '<small>두르기</small>' : '<small>두르기</small>'; }   // 글씨는 늘 '마법' (그림이 지금 마법을 보여 줌)
     if (!sp) { b.style.setProperty('--fill', '0%'); b.classList.remove('ready'); return; }
     const lit = p.enchantT > 0, cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));   // 두른 동안: 테두리 = 남은 두르기 시간 / 아니면: 두르기 비용만큼 빛이 차오름
-    const f = lit ? p.enchantT / Math.round(CFG.enchant.swings * (p.mods.enchDur || 1)) : Math.min(1, p.light / cost);
+    const f = lit ? Math.min(1, p.light / CFG.light.max) : Math.min(1, p.light / cost);   // 두른 동안: 남은 빛 / 아니면: 두르기 기준까지 찬 정도
     b.style.setProperty('--p', (f * 100).toFixed(1)); b.classList.toggle('ready', lit || p.light >= cost); b.classList.toggle('lit', lit);
     const lab = b.querySelector('small'); if (lab) lab.textContent = '두르기';
   });
@@ -216,8 +216,8 @@ const tierText = (el, t) => !el || t < 1 ? '게이지가 차면 약한 화상' :
 // 불꽃 두르기 카드: 속성 · 단계 사다리 (14 각성 → 17 개화: 폭발 때 속성 마법 → 20 극의: 최종 마법)
 const enchantCard = () => { const el = run.element || null, E = ENCHANT[el], t = enchTier(run.stats, el);
   const ladder = el ? [1, 2, 3].map(k => `<div class="${t >= k ? '' : 'dim'}">${[0, 14, 17, 20][k]} ${TIER_NAME[k]} — ${tierText(el, k)}</div>`).join('') : '<div>스탯 하나가 14가 되면 그 속성으로 각성</div>';
-  return `<div class="spellcard t-${elTone(el)}"><div class="niche">${icon('ember', elTone(el))}</div><div class="sc-body"><div class="sc-top"><small>${el ? `등불 속성 · ${STAT_ELEMENT[el]} · ${TIER_NAME[t]}` : '각성 전'}</small><b>${E.name}</b><span class="sc-cost">빛 ${CFG.enchant.cost}</span></div><div class="sc-desc">마법 버튼으로 검에 불꽃을 둘러 20번 휘두를 동안 피해 +12% (남은 횟수는 다음 방으로 이어짐). ${E.build} — 가득 차면 터진다. 소등했다 다시 켜면 섬광이 주변 게이지를 한 번에 채운다</div><div class="sc-perk">${ladder}</div></div></div>`; };
-const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 두르기(빛 30, 20번 휘두를 동안). 베면 속성 게이지가 쌓이고 차면 터진다. 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경) · 17 개화: 터진 적에게 마법 각인, 그 적을 처형하면 속성 마법 · 20 극의: 최종 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].slice(1).map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
+  return `<div class="spellcard t-${elTone(el)}"><div class="niche">${icon('ember', elTone(el))}</div><div class="sc-body"><div class="sc-top"><small>${el ? `등불 속성 · ${STAT_ELEMENT[el]} · ${TIER_NAME[t]}` : '각성 전'}</small><b>${E.name}</b><span class="sc-cost">빛 ${CFG.enchant.cost}</span></div><div class="sc-desc">마법 버튼으로 검에 불꽃을 둘러 피해 +12% (빛 20 이상이면 두르고, 휘두를 때마다 빛 5 — 빛이 바닥나면 꺼짐). ${E.build} — 가득 차면 터진다. 소등했다 다시 켜면 섬광이 주변 게이지를 한 번에 채운다</div><div class="sc-perk">${ladder}</div></div></div>`; };
+const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 두르기(빛 20 이상이면 두름, 휘두를 때마다 빛 5). 베면 속성 게이지가 쌓이고 차면 터진다. 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경) · 17 개화: 터진 적에게 마법 각인, 그 적을 처형하면 속성 마법 · 20 극의: 최종 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].slice(1).map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
 // 단련 미리 보기: 지금(run.stats) → 찍은 뒤(draft). 바뀌는 수치, 열리고 잃는 능력·약점·공명, 마법 변화
 function trainPreview(draft, lastUp) {
   const st0 = run.stats, ch = STATS.filter(S => draft[S.id] !== st0[S.id]);

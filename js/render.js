@@ -1,14 +1,14 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqg9aps';
-import { CFG } from './core/config.js?v=mwqg9aps';
-import { attackBox } from './core/player.js?v=mwqg9aps';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqg9aps';
-import { SPELLS } from './core/spells.js?v=mwqg9aps';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqg9aps';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqg9aps';
-import { FxDirector } from './fxmap.js?v=mwqg9aps';
-import { iconCanvas } from './icons.js?v=mwqg9aps';
-import { bodyShade } from './shade.js?v=mwqg9aps';
+import { clipBeam } from './core/gimmick.js?v=mwqgfj2i';
+import { CFG } from './core/config.js?v=mwqgfj2i';
+import { attackBox } from './core/player.js?v=mwqgfj2i';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqgfj2i';
+import { SPELLS } from './core/spells.js?v=mwqgfj2i';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqgfj2i';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqgfj2i';
+import { FxDirector } from './fxmap.js?v=mwqgfj2i';
+import { iconCanvas } from './icons.js?v=mwqgfj2i';
+import { bodyShade } from './shade.js?v=mwqgfj2i';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -1285,8 +1285,8 @@ export class Renderer {
     const full = p.light >= CFG.light.max, k = Math.min(1, p.light / CFG.light.max), gx = 22, gy = 25, gw = 64;
     g.drawImage(I('parry', 'amber'), 7, 21);
     g.fillStyle = '#120e16'; g.fillRect(gx - 1, gy - 1, gw + 2, 7); g.fillStyle = '#2e2537'; g.fillRect(gx, gy, gw, 5);
-    // 빛 = 마법 기름. 눈금은 등불 탄·큰 마법 비용 자리, 쓸 수 있는 만큼 밝게
-    const costs = (p.spells || []).filter(Boolean).map(s => Math.round(CFG.skill[s].cost * (p.mods.costMul || 1))), c1 = Math.min(...costs, 999), c2 = Math.max(...costs, 0);
+    // 빛 = 두른 칼의 기름. 눈금 = 두르기를 켤 수 있는 빛 (넘으면 밝게). 두른 동안엔 휘두를 때마다 줄어듦
+    const costs = [Math.round(CFG.enchant.cost * (p.mods.costMul || 1))], c1 = costs[0], c2 = p.enchantT > 0 ? 999 : c1;
     g.fillStyle = p.light >= c2 ? ((w.t >> 3) & 1 ? '#fff0c8' : '#ffb347') : p.light >= c1 ? '#e08a2a' : '#8c4a14'; g.fillRect(gx, gy, Math.round(gw * k), 5);
     g.fillStyle = '#ffd27a'; g.fillRect(gx, gy, Math.round(gw * k), 1);
     for (const c of costs) { const mx = gx + Math.round(gw * c / CFG.light.max); g.fillStyle = p.light >= c ? '#fff0c8' : '#4a3e57'; g.fillRect(mx, gy - 2, 1, 9); }

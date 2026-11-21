@@ -1,9 +1,9 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwpv6kij';
-import { hitLevel } from './level.js?v=mwpv6kij';
-import { CFG } from './config.js?v=mwpv6kij';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwpv6kij';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwpv6kij';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwpvebig';
+import { hitLevel } from './level.js?v=mwpvebig';
+import { CFG } from './config.js?v=mwpvebig';
+import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwpvebig';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwpvebig';
 
 const PR = CFG.parry, PO = CFG.poise;
 

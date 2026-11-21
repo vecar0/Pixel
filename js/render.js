@@ -1,14 +1,14 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqjnnrn';
-import { CFG } from './core/config.js?v=mwqjnnrn';
-import { attackBox } from './core/player.js?v=mwqjnnrn';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqjnnrn';
-import { SPELLS } from './core/spells.js?v=mwqjnnrn';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqjnnrn';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqjnnrn';
-import { FxDirector } from './fxmap.js?v=mwqjnnrn';
-import { iconCanvas } from './icons.js?v=mwqjnnrn';
-import { bodyShade } from './shade.js?v=mwqjnnrn';
+import { clipBeam } from './core/gimmick.js?v=mwqkabn6';
+import { CFG } from './core/config.js?v=mwqkabn6';
+import { attackBox } from './core/player.js?v=mwqkabn6';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqkabn6';
+import { SPELLS } from './core/spells.js?v=mwqkabn6';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqkabn6';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqkabn6';
+import { FxDirector } from './fxmap.js?v=mwqkabn6';
+import { iconCanvas } from './icons.js?v=mwqkabn6';
+import { bodyShade } from './shade.js?v=mwqkabn6';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -106,7 +106,7 @@ export class Renderer {
       if (ev.type === 'parry' && ev.perfect) { this.flash = 1; this.zoom = 1; this.texts.push({ x: p.x + p.w / 2, y: p.y - 26, t: 0, s: '완벽!' }); }
       else if (ev.type === 'executeStart') { this.pfx.spawn('melee/heavy-cleave', p.x + p.w / 2 + p.face * 24, feet, { flip: p.face < 0, palette: AMBER7, light: 0.4, life: 80, speed: 0.55 }); }
       else if (ev.type === 'execDash') { this.flash = Math.max(this.flash, 0.4); this.zoom = Math.max(this.zoom || 0, 0.6); }
-      else if (ev.type === 'execute') { this.flash = 0.5; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!', life: 60 }); this.execRing = { x: ev.x, y: ev.y + 10, t: 0 }; }   // 처형: 고리 하나가 퍼졌다 사라짐
+      else if (ev.type === 'execute') { this.flash = 0.8; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!', life: 60 }); }
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
       else if (ev.type === 'flurryStart') { this.flash = Math.max(this.flash, 0.45); this.zoom = 0.6; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '반격!', life: 45 }); }
@@ -334,12 +334,6 @@ export class Renderer {
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);
     if (!hideChars) this.drawLira(g, w, p);
     this._liraDone = true;
-    if (this.execRing) {                                                   // 처형 고리: 가는 금빛 고리 하나가 퍼지며 옅어짐
-      const R0 = this.execRing, k = R0.t / 20, r = 12 + 46 * (1 - (1 - k) * (1 - k));
-      g.strokeStyle = `rgba(255,214,130,${0.95 * (1 - k)})`; g.lineWidth = 3 - 2 * k; g.beginPath(); g.ellipse(R0.x, R0.y, r, r * 0.6, 0, 0, Math.PI * 2); g.stroke();
-      g.globalCompositeOperation = 'lighter'; g.strokeStyle = `rgba(255,160,60,${0.35 * (1 - k)})`; g.lineWidth = 6; g.stroke(); g.globalCompositeOperation = 'source-over'; g.lineWidth = 1;   // 고리 하나 + 은은한 번짐
-      if (++R0.t > 20) this.execRing = null;
-    }
     if (this.lampFlash) {                                                  // 섬광: 등불에서 짧게 번쩍 (빛 + 짧은 빛살 8줄, 점화한 상태면 속성 색)
       const F = this.lampFlash, k = F.t / 18, x = this.lampX, y = this.lampY, P = EL_SLASH[F.el === undefined ? null : F.el] || EL_SLASH[null];
       const rgb = F.el === undefined ? '255,214,140' : EL_RGB[F.el || null], R = 10 + 30 * Math.min(1, k * 2);
@@ -396,6 +390,7 @@ export class Renderer {
     // 떠오르는 글자
     g.textAlign = 'center'; g.font = 'bold 12px Galmuri11, monospace';
     for (const t of this.texts) {
+      if (!t.heal && !/^[+\-−]?\d/.test(t.s)) continue;                 // 글자('처형!' 같은)는 띄우지 않음 — 연출로만 알림. 숫자(회복 +1 등)만
       const L = t.life || 40, k = t.t / L, y = t.y + oy - (t.heal ? 22 : 14) * Math.min(1, t.t / 8) - k * (t.heal ? 14 : 6);
       g.globalAlpha = 1 - Math.max(0, k - 0.6) / 0.4;
       if (t.heal) g.font = 'bold 14px Galmuri11, monospace';
@@ -415,7 +410,7 @@ export class Renderer {
     }
     if (this.flash < -0.01) { g.fillStyle = `rgba(255,40,60,${-this.flash * 0.35})`; g.fillRect(0, 0, vw, H); }
     if (this.hud !== false && !this.death && !(this.cine && this.cine.t < CINE.out2)) this.drawHud(g, w);   // 등장 연출 중엔 HUD 숨김
-    for (const [m, y] of [[this.banner, this.banner?.y ?? 96], [this.sayMsg, H - 70]]) {     // 스테이지 이름 배너 · 안내 한 줄
+    for (const [m, y] of [[this.banner, this.banner?.y ?? 96], [this.sayMsg, 44]]) {     // 스테이지 이름 배너 · 안내 한 줄 (안내는 화면 위쪽)
       if (!m || m.t <= 0) continue; m.t--;
       const a = Math.min(1, m.t / 30, (m.dur || 150) - m.t < 20 ? ((m.dur || 150) - m.t) / 20 : 1);
       g.save(); g.globalAlpha = a; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -1218,9 +1213,7 @@ export class Renderer {
   // 패링 판정창 호 (앞쪽)
   drawParryArc(g, p, cx, feet, f) {
     if (p.state !== 'parry' || p.stateT >= CFG.parry.normalF) return;
-    const perfect = p.stateT < CFG.parry.perfectF;
-    g.strokeStyle = perfect ? C.amberHi : 'rgba(255,179,71,0.5)'; g.lineWidth = perfect ? 2 : 1;
-    g.beginPath(); g.arc(cx, feet - 30, 34, f > 0 ? -1.1 : Math.PI - 1.1, f > 0 ? 1.1 : Math.PI + 1.1); g.stroke(); g.lineWidth = 1;
+    // 패링 자세 원호는 그리지 않음 (원이 많아 눈이 아프다는 요청) — 완벽 패링 순간의 불꽃만
   }
 
   drawSword(g, p, cx, top, f) {

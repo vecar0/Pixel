@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick, groundAt } from './core/world.js?v=mwqjnnrn';
-import { Renderer } from './render.js?v=mwqjnnrn';
-import { Input } from './input.js?v=mwqjnnrn';
-import { Sfx } from './sfx.js?v=mwqjnnrn';
-import { stepLoop } from './loop.js?v=mwqjnnrn';
-import { spawnEnemy } from './core/enemies.js?v=mwqjnnrn';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqjnnrn';
-import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqjnnrn';
-import { icon, RELIC_TONE } from './icons.js?v=mwqjnnrn';
-import { installPixelUI, roundBtn, gaugeBtn } from './pixelui.js?v=mwqjnnrn';
-import { startTitleScene } from './titlescene.js?v=mwqjnnrn';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwqkabn6';
+import { Renderer } from './render.js?v=mwqkabn6';
+import { Input } from './input.js?v=mwqkabn6';
+import { Sfx } from './sfx.js?v=mwqkabn6';
+import { stepLoop } from './loop.js?v=mwqkabn6';
+import { spawnEnemy } from './core/enemies.js?v=mwqkabn6';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqkabn6';
+import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqkabn6';
+import { icon, RELIC_TONE } from './icons.js?v=mwqkabn6';
+import { installPixelUI, roundBtn, gaugeBtn } from './pixelui.js?v=mwqkabn6';
+import { startTitleScene } from './titlescene.js?v=mwqkabn6';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwqjnnrn';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqjnnrn';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqjnnrn';
-import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqjnnrn';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwqjnnrn';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqjnnrn';
+import { CFG } from './core/config.js?v=mwqkabn6';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqkabn6';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqkabn6';
+import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqkabn6';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwqkabn6';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqkabn6';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -240,7 +240,7 @@ function trainPreview(draft, lastUp) {
   return `<div class="tprev"><div class="tls">${lines.join('')}</div>${notes.map(n => `<div class="note">${n}</div>`).join('')}
     </div>`;
 }
-// 단련: 점수를 ▲▼ 화살표로 자유롭게 찍고(반대 화살표로 되돌림) '단련 완료'로 확정. 전투방 1점, 강적방·보스 2점 (각인은 없음)
+// 단련: 점수를 ▲▼ 화살표로 자유롭게 찍고(반대 화살표로 되돌림) '단련 완료'로 확정. 전투방·강적방·보스 모두 1점씩 (각인은 없음)
 function rewardScreen(after, draft = null, lastUp = null, total = 1) {   // 단련은 한 번에 1점
   mode = 'relic'; touch.classList.add('hidden');
   if (!draft && !PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b))) return after();   // 더 찍을 곳이 없으면 넘어감
@@ -448,8 +448,8 @@ function leaveRoom() {
   mode = 'transition'; touch.classList.add('hidden'); R.iris(world, 'close');
   const closed = () => {                                                  // 완전히 닫힌 검은 화면에서 남은 보상을 고른 뒤 다음 방
     const k = run.pending; run.pending = null;
-    if (k === 'bossWon') return overlay('won');                          // 보스 포탈 → 격파 화면 → 단련 2점 → 다음 지역
-    if (k === 'train') rewardScreen(goNext); else if (k === 'train1') rewardScreen(goNext, null, null, 1); else if (k === 'train2') rewardScreen(goNext, null, null, 2); else goNext();
+    if (k === 'bossWon') return overlay('won');                          // 보스 포탈 → 격파 화면 → 단련 1점 → 다음 지역
+    if (k === 'train') rewardScreen(goNext); else if (k === 'train1') rewardScreen(goNext, null, null, 1); else if (k === 'train2') rewardScreen(goNext, null, null, 1); else goNext();
   };
   const wait = () => { if (R.irisClock >= 1.02) closed(); else { R.stepFx(world); requestAnimationFrame(wait); } };
   requestAnimationFrame(wait);
@@ -530,14 +530,14 @@ function shopScreen() {
 function overlay(kind) {
   mode = kind; touch.classList.add('hidden');
   if (kind === 'cleared') {
-    // 방을 비우면 출구만 열린다. 보상(단련)은 출구로 나가 아이리스가 검게 닫힌 뒤 찍는다 (leaveRoom). 강적방은 2점
+    // 방을 비우면 출구만 열린다. 보상(단련)은 출구로 나가 아이리스가 검게 닫힌 뒤 찍는다 (leaveRoom). 강적방도 1점
     world.rewarded = world.counted = true; run.pending = run.room === 'combat' ? 'train' : 'train2'; roomCleared(run);
     const fp = world.player, oilGot = fp.flasks < fp.maxFlasks; if (oilGot) fp.flasks++;   // 방을 비우면 기름병 1개 다시 채움
     addScore('room', 100);
     const sec = world.t / 60, par = world.par || 0, fast = par && sec <= par;
     const bonus = fast ? Math.round(200 * (1 - sec / par)) + 20 : 0;
     if (fast) { addScore('time', bonus); run.embers += 5; }
-    resume(); R.say((fast ? `빠른 정리! ${Math.ceil(sec)}초 / 목표 ${par}초 · 점수 +${bonus} · 불씨 +5 — ` : '') + (oilGot ? '기름병 +1 · ' : '') + (run.pending === 'train' ? '출구가 열렸다 — 나가면 단련 1점' : '출구가 열렸다 — 나가면 단련 2점'), fast ? 240 : 150);
+    resume(); R.say((fast ? `빠른 정리! ${Math.ceil(sec)}초 / 목표 ${par}초 · 점수 +${bonus} · 불씨 +5 — ` : '') + (oilGot ? '기름병 +1 · ' : '') + (run.pending === 'train' ? '출구가 열렸다 — 나가면 단련 1점' : '출구가 열렸다 — 나가면 단련 1점'), fast ? 240 : 150);
   } else if (kind === 'won') {
     saveFromWorld(run, world);
     const boss = regionOf(run).boss;
@@ -547,7 +547,7 @@ function overlay(kind) {
     run.noHitBoss = run.noHitBoss || false;
     if (advanceRegion(run)) {
       screen(`<div class="card intro"><div class="region">${ENEMY_DEFS[boss].name} 격파</div><h2>대등이 다시 켜졌다</h2><div class="line">체력이 모두 회복되었다. 더 깊은 곳으로.</div>${runStat()}<button class="btn" id="next">계속</button></div>`);
-      bind('next', () => rewardScreen(regionIntro, null, null, 2));   // 보스 보상: 단련 2점
+      bind('next', () => rewardScreen(regionIntro, null, null, 1));   // 보스 보상: 단련 1점 (점수는 늘 한 번에 1점)
     } else finish(true);
   } else if (kind === 'dead') {
     if (practice) { screen(`<div class="card"><h2>연습 실패</h2><button class="btn" id="again">다시</button><button class="btn alt" id="back">마을로</button></div>`); bind('again', play); return bind('back', town); }

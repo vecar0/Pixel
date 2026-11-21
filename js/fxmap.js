@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwpuy55r';
-import { CFG } from './core/config.js?v=mwpuy55r';
-import { groundAt } from './core/world.js?v=mwpuy55r';
+import { preload } from './fx.js?v=mwpv6kij';
+import { CFG } from './core/config.js?v=mwpv6kij';
+import { groundAt } from './core/world.js?v=mwpv6kij';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -136,6 +136,7 @@ export class FxDirector {
           ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
         break;
+      case 'execDash': P('arcane/blink-out', ev.x0, ev.y - 30, { palette: AMBER, life: 30, light: 0.4 }, 2); P('melee/double-slash', (ev.x0 + ev.x1) / 2, ev.y - 30, { flip: ev.face < 0, palette: AMBER, life: 24, light: 0.35 }, 2); break;   // 연속 처형 돌진: 사라진 자리 + 가르는 궤적
       case 'execute': P('impacts/crit-hit', ev.x, ev.y + 30, { light: 0.5 }, 3); P('explosions/implosion', ev.x, ev.y + 20, { palette: AMBER, life: 60, light: 0.35 }, 3); break;
       case 'hurt': P('ui/heart-lost', p.x + p.w / 2, p.y - 8, {}, 3); break;   // 붉은 화면·파편은 렌더러가 그림
       case 'kill': {

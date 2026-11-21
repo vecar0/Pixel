@@ -1,6 +1,6 @@
 // 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
-import { CFG } from './config.js?v=mwpuy55r';
-import { statMods, startStats } from './stats.js?v=mwpuy55r';
+import { CFG } from './config.js?v=mwpv6kij';
+import { statMods, startStats } from './stats.js?v=mwpv6kij';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, FL = CFG.flurry;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
@@ -131,7 +131,7 @@ export function updatePlayer(w, inp) {
     const hp0 = p.hp; p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, CFG.flask.heal + (p.mods.flaskBonus || 0)));
     w.events.push({ type: 'heal', amount: p.hp - hp0, from: hp0, x: p.x + p.w / 2, y: p.y + p.h }); setState(p, 'idle');
   }
-  if (p.state === 'execute' && t >= CFG.execute.totalF) setState(p, 'idle');
+  if (p.state === 'execute' && !p.chainNext && t >= (p.execMode === 'chain' ? CFG.execute.chainTotalF : CFG.execute.totalF)) { setState(p, 'idle'); p.execMode = null; }
   if (p.state === 'cast') {
     const S = CFG.skill[p.spell];
     if (t === S.fireF) w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face });

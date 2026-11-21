@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwpuy55r';
-import { CFG } from './core/config.js?v=mwpuy55r';
-import { attackBox } from './core/player.js?v=mwpuy55r';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwpuy55r';
-import { nearProp } from './core/world.js?v=mwpuy55r';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwpuy55r';
-import { FxDirector } from './fxmap.js?v=mwpuy55r';
-import { iconCanvas } from './icons.js?v=mwpuy55r';
-import { bodyShade } from './shade.js?v=mwpuy55r';
+import { clipBeam } from './core/gimmick.js?v=mwpv6kij';
+import { CFG } from './core/config.js?v=mwpv6kij';
+import { attackBox } from './core/player.js?v=mwpv6kij';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwpv6kij';
+import { nearProp } from './core/world.js?v=mwpv6kij';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwpv6kij';
+import { FxDirector } from './fxmap.js?v=mwpv6kij';
+import { iconCanvas } from './icons.js?v=mwpv6kij';
+import { bodyShade } from './shade.js?v=mwpv6kij';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -94,6 +94,7 @@ export class Renderer {
     for (const ev of w.events) {
       if (ev.type === 'parry' && ev.perfect) { this.flash = 1; this.zoom = 1; this.texts.push({ x: p.x + p.w / 2, y: p.y - 26, t: 0, s: '완벽!' }); }
       else if (ev.type === 'executeStart') { this.pfx.spawn('melee/heavy-cleave', p.x + p.w / 2 + p.face * 24, feet, { flip: p.face < 0, palette: AMBER7, light: 0.4, life: 80, speed: 0.55 }); }
+      else if (ev.type === 'execDash') { this.flash = Math.max(this.flash, 0.4); this.zoom = Math.max(this.zoom || 0, 0.6); }
       else if (ev.type === 'execute') { this.flash = 0.8; this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '처형!', life: 60 }); }
       else if (ev.type === 'hurt') { this.burst(ev.x, ev.y, 12, [C.red, '#ffffff'], 2.5); this.flash = -0.5; }
       else if (ev.type === 'enemyParry') this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: '간파!' });
@@ -155,6 +156,7 @@ export class Renderer {
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
     this.parts = this.parts.filter(p => p.life > 0);
     const pl = w.player; if (pl.state === 'roll' && pl.stateT < CFG.roll.totalF && pl.stateT % 3 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 12 });   // 회피 잔상
+    if (pl.state === 'execute' && pl.execMode === 'chain' && pl.stateT < CFG.execute.chainHitF && pl.stateT % 2 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 14, st: 'execute', stT: pl.stateT, mode: 'chain', amber: true });   // 연속 처형 돌진 잔상
     for (const g of this.ghosts) g.life--;
     this.ghosts = this.ghosts.filter(g => g.life > 0);
     for (const t of this.texts) t.t++;
@@ -250,7 +252,7 @@ export class Renderer {
       g.fillStyle = 'rgba(13,10,17,.75)'; g.fillRect(Math.round(x - tw / 2), y - 7, Math.round(tw), 14); g.fillStyle = '#cfc6dc'; g.fillText('허수아비 (연습 상대)', x, y);
       g.textAlign = 'left'; g.textBaseline = 'top';
     }
-    for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: 'ghost' }); }
+    for (const gh of this.ghosts) { g.globalAlpha = gh.life / 12 * 0.45; this.drawLira(g, w, { ...p, x: gh.x, y: gh.y, face: gh.face, state: gh.st || 'ghost', stateT: gh.stT ?? p.stateT, execMode: gh.mode, chainNext: null, iframes: 0 }); }
     g.globalAlpha = 1;
     const hasBeacon = (w.props || []).some(o => o.kind === 'beacon');
     const trapped = bellOf(w).st === 'down' && bellOf(w).trapped;           // 대종에 갇힌 보스는 종 안 (그리지 않음). 허수아비는 그림 + 맞으면 흔들림
@@ -813,7 +815,9 @@ export class Renderer {
         break;
       }
       case 'execute': {                                                    // 처형: 3타 자세로 크게 베기 (느린 웅크림 → 베기 → 여운)
-        const X = CFG.execute; n = 'atk3';
+        const X = CFG.execute;
+        if (p.execMode === 'chain' && A.flurry) { n = 'flurry'; i = t < X.chainHitF ? span(0, 1, t / X.chainHitF) : span(2, p.chainNext ? 5 : 11, (t - X.chainHitF) / (X.chainTotalF - X.chainHitF)); break; }   // 연속 처형: 돌진 → 가로 베기 → (마지막이면 뛰어올라 내려치고 착지)
+        n = 'atk3';
         i = t < X.hitF ? span(0, 2, t / X.hitF) : t < X.hitF + 5 ? (t < X.hitF + 2 ? 3 : 4) : span(5, 7, (t - X.hitF - 5) / (X.totalF - X.hitF - 5));
         break;
       }

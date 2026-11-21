@@ -417,6 +417,13 @@ test('연속 처형: 5초 안에 두 번째 처형이면 빛 +20, 세 번째면 
   }
   eq(w.player.execChain, 3); ok(w.player.light >= 60, 'light ' + w.player.light); eq(w.player.hp, 4);
 });
+test('연속 처형 모션: 그로기 적이 근처에 또 있으면 공격 한 번에 차례로 돌진해 모두 처형', () => {
+  const w = W(); settle(w); w.player.face = 1;
+  const ds = [60, 180, 300].map(dx => { const d = makeDummy(w, { hp: 50, poise: true }); d.x = w.player.x + dx; d.stunT = 400; d.poise = 1; return d; });
+  tick(w, I({ attack: true }));
+  let dash = 0; for (let i = 0; i < 200; i++) { tick(w, {}); dash += w.events.filter(e => e.type === 'execDash').length; }
+  ok(ds.every(d => d.dead), '셋 다 처형'); eq(dash, 2); eq(w.player.execChain, 3); eq(w.player.state, 'idle'); eq(w.player.execMode, null);
+});
 test('강적 수호 방패: 정면 공격 3번이면 깨져 비틀거림, 그 전엔 피해 없음', () => {
   const w = W(); settle(w); w.player.face = 1;
   const e = spawnEnemy(w, 'ghoul', w.player.x + 30, w.player.y, {}); e.spawnT = 0; e.cd = 1e9; e.face = -1; makeElite(e, 'shield'); e.speed = 0;

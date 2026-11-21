@@ -1,9 +1,9 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwpuy55r';
-import { hitLevel } from './level.js?v=mwpuy55r';
-import { CFG } from './config.js?v=mwpuy55r';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwpuy55r';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwpuy55r';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwpv6kij';
+import { hitLevel } from './level.js?v=mwpv6kij';
+import { CFG } from './config.js?v=mwpv6kij';
+import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwpv6kij';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwpv6kij';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -134,7 +134,7 @@ export function resolvePlayerAttacks(w) {
     }
     if (e.executing) continue;
     if (e.stunT > 0) {                      // 그로기 → 처형 모션 시작 (피해는 베는 순간에)
-      p.state = 'execute'; p.stateT = 0; p.execTarget = e; p.buffer = null; e.executing = true;
+      p.state = 'execute'; p.stateT = 0; p.execTarget = e; p.buffer = null; e.executing = true; p.execMode = null; p.chainNext = null;
       w.events.push({ type: 'executeStart', x: e.x + e.w / 2, y: e.y + e.h / 2 });
       return;
     } else {
@@ -260,14 +260,24 @@ export function landSkill(w, d) {
 
 // 처형 모션: 적 옆으로 파고들고, hitF에 벤다. 일반 적은 즉사, 보스는 최대 체력의 15%(×각인·투지)
 export function updateExecute(w) {
-  const p = w.player, e = p.execTarget;
-  if (p.state !== 'execute' || !e) return;
-  const X = CFG.execute, t = p.stateT;
-  if (t < X.hitF && !e.dead) {
-    const side = Math.sign((p.x + p.w / 2) - (e.x + e.w / 2)) || -1, tx = side > 0 ? e.x + e.w + 2 : e.x - p.w - 2;
-    p.x += (tx - p.x) * 0.3; p.face = -side; p.vx = 0;
+  const p = w.player, X = CFG.execute, t = p.stateT;
+  if (p.state === 'execute' && p.chainNext && !p.execTarget && t >= p.execHit + X.chainGapF) {   // 연속 처형: 다음 그로기 적에게 돌진
+    const n = p.chainNext; p.chainNext = null;
+    if (!n.dead) {
+      p.stateT = 0; p.execTarget = n; p.execMode = 'chain'; p.vy = 0;
+      w.events.push({ type: 'execDash', x0: p.x + p.w / 2, x1: n.x + n.w / 2, y: p.y + p.h, face: Math.sign(n.x - p.x) || 1 });
+      w.events.push({ type: 'executeStart', x: n.x + n.w / 2, y: n.y + n.h / 2, chain: true });
+      return;
+    }
   }
-  if (t === X.hitF) {
+  const e = p.execTarget;
+  if (p.state !== 'execute' || !e) return;
+  const hitF = p.execMode === 'chain' ? X.chainHitF : X.hitF; p.execHit = hitF;
+  if (t < hitF && !e.dead) {
+    const side = Math.sign((p.x + p.w / 2) - (e.x + e.w / 2)) || -1, tx = side > 0 ? e.x + e.w + 2 : e.x - p.w - 2;
+    p.x += (tx - p.x) * (p.execMode === 'chain' ? 0.45 : 0.3); p.face = -side; p.vx = 0;   // 연속 처형은 빠르게 파고듦
+  }
+  if (t === hitF) {
     e.executing = false; e.stunT = 0; e.poise = 0; p.executes = (p.executes || 0) + 1;
     if (!e.dead) damageEnemy(w, e, e.boss ? Math.round(e.maxHp * PO.executeFrac * p.mods.execMul * (p.mods.furyExec || 1) * (p.mods.execBonus || 1)) : e.hp);
     w.hitstop = Math.max(w.hitstop, 12); w.shake = 12;
@@ -282,6 +292,10 @@ export function updateExecute(w) {
       w.events.push({ type: 'execChain', n: p.execChain, x: e.x + e.w / 2, y: e.y });
     }
     p.execTarget = null;
+    // 근처에 그로기 적이 또 있으면 이어서 처형 (놓치지 않게 미리 붙잡아 둠)
+    const cx = e.x + e.w / 2, nx = w.enemies.filter(o => o !== e && !o.dead && o.stunT > 0 && !o.executing && Math.abs(o.x + o.w / 2 - cx) < X.chainRange && Math.abs(o.y - e.y) < 140)
+      .sort((a, b) => Math.abs(a.x - cx) - Math.abs(b.x - cx))[0];
+    if (nx) { p.chainNext = nx; nx.executing = true; }
   }
 }
 

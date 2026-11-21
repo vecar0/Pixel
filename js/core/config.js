@@ -22,7 +22,7 @@ export const CFG = {
   },
   roll: { totalF: 22, dist: 128, iStart: 2, iEnd: 13, endLagF: 6 },
   poise: { perfect: 0.25, normal: 0.08, hit: 0.02, stunF: 180, mobStunF: 150, mobRes: 1.6, regenDelayF: 120, regenPerF: 0.002, executeFrac: 0.15 },   // mob*: 일반 적 그로기 (더 잘 무너지고 2.5초)
-  execute: { hitF: 22, totalF: 42, slow: 0.35, chainF: 300, chainLight: 20 },   // chainF: 이 틱 안에 다음 처형 → 연속 처형 보너스
+  execute: { hitF: 22, totalF: 42, slow: 0.35, chainF: 300, chainLight: 20, chainRange: 340, chainGapF: 6, chainHitF: 14, chainTotalF: 34 },   // chainRange 안에 그로기 적이 또 있으면 이어서 연속 처형 (돌진 베기)   // chainF: 이 틱 안에 다음 처형 → 연속 처형 보너스
   flurry: { window: 45, hits: [12, 20, 28, 40], activeF: 4, totalF: 50, iEnd: 42, range: 56, dmg: [10, 10, 10, 24], poise: [0.08, 0.08, 0.08, 0.3], hitstop: [3, 3, 3, 10], lunge: 2.6 },   // 완벽 패링 직후 공격 = 반격 연참 (앞으로 파고들며 4연속 베기, 마지막 일격이 큼, 도는 동안 무적)
   light: { max: 100, perfect: 25, normal: 10, kill: 3 },
   // 등불 마법 (빛 게이지 소모, 1칸). homing = 가까운 적을 쫓아감. delay = pixelfx 이펙트의 착탄 시점(틱)에 맞춘 피해 지연. inv = 시전 중 무적

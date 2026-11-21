@@ -1,6 +1,6 @@
 // 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
-import { CFG } from './config.js?v=mwqbmxdd';
-import { statMods, startStats } from './stats.js?v=mwqbmxdd';
+import { CFG } from './config.js?v=mwqeh41g';
+import { statMods, startStats } from './stats.js?v=mwqeh41g';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, FL = CFG.flurry;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
@@ -89,6 +89,8 @@ function start(w, p, action, inp) {
   return false;
 }
 
+// 다시 켜기 시작 (땅·공중 어디서든). 끝나면 섬광 (world가 relightFlash 처리)
+function relight(w, p) { p.dark = false; p.darkT = 0; p.buffer = null; setState(p, 'relight'); w.events.push({ type: 'relight', x: p.x + p.w / 2, y: p.y + p.h / 2 }); }
 export function updatePlayer(w, inp) {
   const p = w.player;
   if (p.state === 'dead') return;
@@ -97,7 +99,15 @@ export function updatePlayer(w, inp) {
   if (p.recoverWait > 0) p.recoverWait--;
   if (p.dropT > 0) p.dropT--;
   if (p.blueT > 0) p.blueT--;
-  if (p.enchantT > 0 && p.state !== 'cast' && --p.enchantT === 0) w.events.push({ type: 'enchantEnd' });   // 두른 불꽃이 꺼짐
+  if (p.enchantT > 0 && p.state !== 'cast' && !p.dark && --p.enchantT === 0) w.events.push({ type: 'enchantEnd' });   // 두른 불꽃이 꺼짐 (소등 중엔 등불 안에 숨어 멈춤)
+  // 소등: 버튼 한 번에 끄기 / 다시 누르면(또는 시간이 다 되면) 다시 켬 → 무방비 동작 뒤 섬광
+  const SN = CFG.snuff; if (p.snuffCd > 0) p.snuffCd--; if (p.noiseT > 0) p.noiseT--;
+  if (inp.snuff && p.state !== 'dead' && p.state !== 'relight' && p.state !== 'execute') {
+    if (p.dark) relight(w, p);
+    else if (!(p.snuffCd > 0)) { p.dark = true; p.darkT = SN.maxF + (p.mods.darkExtra || 0); w.events.push({ type: 'snuff', x: p.x + p.w / 2, y: p.y + p.h / 2 }); }
+  }
+  if (p.dark) { p.light = Math.min(CFG.light.max, p.light + SN.regen * (p.mods.lightMul || 1)); if (--p.darkT <= 0) relight(w, p); }   // 어둠 속에선 빛이 고임
+  if (p.dark && ((p.state === 'roll' && p.stateT === 1) || (p.state === 'jump' && p.stateT === 1))) { p.noiseT = 12; p.noiseR = SN.noiseRun * (p.mods.quietMul || 1); }   // 어둠 속: 걸음은 조용(살금살금), 구르기·점프는 소리
   if (p.powT > 0) p.powT--; if (p.sharpT > 0) p.sharpT--; if (p.shieldT > 0) p.shieldT--;   // 마법 효과 타이머 (공격 강화 · 패링 판정 · 보호막)
   if (p.comboT > 0) p.comboT--;
   if (p.counterT > 0) p.counterT--;
@@ -131,6 +141,9 @@ export function updatePlayer(w, inp) {
     w.events.push({ type: 'heal', amount: p.hp - hp0, from: hp0, x: p.x + p.w / 2, y: p.y + p.h }); setState(p, 'idle');
   }
   if (p.state === 'execute' && !p.chainNext && t >= (p.execMode === 'chain' ? CFG.execute.chainTotalF : CFG.execute.totalF)) { setState(p, 'idle'); p.execMode = null; }
+  if (p.state === 'relight' && t >= CFG.snuff.relightF + (p.mods.relightLag || 0)) {   // 다시 켬: 섬광
+    setState(p, 'idle'); p.snuffCd = CFG.snuff.cdF; w.events.push({ type: 'relightFlash' });
+  }
   if (p.state === 'cast') {
     const S = CFG.skill[p.spell];
     if (t === S.fireF) { if (p.spell === 'enchant') { p.enchantT = Math.round(CFG.enchant.dur * (p.mods.enchDur || 1)); p.healBurst = 0;
@@ -152,7 +165,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'roll') {
     p.vx = t < RO.totalF ? p.rollDir * RO.dist * p.mods.rollMul / RO.totalF : 0;
   } else if (free || p.state === 'flask') {
-    const spd = P.speed * (p.mods.speedMul || 1) * (p.slowMul || 1), max = p.state === 'flask' && !(p.mods.res || {}).enduring ? spd * 0.3 : spd;   // 공명 질긴 걸음 · slowMul: 물에 잠긴 바닥
+    const spd = P.speed * (p.mods.speedMul || 1) * (p.slowMul || 1) * (p.dark ? 0.7 * (p.mods.darkSpeed || 1) : 1), max = p.state === 'flask' && !(p.mods.res || {}).enduring ? spd * 0.3 : spd;   // 공명 질긴 걸음 · slowMul: 물에 잠긴 바닥   // 어둠 속은 살금살금 (그림자 18: 더 빠르게)
     if (dir) {
       p.vx += dir * spd / P.accelF;
       if (Math.abs(p.vx) > max) p.vx = Math.sign(p.vx) * max;

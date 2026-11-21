@@ -492,7 +492,7 @@ button.scard:disabled { opacity: .45; cursor: default; }
 .tb.down { background: radial-gradient(circle, rgba(255,179,71,.28) 0 66%, rgba(13,10,17,0) 70%) !important; opacity: 1; transform: scale(.93); }
 .tb .ico { filter: drop-shadow(0 1px 0 #000); }
 .tb small { color: rgba(236,227,211,.75); text-shadow: 0 1px 0 #000; }
-#b-skill, #b-flask { --p: 0; --c: #ffb347;
+#b-skill, #b-flask, #b-snuff { --p: 0; --c: #ffb347;
   background: radial-gradient(circle, rgba(13,10,17,.62) 0 60%, transparent 61%), conic-gradient(var(--c) calc(var(--p) * 1%), rgba(236,227,211,.16) 0) !important; opacity: .9; }
 #b-flask { --c: #7fe08a; }
 #b-skill.ready { box-shadow: 0 0 10px rgba(255,179,71,.55) !important; opacity: 1; animation: none; }
@@ -515,3 +515,5 @@ button.scard:disabled { opacity: .45; cursor: default; }
 .card.wide .picks.grid3 .pick { min-height: 0; padding: 8px 8px; }
 #b-skill.lit { --c: #ffe08a; filter: drop-shadow(0 0 6px rgba(255,179,71,.8)); }   /* 두른 동안: 풀기 */
 .sc-perk .dim { opacity: .45; }   /* 아직 안 열린 두르기 단계 */
+#b-snuff { --img: var(--px-snuff); --img-down: var(--px-snuff-down); --c: #b070e0; width: calc(var(--u) * .86); height: calc(var(--u) * .86); right: calc(var(--r0) + var(--u) * 2.82); bottom: calc(var(--b0) + var(--u) * 2.25); top: auto; }   /* 소등: 마법 버튼 위 */
+#b-snuff.lit { filter: drop-shadow(0 0 6px rgba(176,112,224,.8)); } #b-snuff.cool { opacity: .3; }

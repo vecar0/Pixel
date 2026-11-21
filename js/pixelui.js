@@ -55,7 +55,7 @@ export function installPixelUI() {
   root.setProperty('--px-btn', u(panelBtn('#ffb347'))); root.setProperty('--px-btn-down', u(panelBtn('#ffb347', { down: true })));
   root.setProperty('--px-btn-alt', u(panelBtn('#3a3046'))); root.setProperty('--px-btn-alt-down', u(panelBtn('#3a3046', { down: true })));
   root.setProperty('--px-row', u(panelBtn('#2a2232'))); root.setProperty('--px-row-down', u(panelBtn('#3a3046', { down: true })));
-  const ring = { attack: '#d9cfc0', parry: '#ffb347', roll: '#8fc8ff', jump: '#6aa0d0', flask: '#7fe08a', pause: '#9a8fa6', stick: '#9a8fa6', skill: '#ffb347' };
+  const ring = { attack: '#d9cfc0', parry: '#ffb347', roll: '#8fc8ff', jump: '#6aa0d0', flask: '#7fe08a', pause: '#9a8fa6', stick: '#9a8fa6', skill: '#ffb347', snuff: '#9a5cc4' };
   for (const [k, c] of Object.entries(ring)) { root.setProperty(`--px-${k}`, u(roundBtn(c))); root.setProperty(`--px-${k}-down`, u(roundBtn(c, { down: true }))); }
   root.setProperty('--px-knob', u(roundBtn('#ece3d3', { size: 12, down: true })));
 }

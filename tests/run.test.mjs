@@ -289,7 +289,7 @@ test('세밀한 능력 구간: 스탯마다 12·14·16·18·20 다섯 능력, 6�
   eq(mk({ str: 12 }).mods.execBonus, 1.25); eq(mk({ str: 16 }).mods.str3Poise, 2); eq(mk({ str: 18 }).mods.rangeMul, 1.25); eq(mk({ str: 3 }).mods.atkMul < mk({ str: 4 }).mods.atkMul * 0.9, true);
   eq(mk({ agi: 18 }).mods.airJumps, 1); eq(mk({ agi: 16 }).mods.rollI, 3 + 2);   // 2점마다 1프레임(3) + 16 능력(2)
   eq(mk({ wil: 12 }).mods.parryLight, 5); ok(mk({ wil: 16 }).mods.normalAsPerfect); eq(mk({ wil: 18 }).mods.stunMul, 1.5);
-  eq(mk({ lmp: 12 }).mods.costMul, 0.9); ok(mk({ lmp: 16 }).mods.spellInv); eq(mk({ lmp: 18 }).mods.costMul, 0.8); eq(mk({ lmp: 6 }).mods.costMul, 1.25);
+  eq(mk({ lmp: 12 }).mods.quietMul, 0.6); eq(mk({ lmp: 14 }).mods.darkExtra, 120); ok(mk({ lmp: 16 }).mods.shadowElite); eq(mk({ lmp: 18 }).mods.darkSpeed, 1.25); ok(mk({ lmp: 20 }).mods.shadow20); eq(mk({ lmp: 6 }).mods.darkExtra, -60);   // 그림자: 소등·암살
   eq(mk({ vit: 12 }).mods.flaskSpeed, 0.7); eq(mk({ vit: 3 }).maxFlasks, CFG.flask.charges - 1);
   eq(mk({ fury: 12 }).mods.critMul, 2.5); eq(mk({ fury: 16 }).mods.critLight, 10); eq(mk({ fury: 18 }).mods.lowHpCrit, 0.2);
   // 생명 16: 새 방에 들어갈 때 체력 1

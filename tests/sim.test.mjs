@@ -1,7 +1,7 @@
 // headless 전투 시뮬레이션 테스트: node tests/sim.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
-import { damageEnemy } from '../js/core/combat.js';
+import { damageEnemy, resolveEnemyHit } from '../js/core/combat.js';
 import { createWorld, tick } from '../js/core/world.js';
 import { invulnerable, attackBox } from '../js/core/player.js';
 import { ENEMY_DEFS, spawnEnemy, makeElite } from '../js/core/enemies.js';
@@ -186,13 +186,16 @@ test('두르기 단계: 17 개화는 게이지가 터질 때 속성 마법이 �
   ok(sk.includes('tornado'), 'tornado ' + sk.join());
   w.player.light = 100; tick(w, I({ skill: true })); steps(w, CFG.skill.enchant.castF + 2); ok(w.player.enchantT > 800, '다시 누르면 두르기 시간만 다시 채움'); ok(!w.events.some(e => e.type === 'skill'));
 });
-test('속성 게이지가 차면 터짐: 화염 = 화상, 얼음 = 빙결, 번개 = 옆 적 전격', () => {
-  for (const [el, chk] of [['str', d => d.burnT > 0], ['agi', d => d.frozenT > 0 || d.staggerT > 0], ['fury', (d, o) => o.hp < 300]]) {
-    const w = W(); settle(w); w.player.face = 1; w.player.element = el; w.player.enchantT = 600;
-    const d = makeDummy(w, { hp: 900 }); d.x = w.player.x + 30; const o = makeDummy(w, { hp: 300 }); o.x = w.player.x + 120;
-    for (let i = 0; i < 8; i++) { tick(w, I({ attack: true })); steps(w, 24); }
-    ok(chk(d, o), el);
-  }
+test('속성 게이지는 스탯 방식대로 쌓임: 화염=3타, 얼음=구르기로 흘림, 빛=패링, 귀화=등 뒤, 생명=맞기, 번개=연속 타격', () => {
+  const setup = el => { const w = W(); settle(w); const p = w.player; p.face = 1; p.element = el; p.enchantT = 900; p.hp = 9; p.maxHp = 9;
+    const d = makeDummy(w, { hp: 5000 }); d.x = p.x + 30; d.face = -1; return [w, p, d]; };
+  const hb = (w, d, parryable = true) => ({ src: {}, owner: d, x: w.player.x, y: w.player.y, w: w.player.w, h: w.player.h, dmg: 1, parryable, dir: -1 });
+  { const [w, p, d] = setup('str'); tick(w, I({ attack: true })); steps(w, 20); const a = d.elB; for (let k = 0; k < 2; k++) { tick(w, I({ attack: true })); steps(w, 20); } ok(d.elB - a >= 50, '화염 3타 ' + d.elB); }
+  { const [w, p, d] = setup('agi'); p.state = 'roll'; p.stateT = 2; resolveEnemyHit(w, hb(w, d)); ok(d.elB >= 50, '얼음 구르기 ' + d.elB); }
+  { const [w, p, d] = setup('wil'); p.state = 'parry'; p.stateT = 0; resolveEnemyHit(w, hb(w, d)); ok(d.elB >= 60, '빛 완벽 패링 ' + d.elB); }
+  { const [w, p, d] = setup('lmp'); d.face = 1; tick(w, I({ attack: true })); steps(w, 20); ok(d.elB >= 45, '귀화 등 뒤 ' + d.elB); }
+  { const [w, p, d] = setup('vit'); p.iframes = 0; p.state = 'idle'; resolveEnemyHit(w, hb(w, d, false)); ok(d.elB >= 55, '생명 맞기 ' + d.elB); }
+  { const [w, p, d] = setup('fury'); for (let k = 0; k < 3; k++) { tick(w, I({ attack: true })); steps(w, 20); } ok(d.elB >= 6 + 11 + 16, '번개 연속 ' + d.elB); }
 });
 test('얼음 창은 여러 적을 꿰뚫고, 흑염 창은 앞쪽 일직선만', () => {
   const w = W(); settle(w); w.player.face = 1;
@@ -625,5 +628,21 @@ test('꺼진 왕: 닻이 서 있을수록 단단하고, 닻 셋을 모두 부수
   const hp0 = k.hp; damageEnemy(w, k, 100); eq(hp0 - k.hp, 30);
   for (const a of w.props.filter(o => o.kind === 'anchor')) for (let i = 0; i < GIMMICK.anchor.hp; i++) hitGimmick(w, { x: a.x - 5, y: 250, w: 10, h: 20 });
   steps(w, 1); ok(k.stunT > 0, '무너짐'); const h1 = k.hp; damageEnemy(w, k, 100); eq(h1 - k.hp, 100);
+});
+test('소등: 어둠이면 적이 리라를 놓치고 빛이 고임, 등 뒤 공격은 암살, 다시 켜면 섬광으로 휘청', () => {
+  const w = W(); settle(w); const p = w.player; p.face = 1; p.light = 0;
+  const e = spawnEnemy(w, 'ghoul', p.x + 26, p.y, {}); e.spawnT = 0; e.cd = 1e9; e.face = 1; e.speed = 0;   // 적은 오른쪽을 봄 (리라는 등 뒤)
+  tick(w, I({ snuff: true })); steps(w, 5); ok(p.dark, '꺼짐'); ok(e.unaware, '놓침'); ok(p.light > 0, '빛이 고임');
+  e.lastX = e.x + 300; steps(w, 3); eq(e.face, 1);                         // 엉뚱한 곳을 뒤지는 중 → 리라는 등 뒤
+  tick(w, I({ attack: true })); steps(w, 40); ok(e.dead, '암살 처형');
+  const f = spawnEnemy(w, 'ghoul', p.x + 60, p.y, {}); f.spawnT = 0; f.cd = 1e9;
+  steps(w, 45); tick(w, I({ snuff: true })); ok(p.state === 'relight', '다시 켜는 중 (무방비)'); steps(w, CFG.snuff.relightF + 2);
+  ok(!p.dark && p.state === 'idle', '켜짐'); ok(f.staggerT > 0, '섬광에 휘청'); ok(p.snuffCd > 0, '쿨다운');
+});
+test('소등 중 두른 상태: 불꽃이 멈추고, 다시 켜는 섬광이 속성 게이지를 채움', () => {
+  const w = W(); settle(w); const p = w.player; p.element = 'str'; p.enchantT = 500;
+  const e = spawnEnemy(w, 'ghoul', p.x + 60, p.y, {}); e.spawnT = 0; e.cd = 1e9; e.maxHp = e.hp = 999;
+  tick(w, I({ snuff: true })); const e0 = p.enchantT; steps(w, 30); eq(p.enchantT, e0);
+  tick(w, I({ snuff: true })); steps(w, CFG.snuff.relightF + 2); ok(e.burnT > 0, '화염 폭발');
 });
 run();

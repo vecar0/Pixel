@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwqbmxdd';
-import { CFG } from './core/config.js?v=mwqbmxdd';
-import { groundAt } from './core/world.js?v=mwqbmxdd';
+import { preload } from './fx.js?v=mwqeh41g';
+import { CFG } from './core/config.js?v=mwqeh41g';
+import { groundAt } from './core/world.js?v=mwqeh41g';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -140,6 +140,8 @@ export class FxDirector {
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
         break;
       case 'bossFall': P('explosions/big-explosion', ev.x, ev.y + 40, { life: 150, light: 0.6 }, 3); P('holy/holy-pillar', ev.x, ev.y + 40, { light: 0.5, palette: GOLD }, 3); break;   // 보스 마지막 폭발 + 빛기둥
+      case 'snuff': P('explosions/smoke-bomb', p.x + p.w / 2 + p.face * 30, p.y + 50, { palette: GREY, life: 30, light: 0 }, 2); break;   // 등불을 끔: 연기 한 줄기
+      case 'flash': P('holy/sunburst', ev.x, ev.y + 20, { palette: ev.el !== undefined ? elPal(ev.el) : GOLD, life: 40, light: 0.7 }, 3); break;   // 다시 켬: 섬광 (두른 상태면 속성 색)
       case 'enchant': { const hx = p.x + p.w / 2 + p.face * 30; P('impacts/hit-spark', hx, p.y + 46, { height: 20, flip: p.face < 0, palette: elPal(ev.el), life: 22, light: 0.4 }, 2); break; }   // 불꽃 두르기 완성: 작은 불티만 (모션이 주인공)
       case 'elBurst': {                                                   // 속성 게이지가 찼다: 속성마다 다른 상태 표시
         const pal = elPal(ev.el);

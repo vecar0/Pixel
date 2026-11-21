@@ -1,11 +1,11 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
-import { CFG } from './config.js?v=mwqbmxdd';
-import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwqbmxdd';
-import { updateLevel, dropPickups } from './level.js?v=mwqbmxdd';
-import { createPlayer, updatePlayer, overlap } from './player.js?v=mwqbmxdd';
-import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwqbmxdd';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk } from './combat.js?v=mwqbmxdd';
-import { ACTIONS } from './player.js?v=mwqbmxdd';
+import { CFG } from './config.js?v=mwqeh41g';
+import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwqeh41g';
+import { updateLevel, dropPickups } from './level.js?v=mwqeh41g';
+import { createPlayer, updatePlayer, overlap } from './player.js?v=mwqeh41g';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwqeh41g';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk, relightFlash } from './combat.js?v=mwqeh41g';
+import { ACTIONS } from './player.js?v=mwqeh41g';
 
 export const BOSS_DEATH_F = 160, BOSS_FALL_F = 96;   // 보스 사망 연출 길이 · 마지막 폭발 시점 (틱)
 // 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판
@@ -23,6 +23,7 @@ export const BOSS_ARENAS = {
 export const EMPTY_INPUT = Object.freeze({
   left: false, right: false, down: false, jumpHeld: false,
   jump: false, attack: false, parry: false, roll: false, skill: false, flask: false,
+  snuff: false,
 });
 
 const ROOMS = {
@@ -137,7 +138,7 @@ export function tick(w, inp) {
   for (const o of w.props || []) if (o.cd > 0) o.cd--;
   updatePlayer(w, inp);
   updateExecute(w);
-  for (const ev of [...w.events]) if (ev.type === 'skill') resolveSkill(w, ev);
+  for (const ev of [...w.events]) if (ev.type === 'skill') resolveSkill(w, ev); else if (ev.type === 'relightFlash') relightFlash(w);   // 다시 켠 등불의 섬광
   for (const d of w.pending) if (--d.t <= 0) landSkill(w, d);             // 지연 마법: 이펙트가 떨어지는 순간 피해
   w.pending = w.pending.filter(d => d.t > 0);
 

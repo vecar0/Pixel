@@ -11,12 +11,12 @@ export const STATS = [
   { id: 'agi', name: '민첩', icon: 'roll', tone: 'moon', per: '점마다 이동·구르기 ±3%, 2점마다 무적 ±1프레임',
     tiers: [[12, '이동 속도 +8%'], [14, '구르기 후딜 없음 (연속 구르기)'], [16, '구르기 무적 +2프레임'], [18, '공중 점프 1회'], [20, '구르기 직후 첫 공격이 치명타']],
     weak: [[6, '구르기 후딜 +6프레임'], [3, '이동 속도 -10%']] },
-  { id: 'wil', name: '의지', icon: 'parry', tone: 'amber', per: '2점마다 완벽 패링 ±1프레임, 점마다 자세 피해 ±6%',
+  { id: 'wil', name: '의지', icon: 'parry', tone: 'amber', per: '2점마다 완벽 패링 ±1프레임, 점마다 자세 피해 ±6%·다시 켤 때 섬광 범위 ±6%',   // 밝힘의 축
     tiers: [[12, '일반 패링도 빛 +5 더'], [14, '완벽 패링한 적이 1.5배 오래 무방비'], [16, '일반 패링도 완벽 패링만큼 자세 피해'], [18, '그로기 시간 +50%'], [20, '모든 패링이 완벽 판정']],
     weak: [[6, '헛 패링 후딜 +6프레임'], [3, '완벽 패링 판정 추가 -1프레임']] },
-  { id: 'lmp', name: '등불', icon: 'ult', tone: 'amber', per: '점마다 마법 피해 ±7.5%, 빛 획득 ±5%',
-    tiers: [[12, '두르기 빛 -10%'], [14, '두르기 시간 +50%'], [16, '두르는 동작 중 무적'], [18, '두르기 빛 -20% (12와 합쳐 -20%)'], [20, '처치할 때마다 빛 +15']],
-    weak: [[6, '두르기 빛 +25%'], [3, '빛 획득 추가 -20%']] },
+  { id: 'lmp', name: '그림자', icon: 'ult', tone: 'amber', per: '점마다 마법 피해 ±7.5%, 빛 획득 ±5%',   // 어둠의 축: 소등·암살 (반대 = 의지, 밝힘의 축)
+    tiers: [[12, '발소리가 작아짐 (어둠 속 들키는 거리 -40%)'], [14, '소등 시간 +2초'], [16, '강적도 암살'], [18, '어둠 속 이동 속도 +25%'], [20, '극의: 어둠 속 공격은 모두 암살 판정']],
+    weak: [[6, '소등 시간 -1초'], [3, '다시 켜는 데 오래 걸림']] },
   { id: 'vit', name: '생명', icon: 'heart', tone: 'red', per: '2점마다 최대 체력 ±1',
     tiers: [[12, '기름병을 30% 빨리 마신다'], [14, '기름병 회복 +1'], [16, '새 방에 들어갈 때 체력 1 회복'], [18, '맞은 뒤 무적 시간 +50%'], [20, '기름병 +1개']],
     weak: [[6, '기름병 회복 -1'], [3, '기름병 -1개']] },
@@ -52,7 +52,8 @@ export function statMods(s) {
     poiseMul: Math.max(0.4, 1 + 0.12 * d('wil')), perfectExtra: Math.trunc(d('wil')) - (lo('wil', 3) ? 1 : 0), parryLight: at('wil', 12) ? 5 : 0,
     staggerMul: at('wil', 14) ? 1.5 : 1, normalAsPerfect: at('wil', 16), stunMul: at('wil', 18) ? 1.5 : 1, allPerfect: at('wil', 20), whiffLag: lo('wil', 6) ? 6 : 0,
     spellMul: Math.max(0.4, 1 + 0.15 * d('lmp')), lightStat: Math.max(0.5, 1 + 0.1 * d('lmp')) * (lo('lmp', 3) ? 0.8 : 1),
-    costMul: lo('lmp', 6) ? 1.25 : at('lmp', 18) ? 0.8 : at('lmp', 12) ? 0.9 : 1, lmp7: at('lmp', 14), enchDur: at('lmp', 14) ? 1.5 : 1, spellInv: at('lmp', 16), lmp10: at('lmp', 20),
+    costMul: 1, quietMul: at('lmp', 12) ? 0.6 : 1, darkExtra: (at('lmp', 14) ? 120 : 0) - (lo('lmp', 6) ? 60 : 0), shadowElite: at('lmp', 16), darkSpeed: at('lmp', 18) ? 1.25 : 1, shadow20: at('lmp', 20), relightLag: lo('lmp', 3) ? 14 : 0,   // 그림자: 소등·암살
+    flashMul: Math.max(0.6, 1 + 0.06 * (s.wil - STAT_START)),   // 의지: 섬광 범위
     hpBonus: Math.trunc(d('vit')), flaskSpeed: at('vit', 12) ? 0.7 : 1, flaskBonus: at('vit', 14) ? 1 : lo('vit', 6) ? -1 : 0, roomHeal: at('vit', 16),
     hurtIMul: at('vit', 18) ? 1.5 : 1, flaskCount: (at('vit', 20) ? 1 : 0) - (lo('vit', 3) ? 1 : 0),
     critChance: Math.max(0, 0.06 * d('fury')), critMul: at('fury', 20) ? 3 : at('fury', 12) ? 2.5 : 2, killCrit: at('fury', 14), critLight: at('fury', 16) ? 10 : 0,
@@ -82,7 +83,7 @@ export const RESONANCES = [
 ];
 export const resonancesOf = s => RESONANCES.filter(r => s[r.a] >= T_ABILITY && s[r.b] >= T_ABILITY);
 // 극의: 20에 도달한 스탯의 칭호
-export const MASTERY = { str: '파쇄자', agi: '그림자', wil: '철의 의지', lmp: '등불 현자', vit: '불굴', fury: '광전사' };
+export const MASTERY = { str: '파쇄자', agi: '질풍', wil: '철의 의지', lmp: '밤의 사냥꾼', vit: '불굴', fury: '광전사' };
 // 지금 수치 (구체적인 값). 화면에 '공격 피해 112%'처럼 보여 줌
 export function statNumbers(id, v) {
   const d = (v - STAT_START) / 2, t = Math.trunc(d), pct = x => Math.round(x * 100) + '%';
@@ -90,7 +91,7 @@ export function statNumbers(id, v) {
     case 'str': return `공격 피해 ${pct(Math.max(0.4, 1 + 0.12 * d))}`;
     case 'agi': return `이동·구르기 ${pct(1 + 0.06 * d)}, 구르기 무적 ${12 + t}프레임`;
     case 'wil': return `완벽 패링 ${Math.min(12, Math.max(2, 6 + t))}프레임, 자세 피해 ${pct(Math.max(0.4, 1 + 0.12 * d))}`;
-    case 'lmp': return `마법 피해 ${pct(Math.max(0.4, 1 + 0.15 * d))}, 빛 획득 ${pct(Math.max(0.5, 1 + 0.1 * d))}`;
+    case 'lmp': return `빛 획득 ${pct(Math.max(0.5, 1 + 0.1 * d))}, 소등 ${((240 + (v >= 14 ? 120 : 0) - (v <= 6 ? 60 : 0)) / 60).toFixed(0)}초`;
     case 'vit': return `최대 체력 ${Math.max(1, 5 + t)}`;
     case 'fury': return `치명타 확률 ${Math.round(Math.max(0, 6 * d))}%, 치명타 ${v >= 20 ? 3 : v >= 12 ? 2.5 : 2}배`;
   }

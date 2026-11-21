@@ -2,10 +2,10 @@
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
-import { clipBeam } from './gimmick.js?v=mwqbmxdd';
-import { CFG } from './config.js?v=mwqbmxdd';
-import { moveAndCollide, overlap } from './player.js?v=mwqbmxdd';
-import { BOSSES, bossPick, bossWant } from './boss.js?v=mwqbmxdd';
+import { clipBeam } from './gimmick.js?v=mwqeh41g';
+import { CFG } from './config.js?v=mwqeh41g';
+import { moveAndCollide, overlap } from './player.js?v=mwqeh41g';
+import { BOSSES, bossPick, bossWant } from './boss.js?v=mwqeh41g';
 
 export const ENEMY_DEFS = {
   ghoul: {
@@ -37,7 +37,7 @@ export const ENEMY_DEFS = {
     },
   },
   // 지역 4: 꺼진 태양의 심연
-  assassin: {
+  assassin: { darkSight: true,
     hp: 35, w: 22, h: 52, speed: 1.4, range: 46, blink: true, cooldown: [70, 120],
     attacks: { cut: { name: 'cut', telegraphF: 18, activeF: 4, recoverF: 26, dmg: 1, parryable: true, reach: 40 } },
   },
@@ -114,6 +114,16 @@ function startAttack(w, e, d, dx, name) {
   w.events.push({ type: 'telegraph', boss: e.boss, parryable: d.attacks[name].parryable, kind: e.kind, atk: name });
 }
 
+// 적이 리라를 보는가: 밝으면 늘 봄. 소등(어둠) 중엔 보스·어둠을 보는 적만 보고, 나머지는 소리(발소리·공격)나 사제의 물빛 안에서만
+export function seesPlayer(w, e) {
+  const p = w.player, d = ENEMY_DEFS[e.kind];
+  if (e.blindT > 0) return false;                                       // 귀화 폭발: 잠깐 눈이 멂
+  if (!p.dark) return true;
+  if (e.boss || d.darkSight) return true;
+  const dist = Math.abs(p.x + p.w / 2 - (e.x + e.w / 2)) + Math.abs(p.y - e.y) * 0.5;
+  if (e.kind === 'priest' && dist < 110) return true;                    // 사제의 물빛 구슬
+  return p.noiseT > 0 && dist < (p.noiseR || 0);
+}
 export function updateEnemy(w, e) {
   if (Math.abs(e.kvx) > 0.05) {          // 넉백: 벽에 막히면 멈춤
     const x0 = e.x; e.x += e.kvx; e.kvx *= 0.8;
@@ -122,8 +132,12 @@ export function updateEnemy(w, e) {
   if (e.update) return e.update(w, e);    // 테스트 더미
   if (e.spawnT > 0) { e.spawnT--; e.vx = 0; if (!ENEMY_DEFS[e.kind].fly) physics(w, e); return; }   // 등장 중: 행동·피격 없음
   const d = ENEMY_DEFS[e.kind], p = w.player;
-  const dx = (p.x + p.w / 2) - (e.x + e.w / 2);
+  let dx = (p.x + p.w / 2) - (e.x + e.w / 2);
   e.stT++;
+  if (e.blindT > 0) e.blindT--;
+  const vis = seesPlayer(w, e); e.unaware = !vis;                          // 소등: 리라를 못 보면 마지막으로 본 자리를 뒤진다
+  if (vis) { e.lastX = p.x + p.w / 2; e.searchT = 0; }
+  else { const ex = e.x + e.w / 2, tx = e.lastX ?? ex; e.searchT = (e.searchT || 0) + 1; dx = Math.abs(tx - ex) > 14 ? tx - ex : ((e.searchT >> 6) & 1 ? 0.001 : -0.001); }
   if (e.frozenT > 0) e.frozenT--; if (e.rootT > 0) e.rootT--; if (e.slowT > 0) e.slowT--; if (e.brittleT > 0) e.brittleT--;   // 마법 효과: 발 묶음 · 둔화 · 취약
   if (e.staggerT > 0) { e.staggerT--; if (!d.fly) { e.vx = 0; physics(w, e); } return; }
 
@@ -140,7 +154,7 @@ export function updateEnemy(w, e) {
       const nx = p.x + p.w / 2 - p.face * 56 - e.w / 2;
       if (nx > 0 && nx + e.w < w.width) { e.x = nx; w.events.push({ type: 'blink', x: e.x + e.w / 2, y: e.y + e.h / 2 }); }
     }
-    const want = e.boss ? bossWant(w, e, dx) : Math.abs(dx) < e.range && Math.abs(p.y - e.y) < 120;
+    const want = vis && (e.boss ? bossWant(w, e, dx) : Math.abs(dx) < e.range && Math.abs(p.y - e.y) < 120);   // 못 보면 공격을 시작하지 않음
     const tokenOk = e.boss || attackers(w) < CFG.enemy.maxAttackers;
     if (e.cd <= 0 && want && tokenOk && onScreen(w, e) && p.state !== 'dead') {
       const names = Object.keys(d.attacks);

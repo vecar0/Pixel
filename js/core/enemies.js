@@ -53,7 +53,7 @@ export const ENEMY_DEFS = {
   ...BOSSES,
 };
 
-// 속성 상성: 두른 속성이 약점이면 게이지 1.6배·피해 +20%, 저항이면 게이지 절반·피해 -15%
+// 속성 상성: 점화한 속성이 약점이면 게이지 1.6배·피해 +20%, 저항이면 게이지 절반·피해 -15%
 //   화염(str) 빛(wil) 얼음(agi) 귀화(lmp) 생명(vit) 번개(fury)
 export const AFFINITY = {
   ghoul: { weak: ['wil', 'str'], resist: ['agi'] },        // 무덤 구울: 빛과 불에 사그라듦, 차가운 시체라 얼음엔 무덤덤

@@ -6,11 +6,11 @@ export const UNLOCKS = [
   { id: 'relic:afterglow', kind: 'relic', relic: 'afterglow', name: '각인: 잔광', cost: 4 },
   { id: 'relic:wings', kind: 'relic', relic: 'wings', name: '각인: 두 번째 날개', cost: 6 },
   { id: 'relic:flame', kind: 'relic', relic: 'flame', name: '각인: 화염 칼날', cost: 6 },
-  { id: 'oil:blue', kind: 'oil', oil: 'blue', name: '랜턴 기름: 성유', cost: 8, desc: '각성 전 두르기가 빛 속성' },
-  { id: 'oil:black', kind: 'oil', oil: 'black', name: '랜턴 기름: 귀화유', cost: 8, desc: '각성 전 두르기가 귀화 속성' },
+  { id: 'oil:blue', kind: 'oil', oil: 'blue', name: '랜턴 기름: 성유', cost: 8, desc: '각성 전 점화가 빛 속성' },
+  { id: 'oil:black', kind: 'oil', oil: 'black', name: '랜턴 기름: 귀화유', cost: 8, desc: '각성 전 점화가 귀화 속성' },
   { id: 'practice', kind: 'practice', name: '연습장', cost: 3, desc: '쓰러뜨린 보스와 다시 싸워 패턴을 익힌다' },
 ];
-export const OILS = { refined: { name: '정제유', desc: '각성 전 두르기: 등불 불꽃 (약한 화상)' }, blue: { name: '성유', desc: '각성 전 두르기: 빛 (자세 붕괴)' }, black: { name: '귀화유', desc: '각성 전 두르기: 귀화 (빛 흡수)' } };
+export const OILS = { refined: { name: '정제유', desc: '각성 전 점화: 등불 불꽃 (약한 화상)' }, blue: { name: '성유', desc: '각성 전 점화: 빛 (자세 붕괴)' }, black: { name: '귀화유', desc: '각성 전 점화: 귀화 (빛 흡수)' } };
 export const DARK_RULES = [
   '', '적 체력 +8%', '적 체력 +16%', '전투방에 엘리트 등장', '전투방 웨이브 +1', '기름병 -1',
   '적 체력 +48%', '적 체력 +56%', '적 체력 +64%', '적 체력 +72%', '적 체력 +80% · 최후의 어둠',

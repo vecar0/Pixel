@@ -80,8 +80,8 @@ function start(w, p, action, inp) {
     case 'flask':
       if (p.flasks <= 0 || p.hp >= p.maxHp) return false;
       setState(p, 'flask'); return true;
-    case 'skill': {                                 // 불꽃 두르기: 빛이 두르기 기준(20) 이상이면 두를 수 있음 (두를 때는 빛을 안 씀). 두른 채 휘두를 때마다 빛이 줄고, 바닥나면 꺼짐
-      if (p.enchantT > 0 && !p.enchLast) return false;                // 이미 두른 상태
+    case 'skill': {                                 // 불꽃 점화: 빛이 점화 기준(20) 이상이면 점화할 수 있음 (점화할 때는 빛을 안 씀). 점화한 채 휘두를 때마다 빛이 줄고, 바닥나면 꺼짐
+      if (p.enchantT > 0 && !p.enchLast) return false;                // 이미 점화한 상태
       if (p.light < enchMin(p)) return false;
       p.spell = 'enchant'; p.elB = 0; setState(p, 'cast'); w.events.push({ type: 'castStart', spell: 'enchant', el: p.element || null }); return true;
     }
@@ -90,10 +90,10 @@ function start(w, p, action, inp) {
 }
 
 // 다시 켜기 시작 (땅·공중 어디서든). 끝나면 섬광 (world가 relightFlash 처리)
-// 두르기 = 휘두를 수 있는 횟수 (베기·연참 시작마다 1). 마지막 한 번은 그 베기가 끝날 때까지 불꽃이 남는다
-export const enchMin = p => Math.round(CFG.enchant.cost * (p.mods.costMul || 1));          // 두르기를 켤 수 있는 빛 (HUD 막대의 눈금)
+// 점화 = 휘두를 수 있는 횟수 (베기·연참 시작마다 1). 마지막 한 번은 그 베기가 끝날 때까지 불꽃이 남는다
+export const enchMin = p => Math.round(CFG.enchant.cost * (p.mods.costMul || 1));          // 점화할 수 있는 빛 (HUD 막대의 눈금)
 export const swingCost = p => Math.max(1, Math.round(CFG.enchant.swingCost * (p.mods.costMul || 1)));
-function useSwing(p) {                                                 // 두른 채 휘두르면 빛을 씀. 다음 한 번 휘두를 빛이 안 남으면 이번 베기를 끝으로 꺼짐
+function useSwing(p) {                                                 // 점화한 채 휘두르면 빛을 씀. 다음 한 번 휘두를 빛이 안 남으면 이번 베기를 끝으로 꺼짐
   if (!(p.enchantT > 0) || p.enchLast) return;
   const c = swingCost(p); p.light = Math.max(0, p.light - c);
   if (p.light < c) p.enchLast = true;
@@ -107,7 +107,7 @@ export function updatePlayer(w, inp) {
   if (p.recoverWait > 0) p.recoverWait--;
   if (p.dropT > 0) p.dropT--;
   if (p.blueT > 0) p.blueT--;
-  if (p.enchLast && p.state !== 'attack' && p.state !== 'flurry') { p.enchLast = false; p.enchantT = 0; w.events.push({ type: 'enchantEnd' }); }   // 마지막으로 두른 베기가 끝나면 불꽃이 꺼짐
+  if (p.enchLast && p.state !== 'attack' && p.state !== 'flurry') { p.enchLast = false; p.enchantT = 0; w.events.push({ type: 'enchantEnd' }); }   // 마지막으로 점화한 베기가 끝나면 불꽃이 꺼짐
   // 소등: 버튼 한 번에 끄기 / 다시 누르면(또는 시간이 다 되면) 다시 켬 → 무방비 동작 뒤 섬광
   const SN = CFG.snuff; if (p.snuffCd > 0) p.snuffCd--; if (p.noiseT > 0) p.noiseT--;
   if (inp.snuff && p.state !== 'dead' && p.state !== 'relight' && p.state !== 'execute') {
@@ -131,7 +131,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'attack' && t >= A.startupF + A.activeF + A.recoveryF + (p.mods.atkLag || 0)) { p.comboT = A.comboWindowF; setState(p, 'idle'); }
   if (p.state === 'flurry') {
     const k = FL.hits.indexOf(t);
-    if (k >= 0) { p.swing++; w.events.push({ type: 'flurryHit', k, x: p.x + p.w / 2, y: p.y + p.h, face: p.face }); }   // 타마다 새 휘두름 (같은 적을 여러 번)
+    if (k >= 0) { p.swing++; w.events.push({ type: 'flurryHit', k, x: p.x + p.w / 2, y: p.y + p.h, face: p.face }); }   // 타마다 새 휘두르기 (같은 적을 여러 번)
     if (t >= FL.totalF) { p.comboT = 0; setState(p, 'idle'); }
   }
   if (p.state === 'parry' && (p.parryOk ? t >= PR.normalF : t >= PR.normalF + PR.whiffF + (p.mods.whiffLag || 0))) setState(p, 'idle');
@@ -155,7 +155,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'cast') {
     const S = CFG.skill[p.spell];
     if (t === S.fireF) { if (p.spell === 'enchant') { p.enchantT = 1; p.enchLast = false; p.healBurst = 0;
-      if ((p.mods.res || {}).warmLamp && ++p.castCount % 3 === 0 && p.hp < p.maxHp) { const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); }   // 공명 따스한 등불: 두르기 3번마다
+      if ((p.mods.res || {}).warmLamp && ++p.castCount % 3 === 0 && p.hp < p.maxHp) { const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); }   // 공명 따스한 등불: 점화 3번마다
       w.events.push({ type: 'enchant', el: p.element || null, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); } else w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); }
     if (t >= S.castF) setState(p, 'idle');
   }

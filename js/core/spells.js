@@ -38,7 +38,7 @@ export const SPELL_PERK = {
 export const SPELL_TAGS = { bolt: ['유도'], lance: ['유도', '관통'], pillar: ['조준', '범위'], thunder: ['조준', '자세 파괴'], stars: ['넓은 범위', '3연타'], tornado: ['조준', '3연타'], spikes: ['앞쪽 직선', '바닥'], smite: ['조준', '자세 파괴'], wisps: ['유도', '3발'], thorns: ['앞쪽 직선', '자세 피해'], drain: ['조준', '흡혈 1'],
   meteor: ['조준', '큰 범위', '무적'], ring: ['주변', '탄 지우기', '무적'], ward: ['주변', '완벽 패링 5초', '무적'], spear: ['관통 광선', '무적'],
   chain: ['조준', '최대 3명'], blast: ['조준', '큰 범위', '무적'], heal: ['회복 2'], sanctum: ['주변', '회복 1', '무적'] };
-export const OIL_EL = { refined: null, blue: 'wil', black: 'lmp' };   // 각성 전 등불 기름 = 각성 전 두르기 속성
+export const OIL_EL = { refined: null, blue: 'wil', black: 'lmp' };   // 각성 전 등불 기름 = 각성 전 점화 속성
 export const OIL_SPELL = { refined: 'bolt', blue: 'ward', black: 'spear' };
 // 스탯 → 마법: [14 이상, 17 이상, 20]
 export const SPELL_AT = [14, 17, 20];
@@ -46,15 +46,15 @@ export const STAT_SPELL = { str: ['pillar', 'tornado', 'meteor'], agi: ['lance',
 // 지금 빌드의 마법: 가장 높은 스탯(14 이상)이 정한다. 동점이면 마지막으로 올린 스탯, 그래도 같으면 표 순서
 for (const [k, ids] of Object.entries(STAT_SPELL)) for (const id of ids) SPELL_ELEMENT[id] = STAT_ELEMENT[k];
 // 등불 각성: 스탯이 처음 14에 닿으면 그 스탯의 속성으로 등불이 각성 (판 동안 고정, 휴식방에서만 다시 붙이기)
-// 마법의 중심은 '불꽃 두르기': 검에 속성 불꽃을 두르고 베기마다 속성 게이지를 쌓는다. 두른 불꽃을 '풀면' 그 속성 마법이 나간다
+// 마법의 중심은 '불꽃 점화': 검에 속성 불꽃을 붙이고 베기마다 속성 게이지를 쌓는다. 점화한 불꽃을 '풀면' 그 속성 마법이 나간다
 export const ENCHANT = {
   null: { name: '등불 불꽃', burst: '화상 (약)', build: '베면 쌓임', desc: '게이지가 차면 약한 화상' },
-  str:  { name: '화염 두르기', burst: '화염 폭발', build: '3타·연참 마무리 같은 큰 한 방에 크게 쌓임', desc: '게이지가 차면 주변까지 터지는 화염 폭발 + 화상, 자세 붕괴' },
-  agi:  { name: '냉기 두르기', burst: '빙결', build: '구르기로 공격을 흘리면 크게 쌓임', desc: '게이지가 차면 얼어붙어 멈추고, 받는 피해 +25%' },
-  wil:  { name: '빛 두르기', burst: '심판의 빛', build: '패링으로 쌓임 (완벽 패링은 절반)', desc: '게이지가 차면 자세가 크게 무너진다' },
-  lmp:  { name: '귀화 두르기', burst: '혼 뽑기', build: '등 뒤·어둠 속 공격에 크게 쌓임', desc: '게이지가 차면 빛을 빼앗고 적은 눈이 멀어 리라를 놓친다' },
-  vit:  { name: '생명 두르기', burst: '흡수', build: '맞으면 받은 피해가 불꽃이 되어 쌓임', desc: '게이지가 차면 체력 1 회복(방마다 2번) + 주변에 가시 반격' },
-  fury: { name: '번개 두르기', burst: '방전', build: '맞지 않고 이어 때릴수록 빨리, 치명타면 크게', desc: '게이지가 차면 주변 적 둘에게 전격 + 다음 공격 치명타' },
+  str:  { name: '화염 점화', burst: '화염 폭발', build: '3타·연참 마무리 같은 큰 한 방에 크게 쌓임', desc: '게이지가 차면 주변까지 터지는 화염 폭발 + 화상, 자세 붕괴' },
+  agi:  { name: '냉기 점화', burst: '빙결', build: '구르기로 공격을 흘리면 크게 쌓임', desc: '게이지가 차면 얼어붙어 멈추고, 받는 피해 +25%' },
+  wil:  { name: '빛 점화', burst: '심판의 빛', build: '패링으로 쌓임 (완벽 패링은 절반)', desc: '게이지가 차면 자세가 크게 무너진다' },
+  lmp:  { name: '귀화 점화', burst: '혼 뽑기', build: '등 뒤·어둠 속 공격에 크게 쌓임', desc: '게이지가 차면 빛을 빼앗고 적은 눈이 멀어 리라를 놓친다' },
+  vit:  { name: '생명 점화', burst: '흡수', build: '맞으면 받은 피해가 불꽃이 되어 쌓임', desc: '게이지가 차면 체력 1 회복(방마다 2번) + 주변에 가시 반격' },
+  fury: { name: '번개 점화', burst: '방전', build: '맞지 않고 이어 때릴수록 빨리, 치명타면 크게', desc: '게이지가 차면 주변 적 둘에게 전격 + 다음 공격 치명타' },
 };
 // 각성 속성을 고름: 14 이상 중 마지막으로 올린 스탯, 없으면 가장 높은 스탯
 export function awakenPick(stats, lastUp) {

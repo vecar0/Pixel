@@ -78,7 +78,7 @@ export const RESONANCES = [
   { id: 'gale',     a: 'agi', b: 'fury', name: '질풍', desc: '구르기 직후 첫 공격 치명타 확률 +35%' },
   { id: 'aegis',    a: 'wil', b: 'vit',  name: '수호', desc: '방마다 한 번, 맞을 피해를 막는다' },
   { id: 'retribute',a: 'wil', b: 'fury', name: '응징', desc: '완벽 패링하면 다음 공격이 치명타' },
-  { id: 'warmLamp', a: 'lmp', b: 'vit',  name: '따스한 등불', desc: '불꽃 두르기 3번마다 체력 1 회복' },
+  { id: 'warmLamp', a: 'lmp', b: 'vit',  name: '따스한 등불', desc: '불꽃 점화 3번마다 체력 1 회복' },
   { id: 'wildfire', a: 'lmp', b: 'fury', name: '폭주 등불', desc: '속성 폭발 마법도 치명타가 난다 (투지 치명타 확률·배율 적용)' },
 ];
 export const resonancesOf = s => RESONANCES.filter(r => s[r.a] >= T_ABILITY && s[r.b] >= T_ABILITY);

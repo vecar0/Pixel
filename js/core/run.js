@@ -217,13 +217,13 @@ export function buildRoomWorld(r) {
   applyRelics(p, r.relics);
   applyStats(p, r.stats || startStats());
   p.spells = [runSpell(r)]; p.element = r.element || OIL_EL[r.oil] || null;
-  const v = r.element ? r.stats[r.element] : 0; p.enchTier = !r.element ? 0 : v >= 20 ? 3 : v >= 17 ? 2 : v >= 14 ? 1 : 0;   // 두르기 단계
+  const v = r.element ? r.stats[r.element] : 0; p.enchTier = !r.element ? 0 : v >= 20 ? 3 : v >= 17 ? 2 : v >= 14 ? 1 : 0;   // 점화 단계
   p.oil = r.oil;
   if (r.dark >= 5) p.maxFlasks = Math.max(1, p.maxFlasks - 1);   // 어둠 5+: 기름병 -1
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);
   p.flasks = r.flasks == null ? p.maxFlasks : r.flasks;
   p.light = Math.min(CFG.light.max, r.light || 0);                 // 스킬 게이지(빛)는 다음 방으로 이어짐
-  p.enchantT = r.enchant && p.light >= CFG.enchant.swingCost ? 1 : 0;   // 두른 상태도 다음 방·다음 지역으로 이어짐 (빛이 남아 있으면)
+  p.enchantT = r.enchant && p.light >= CFG.enchant.swingCost ? 1 : 0;   // 점화한 상태도 다음 방·다음 지역으로 이어짐 (빛이 남아 있으면)
   if (p.mods.roomHeal && r.hp != null && p.hp < p.maxHp) { p.hp++; p.roomHealed = true; }   // 생명 16: 새 방 들어갈 때 체력 1
   return w;
 }

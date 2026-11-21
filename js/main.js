@@ -36,12 +36,12 @@ function syncTouch() {
   if (key === hudKey) return; hudKey = key;
   ['skill'].forEach((id, i) => {                               // 마법 버튼: 끼운 마법 그림, 비용만큼 차오르면 사용 가능
     const sp = (p.spells || [])[i], b = $('#b-' + id);
-    if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + '<small>두르기</small>' : '<small>두르기</small>'; }   // 글씨는 늘 '마법' (그림이 지금 마법을 보여 줌)
+    if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + '<small>점화</small>' : '<small>점화</small>'; }   // 글씨는 늘 '마법' (그림이 지금 마법을 보여 줌)
     if (!sp) { b.style.setProperty('--fill', '0%'); b.classList.remove('ready'); return; }
-    const lit = p.enchantT > 0, cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));   // 두른 동안: 테두리 = 남은 두르기 시간 / 아니면: 두르기 비용만큼 빛이 차오름
-    const f = lit ? Math.min(1, p.light / CFG.light.max) : Math.min(1, p.light / cost);   // 두른 동안: 남은 빛 / 아니면: 두르기 기준까지 찬 정도
+    const lit = p.enchantT > 0, cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));   // 점화한 동안: 테두리 = 남은 점화 시간 / 아니면: 점화 비용만큼 빛이 차오름
+    const f = lit ? Math.min(1, p.light / CFG.light.max) : Math.min(1, p.light / cost);   // 점화한 동안: 남은 빛 / 아니면: 점화 기준까지 찬 정도
     b.style.setProperty('--p', (f * 100).toFixed(1)); setGauge(b, lit ? '#ffd27a' : '#ffb347', f, lit || p.light >= cost); b.classList.toggle('ready', lit || p.light >= cost); b.classList.toggle('lit', lit);
-    const lab = b.querySelector('small'); if (lab) lab.textContent = '두르기';
+    const lab = b.querySelector('small'); if (lab) lab.textContent = '점화';
   });
   const sn = $('#b-snuff'); if (sn) { const lab = sn.querySelector('small'); if (lab) lab.textContent = p.dark ? '켜기' : '소등'; sn.classList.toggle('lit', !!p.dark); sn.classList.toggle('cool', !p.dark && p.snuffCd > 0);   // 소등 버튼: 꺼진 동안 '켜기' + 남은 어둠 시간 테두리
     const sf = p.dark ? p.darkT / (CFG.snuff.maxF + (p.mods.darkExtra || 0)) : p.snuffCd > 0 ? 1 - p.snuffCd / CFG.snuff.cdF : 1; sn.style.setProperty('--p', (sf * 100).toFixed(1)); setGauge(sn, '#b070e0', sf, !!p.dark); }
@@ -72,7 +72,7 @@ function play() {
   const ST = { combat: '전투', elite: '강적', shop: '떠돌이 상인', rest: '작은 등불', boss: ENEMY_DEFS[regionOf(run).boss].name };
   if (run.room === 'boss') { R.startCine(ST.boss, `${regionOf(run).name}의 대등을 지키는 자`); R.banner = null; }
   else R.banner = { s: ST[run.room] || '', sub: `${regionOf(run).name} · ${run.roomIdx + 1} / ${run.length}`, t: 150, dur: 150 };
-  if (run.justAwakened) { const el = run.justAwakened; run.justAwakened = null; R.banner = { s: `등불 각성 — ${STAT_ELEMENT[el]}`, sub: `${ENCHANT[el].name} · 마법 버튼으로 검에 불꽃을 두르고 베어 속성을 터뜨려라`, t: 220, dur: 220 }; }
+  if (run.justAwakened) { const el = run.justAwakened; run.justAwakened = null; R.banner = { s: `등불 각성 — ${STAT_ELEMENT[el]}`, sub: `${ENCHANT[el].name} · 마법 버튼으로 검에 불꽃을 붙이고 베어 속성을 터뜨려라`, t: 220, dur: 220 }; }
   world.player.lagTicks = Math.max(0, Math.min(6, Math.round(save.settings.offsetMs / 16.7)));   // 타이밍 보정
   if (world.player.roomHealed) R.healFx(world.player, 1, world.player.hp - 1);                 // 생명 16
   sfx.musicFor(run.region, run.room === 'boss'); acc = 0; slowT = 0; mode = 'play'; screen(''); showTouch();
@@ -152,7 +152,7 @@ const runStat = () => {
   const path = run.route.map((t, i) => `<b class="${i < run.roomIdx ? 'done' : i === run.roomIdx ? 'now' : ''}">${icon(...(RI[t] || RI.combat))}</b>`).join('');
   return `<div class="runbar"><span>${regionOf(run).name}</span><span class="path">${path}</span>
     <span class="em">${icon('ember', 'amber')}${run.embers}</span>
-    <span class="spells" title="등불 속성 · 두르기 단계">${icon('ember', elTone(run.element))}${run.element ? STAT_ELEMENT[run.element] : '각성 전'} · ${TIER_NAME[enchTier(run.stats, run.element)]}</span></div>`;
+    <span class="spells" title="등불 속성 · 점화 단계">${icon('ember', elTone(run.element))}${run.element ? STAT_ELEMENT[run.element] : '각성 전'} · ${TIER_NAME[enchTier(run.stats, run.element)]}</span></div>`;
 };
 // 스탯 판: 반대 스탯 쌍마다 한 칸(위 스탯 카드 · 20칸 저울 · 아래 스탯 카드). 글은 줄바꿈되어 잘리지 않는다
 // 카드 한 장 = 이름·값·능력 사다리(12~20) / 지금 수치 / 다음 능력 / 약점
@@ -209,16 +209,16 @@ function spellCard(id, label = '지금 마법') {
     <div class="sc-tags"><i class="el">${SPELL_ELEMENT[id] || ''} 속성</i>${(SPELL_TAGS[id] || []).map(t => `<i>${t}</i>`).join('')}</div>
     <div class="sc-desc">${S.desc}${delay}</div>${SPELL_PERK[id] ? `<div class="sc-perk">${SPELL_PERK[id]}</div>` : ''}</div></div>`;
 }
-// 불꽃 두르기 카드: 각성 속성 · 게이지가 찼을 때 효과
+// 불꽃 점화 카드: 각성 속성 · 게이지가 찼을 때 효과
 const TIER_NAME = ['각성 전', '각성', '개화', '극의'];
 const elTone = el => el ? SPELLS[STAT_SPELL[el][0]].tone : 'amber';
 const enchTier = (st, el) => !el ? 0 : st[el] >= 20 ? 3 : st[el] >= 17 ? 2 : st[el] >= 14 ? 1 : 0;
 const tierText = (el, t) => !el || t < 1 ? '게이지가 차면 약한 화상' : t === 1 ? `${ENCHANT[el].build} → ${ENCHANT[el].desc}` : `${ENCHANT[el].burst} 1.5배 + 적에게 마법 각인 → 그 적을 처형하면 「${SPELLS[STAT_SPELL[el][t >= 3 ? 2 : 1]].name}」`;
-// 불꽃 두르기 카드: 속성 · 단계 사다리 (14 각성 → 17 개화: 폭발 때 속성 마법 → 20 극의: 최종 마법)
+// 불꽃 점화 카드: 속성 · 단계 사다리 (14 각성 → 17 개화: 폭발 때 속성 마법 → 20 극의: 최종 마법)
 const enchantCard = () => { const el = run.element || null, E = ENCHANT[el], t = enchTier(run.stats, el);
   const ladder = el ? [1, 2, 3].map(k => `<div class="${t >= k ? '' : 'dim'}">${[0, 14, 17, 20][k]} ${TIER_NAME[k]} — ${tierText(el, k)}</div>`).join('') : '<div>스탯 하나가 14가 되면 그 속성으로 각성</div>';
-  return `<div class="spellcard t-${elTone(el)}"><div class="niche">${icon('ember', elTone(el))}</div><div class="sc-body"><div class="sc-top"><small>${el ? `등불 속성 · ${STAT_ELEMENT[el]} · ${TIER_NAME[t]}` : '각성 전'}</small><b>${E.name}</b><span class="sc-cost">빛 ${CFG.enchant.cost}</span></div><div class="sc-desc">마법 버튼으로 검에 불꽃을 둘러 피해 +12% (빛 20 이상이면 두르고, 휘두를 때마다 빛 5 — 빛이 바닥나면 꺼짐). ${E.build} — 가득 차면 터진다. 소등했다 다시 켜면 섬광이 주변 게이지를 한 번에 채운다</div><div class="sc-perk">${ladder}</div></div></div>`; };
-const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 두르기(빛 20 이상이면 두름, 휘두를 때마다 빛 5). 베면 속성 게이지가 쌓이고 차면 터진다. 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경) · 17 개화: 터진 적에게 마법 각인, 그 적을 처형하면 속성 마법 · 20 극의: 최종 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].slice(1).map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
+  return `<div class="spellcard t-${elTone(el)}"><div class="niche">${icon('ember', elTone(el))}</div><div class="sc-body"><div class="sc-top"><small>${el ? `등불 속성 · ${STAT_ELEMENT[el]} · ${TIER_NAME[t]}` : '각성 전'}</small><b>${E.name}</b><span class="sc-cost">빛 ${CFG.enchant.cost}</span></div><div class="sc-desc">마법 버튼으로 검에 불꽃을 붙여 피해 +12% (빛 20 이상이면 점화하고, 휘두를 때마다 빛 5 — 빛이 바닥나면 꺼짐). ${E.build} — 가득 차면 터진다. 소등했다 다시 켜면 섬광이 주변 게이지를 한 번에 채운다</div><div class="sc-perk">${ladder}</div></div></div>`; };
+const spellMap = () => `<div class="sc-map"><b>마법</b> 마법 버튼 = 검에 불꽃 점화(빛 20 이상이면 점화, 휘두를 때마다 빛 5). 베면 속성 게이지가 쌓이고 차면 터진다. 스탯이 처음 14가 되면 그 속성으로 각성(휴식방에서만 변경) · 17 개화: 터진 적에게 마법 각인, 그 적을 처형하면 속성 마법 · 20 극의: 최종 마법 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].slice(1).map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
 // 단련 미리 보기: 지금(run.stats) → 찍은 뒤(draft). 바뀌는 수치, 열리고 잃는 능력·약점·공명, 마법 변화
 function trainPreview(draft, lastUp) {
   const st0 = run.stats, ch = STATS.filter(S => draft[S.id] !== st0[S.id]);
@@ -236,7 +236,7 @@ function trainPreview(draft, lastUp) {
   for (const id of r0) if (!r1.some(r => r.id === id)) notes.push(`<b class="bad">공명 「${RESONANCES.find(r => r.id === id).name}」 잃음</b>`);
   const el1 = run.element || awakenPick(draft, lastUp), t0 = enchTier(run.stats, run.element), t1 = enchTier(draft, el1);
   if (!run.element && el1) notes.push(`<b class="res">등불 각성 — ${STAT_ELEMENT[el1]}</b> ${ENCHANT[el1].name}: ${ENCHANT[el1].desc}`);
-  else if (t1 > t0) notes.push(`<b class="res">두르기 ${TIER_NAME[t1]}</b> ${tierText(el1, t1)}`); else if (t1 < t0) notes.push(`<b class="bad">두르기 단계 내려감</b> ${tierText(el1, t1)}`);
+  else if (t1 > t0) notes.push(`<b class="res">점화 ${TIER_NAME[t1]}</b> ${tierText(el1, t1)}`); else if (t1 < t0) notes.push(`<b class="bad">점화 단계 내려감</b> ${tierText(el1, t1)}`);
   return `<div class="tprev"><div class="tls">${lines.join('')}</div>${notes.map(n => `<div class="note">${n}</div>`).join('')}
     </div>`;
 }
@@ -281,7 +281,7 @@ function title() {
     <div class="tlogo"><div class="tl-pre">꺼져 가는 지하 왕국에서</div><h1>등불지기</h1>
       <div class="tl-rule"><i></i><b></b><i></i></div><div class="tl-sub">마지막 등불을 든 순례자, 리라</div></div>
     <div class="tl-start"><span>화면을 눌러 시작</span></div>
-    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 두르기 I · 소등 E · 기름병 Q · Enter 시작</div><div class="tl-ver">v${(window.__V || '').slice(-4)}</div></div>`);
+    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 점화 I · 소등 E · 기름병 Q · Enter 시작</div><div class="tl-ver">v${(window.__V || '').slice(-4)}</div></div>`);
   stopTitle && stopTitle(); stopTitle = startTitleScene($('#tcv'));
   bind('go', town);
 }

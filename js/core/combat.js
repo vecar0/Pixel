@@ -36,7 +36,7 @@ export function resolveEnemyHit(w, hb) {
     w.hitstop = Math.max(w.hitstop, perfect ? PR.hitstopPerfect : PR.hitstopNormal);
     if (perfect) { p.perfectParries++; w.shake = 8; }
     const o = hb.owner;
-    if (o && p.enchantT > 0 && (p.element || null) === 'wil') elBuild(w, o, perfect ? 60 : 30);   // 빛 두르기: 패링으로 게이지
+    if (o && p.enchantT > 0 && (p.element || null) === 'wil') elBuild(w, o, perfect ? 60 : 30);   // 빛 점화: 패링으로 게이지
     if (o && o.poiseMax) addPoise(w, o, (perfect || p.mods.normalAsPerfect ? PO.perfect : PO.normal) * (p.mods.poiseMul || 1));   // 의지 16
     if (o && perfect && !o.boss && o.st) {   // 완벽 패링: 일반 적은 공격이 끊기고 튕겨나며 잠깐 무방비
       o.st = 'idle'; o.stT = 0; o.atk = null; o.srcs = []; o.staggerT = Math.round(PR.staggerF * (p.mods.staggerMul || 1));
@@ -47,7 +47,7 @@ export function resolveEnemyHit(w, hb) {
   }
   if (invulnerable(p)) {
     if (p.state === 'roll' && p.mods.afterglow && !hb.src.glow) { hb.src.glow = true; p.crit = true; w.events.push({ type: 'afterglow', x: p.x + p.w / 2, y: p.y }); }
-    if (p.state === 'roll' && p.enchantT > 0 && p.element === 'agi' && hb.owner && !hb.src.frosted) { hb.src.frosted = true; elBuild(w, hb.owner, 50); }   // 얼음 두르기: 구르기로 흘리면 게이지
+    if (p.state === 'roll' && p.enchantT > 0 && p.element === 'agi' && hb.owner && !hb.src.frosted) { hb.src.frosted = true; elBuild(w, hb.owner, 50); }   // 얼음 점화: 구르기로 흘리면 게이지
     if (p.state === 'roll' && (p.mods.res || {}).deflect && !hb.src.deflected) { hb.src.deflected = true; p.light = Math.min(CFG.light.max, p.light + 15); w.events.push({ type: 'resonance', id: 'deflect' }); }   // 공명 흘려 막기
     return 'ignored';
   }
@@ -61,7 +61,7 @@ export function resolveEnemyHit(w, hb) {
     w.events.push({ type: 'aegis', x: p.x + p.w / 2, y: p.y + 20 }); return 'blocked';
   }
   p.hp -= hb.dmg; p.chainN = 0; p.hitChain = 0; p.hurtCount = (p.hurtCount || 0) + 1;
-  if (p.enchantT > 0 && p.element === 'vit' && hb.owner && !hb.owner.dead && hb.owner.hp != null) elBuild(w, hb.owner, 55);   // 생명 두르기: 받은 피해가 불꽃이 됨
+  if (p.enchantT > 0 && p.element === 'vit' && hb.owner && !hb.owner.dead && hb.owner.hp != null) elBuild(w, hb.owner, 55);   // 생명 점화: 받은 피해가 불꽃이 됨
   p.iframes = Math.round(CFG.player.iframesHurt * (p.mods.hurtIMul || 1));   // 생명 18
   p.buffer = null;
   p.vx = (hb.dir || -p.face) * 1.5; p.vy = -2;
@@ -158,7 +158,7 @@ export function resolvePlayerAttacks(w) {
       if (!p.crit && cc) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < cc) p.crit = true; }   // 투지·질풍: 치명타 확률
       p.galeT = 0;
       const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? (p.mods.critMul || 2) : 1) * (p.mods.atkMul || 1)
-        * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1) * (p.powT > 0 ? 1 + (p.powK || 0) : 1) * (p.enchantT > 0 ? CFG.enchant.dmgMul * AFF_DMG[affinity(e, p.element) + 1] : 1);   // 상성: 약점 +20% · 저항 -15%   // 두른 검은 피해 +12%   // 마법 효과: 공격 강화   // 공명 철벽 반격·버팀
+        * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1) * (p.powT > 0 ? 1 + (p.powK || 0) : 1) * (p.enchantT > 0 ? CFG.enchant.dmgMul * AFF_DMG[affinity(e, p.element) + 1] : 1);   // 상성: 약점 +20% · 저항 -15%   // 점화한 검은 피해 +12%   // 마법 효과: 공격 강화   // 공명 철벽 반격·버팀
       p.riposte = false;
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
       const spin = p.state === 'flurry', FL = CFG.flurry, fk = spin ? Math.max(0, flurryHit(p)) : 0, last = spin && fk === FL.hits.length - 1;
@@ -168,7 +168,7 @@ export function resolvePlayerAttacks(w) {
       if (!e.dead) p.hitChain = (p.hitChain || 0) + 1;
       if (p.dark) { p.noiseT = 20; p.noiseR = CFG.snuff.noiseAtk * (p.mods.quietMul || 1); }   // 어둠 속에서 베면 소리가 나 다른 적이 돌아봄 (휘두르는 것만으론 소리 없음)
       if (p.enchantT > 0 && p.element && !e._affShown && affinity(e, p.element)) { e._affShown = true; w.events.push({ type: 'affinity', x: e.x + e.w / 2, y: e.y, el: p.element, aff: affinity(e, p.element) }); }   // 처음 벨 때 '약점'/'저항' 표시
-      if (p.enchantT > 0 && !e.dead) elBuild(w, e, meleeBuild(p, e, spin, last, wasCrit));   // 두른 불꽃: 속성마다 다른 방식으로 게이지
+      if (p.enchantT > 0 && !e.dead) elBuild(w, e, meleeBuild(p, e, spin, last, wasCrit));   // 점화한 불꽃: 속성마다 다른 방식으로 게이지
       if (p.combo === 2 && (p.mods.flame || RES.emberEdge)) e.burnT = 180;   // 화염 칼날 각인·공명 불꽃 칼날                       // 화염 칼날
       w.hitstop = Math.max(w.hitstop, spin ? FL.hitstop[fk] : CFG.attack.hitstop[p.combo]);
       e.kvx = p.face * (spin ? (last ? 7 : 1.2) : CFG.attack.push[p.combo]) * (e.boss ? 0.15 : 1);   // 연참: 앞 타는 붙잡아 두고 마지막에 날림
@@ -221,7 +221,7 @@ function meleeBuild(p, e, spin, last, crit) {
     default: return 18;
   }
 }
-// 속성 게이지: 두른 검으로 벨 때마다 쌓이고, 가득 차면 속성 효과가 터진다 (보스는 훨씬 많이 필요)
+// 속성 게이지: 점화한 검으로 벨 때마다 쌓이고, 가득 차면 속성 효과가 터진다 (보스는 훨씬 많이 필요)
 export function elBuild(w, e, amt) {
   const p = w.player, E = CFG.enchant, el = p.element || null;
   e.elB = (e.elB || 0) + amt * AFF_BUILD[affinity(e, el) + 1]; e.elK = el;   // 상성: 약점 1.6배 · 저항 절반
@@ -243,7 +243,7 @@ export function elBuild(w, e, amt) {
   const sp = el && p.enchTier >= 2 ? STAT_SPELL[el][p.enchTier >= 3 ? 2 : 1] : null;   // 17: 속성 마법 · 20: 최종 마법 → 적에게 '마법 각인'. 그 적을 처형하면 처형 끝에 마법이 터진다
   if (sp && !e.dead && !e.sigil) { e.sigil = sp; e.sigilEl = el; w.events.push({ type: 'sigil', x: cx, y: e.y, spell: sp, el }); }
 }
-// 다시 켠 등불의 섬광: 주변 적이 눈이 부셔 휘청 (의지가 높을수록 넓게). 두른 상태면 속성 게이지가 한 번에 차오른다
+// 다시 켠 등불의 섬광: 주변 적이 눈이 부셔 휘청 (의지가 높을수록 넓게). 점화한 상태면 속성 게이지가 한 번에 차오른다
 export function relightFlash(w) {
   const p = w.player, S = CFG.snuff, R = S.flashR * (p.mods.flashMul || 1), cx = p.x + p.w / 2, cy = p.y + p.h / 2;
   for (const e of liveOf(w)) {

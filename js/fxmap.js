@@ -19,7 +19,7 @@ const VOLT = ['#1a1404', '#4a3a08', '#8a6e10', '#d0b020', '#ffe24a', '#fff6a8', 
 const HELL = ['#0c0204', '#2a0408', '#5a0a10', '#961618', '#d02a1e', '#ff5a30', '#ffb08a'];   // 함정·위험 불 (검붉음)
 const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', '#ffffff'];
 // 마법별 색 (마법진·모이는 빛). 함수라서 아래쪽 팔레트 상수를 써도 됨
-const elPal = el => ({ str: AMBER, agi: ICE, wil: GOLD, lmp: GHOST, vit: GREEN, fury: VOLT })[el] || AMBER;   // 두른 불꽃 속성 → 팔레트
+const elPal = el => ({ str: AMBER, agi: ICE, wil: GOLD, lmp: GHOST, vit: GREEN, fury: VOLT })[el] || AMBER;   // 점화한 불꽃 속성 → 팔레트
 const palOf = sp => ({ bolt: AMBER, wisps: GHOST, pillar: AMBER, tornado: AMBER, meteor: AMBER, ring: GHOST, lance: ICE, spikes: ICE, stars: ICE, ward: GOLD, thunder: GOLD, chain: VOLT,
   smite: GOLD, spear: GHOST, blast: VOLT, heal: GREEN, sanctum: GREEN, thorns: GREEN, drain: VOLT })[sp] || AMBER;   // 스탯 속성별 색: 힘 화염 · 민첩 얼음 · 의지 빛 · 등불 귀화 · 생명 자연 · 투지 번개
 const HIT = ['#1a0e06', '#3a2410', '#6a4420', '#9a6a34', '#c4955a', '#e0bc88', '#f0dcb8'];   // 기본 타격: 흰빛 없는 톤
@@ -142,7 +142,7 @@ export class FxDirector {
       case 'bossFall': P('explosions/big-explosion', ev.x, ev.y + 40, { life: 150, light: 0.6 }, 3); P('holy/holy-pillar', ev.x, ev.y + 40, { light: 0.5, palette: GOLD }, 3); break;   // 보스 마지막 폭발 + 빛기둥
       case 'snuff': P('explosions/smoke-bomb', p.x + p.w / 2 + p.face * 30, p.y + 50, { palette: GREY, life: 30, light: 0 }, 2); break;   // 등불을 끔: 연기 한 줄기
       // 다시 켬 섬광: render.js가 등불 자리에 작게 그림
-      case 'enchant': { const hx = p.x + p.w / 2 + p.face * 30; P('impacts/hit-spark', hx, p.y + 46, { height: 20, flip: p.face < 0, palette: elPal(ev.el), life: 22, light: 0.4 }, 2); break; }   // 불꽃 두르기 완성: 작은 불티만 (모션이 주인공)
+      case 'enchant': { const hx = p.x + p.w / 2 + p.face * 30; P('impacts/hit-spark', hx, p.y + 46, { height: 20, flip: p.face < 0, palette: elPal(ev.el), life: 22, light: 0.4 }, 2); break; }   // 불꽃 점화 완성: 작은 불티만 (모션이 주인공)
       case 'elBurst': {                                                   // 속성 게이지가 찼다: 속성마다 다른 상태 표시
         const pal = elPal(ev.el);
         if (ev.el === 'str' || !ev.el) P('impacts/hit-spark', ev.x, ev.y + 20, { height: 24, palette: AMBER, life: 30, light: 0.45 }, 2);   // 화상: 몸의 불꽃은 렌더러가 (burnT)

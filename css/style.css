@@ -160,6 +160,11 @@ button { font-family: inherit; color: inherit; }
 .card label { font-size: 12px; color: #cfc6dc; display: flex; gap: 8px; align-items: center; justify-content: center; }
 .card .big { font-size: 48px; color: var(--flame); margin: 10px; }
 .card.intro { padding: 26px 48px; }
+/* 휴식·상점: 카드 폭을 정해 두고 항목을 한 줄에 균등 분배 (폰에서 양옆이 잘리지 않게) */
+.card.wide { width: min(94vw, 640px); box-sizing: border-box; padding: 14px 16px; }
+.card.wide .picks { width: 100%; flex-wrap: nowrap; gap: 8px; }
+.card.wide .pick { flex: 1 1 0; min-width: 0; max-width: none; min-height: 118px; padding: 12px 6px 14px; }
+.card.wide .pick span { overflow-wrap: anywhere; word-break: keep-all; }
 .card.intro .region { color: var(--ash); font-size: 12px; letter-spacing: 2px; }
 .card.intro h2 { font-size: 34px; letter-spacing: 6px; }
 .card.result h2.lost { color: #c9bba6; text-shadow: 0 0 10px rgba(255,79,94,.35), 0 2px 0 #000; }

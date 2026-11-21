@@ -1,11 +1,11 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
-import { CFG } from './config.js?v=mwpa0oiq';
-import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwpa0oiq';
-import { updateLevel, dropPickups } from './level.js?v=mwpa0oiq';
-import { createPlayer, updatePlayer, overlap } from './player.js?v=mwpa0oiq';
-import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwpa0oiq';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js?v=mwpa0oiq';
-import { ACTIONS } from './player.js?v=mwpa0oiq';
+import { CFG } from './config.js?v=mwprvpq2';
+import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwprvpq2';
+import { updateLevel, dropPickups } from './level.js?v=mwprvpq2';
+import { createPlayer, updatePlayer, overlap } from './player.js?v=mwprvpq2';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwprvpq2';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js?v=mwprvpq2';
+import { ACTIONS } from './player.js?v=mwprvpq2';
 
 // 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판
 const walls = W => [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }];

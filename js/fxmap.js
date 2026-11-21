@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwpa0oiq';
-import { CFG } from './core/config.js?v=mwpa0oiq';
-import { groundAt } from './core/world.js?v=mwpa0oiq';
+import { preload } from './fx.js?v=mwprvpq2';
+import { CFG } from './core/config.js?v=mwprvpq2';
+import { groundAt } from './core/world.js?v=mwprvpq2';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];

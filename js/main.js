@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick } from './core/world.js?v=mwpa0oiq';
-import { Renderer } from './render.js?v=mwpa0oiq';
-import { Input } from './input.js?v=mwpa0oiq';
-import { Sfx } from './sfx.js?v=mwpa0oiq';
-import { stepLoop } from './loop.js?v=mwpa0oiq';
-import { spawnEnemy } from './core/enemies.js?v=mwpa0oiq';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwpa0oiq';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwpa0oiq';
-import { icon, RELIC_TONE } from './icons.js?v=mwpa0oiq';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwpa0oiq';
-import { startTitleScene } from './titlescene.js?v=mwpa0oiq';
+import { createWorld, tick } from './core/world.js?v=mwprvpq2';
+import { Renderer } from './render.js?v=mwprvpq2';
+import { Input } from './input.js?v=mwprvpq2';
+import { Sfx } from './sfx.js?v=mwprvpq2';
+import { stepLoop } from './loop.js?v=mwprvpq2';
+import { spawnEnemy } from './core/enemies.js?v=mwprvpq2';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwprvpq2';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwprvpq2';
+import { icon, RELIC_TONE } from './icons.js?v=mwprvpq2';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwprvpq2';
+import { startTitleScene } from './titlescene.js?v=mwprvpq2';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwpa0oiq';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwpa0oiq';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpa0oiq';
-import { takeTrain, runSpell } from './core/run.js?v=mwpa0oiq';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwpa0oiq';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwpa0oiq';
+import { CFG } from './core/config.js?v=mwprvpq2';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwprvpq2';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwprvpq2';
+import { takeTrain, runSpell } from './core/run.js?v=mwprvpq2';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwprvpq2';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwprvpq2';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -305,6 +305,8 @@ function town() {
   }
   world.exited = false;
   if (world.player.x > TOWN_W - 140) world.player.x = TOWN_W - 160;
+  deathT = 0; R.death = 0; R.cine = null; if (R.irisMode === 'close') R.irisMode = null;   // 전투에서 남은 연출 상태가 마을 리라를 가리지 않게
+  const tp = world.player; tp.iframes = 0; if (tp.state === 'dead' || tp.state === 'ghost' || !(tp.y < 300)) { tp.state = 'idle'; tp.stateT = 0; tp.x = 180; tp.y = 300 - tp.h; tp.vx = tp.vy = 0; }
   screen(''); showTouch(); last = performance.now(); acc = 0;
 }
 // 모닥불: 기록·연습장·설정
@@ -413,10 +415,10 @@ function restScreen() {
   if (fire.used) { R.say('불씨가 잦아들었다. 오른쪽 길로 나아가자'); return; }
   mode = 'rest'; touch.classList.add('hidden');
   const oilTo = Math.min(p.maxFlasks + 1, p.flasks + 1);
-  screen(`<div class="card"><h2>작은 등불</h2><div class="quote">모닥불 곁에서 잠시 숨을 고른다 — 하나만 고를 수 있다</div>${runStat()}<div class="picks">
+  screen(`<div class="card wide"><h2>작은 등불</h2><div class="quote">모닥불 곁에서 잠시 숨을 고른다 — 하나만 고를 수 있다</div>${runStat()}<div class="picks">
     <button class="pick door t-red" data-id="heal" ${p.hp >= p.maxHp ? 'disabled' : ''}><div class="niche">${icon('heart', 'red')}</div><b>몸을 추스른다</b><span>체력 가득 (${p.hp} → ${p.maxHp})</span></button>
-    <button class="pick door t-heal" data-id="oil" ${oilTo <= p.flasks ? 'disabled' : ''}><div class="niche">${icon('flask', 'heal')}</div><b>기름을 짠다</b><span>기름병 +1 (${p.flasks} → ${oilTo})<br>최대치보다 1개 더</span></button>
-    <button class="pick door t-amber" data-id="train"><div class="niche">${icon('vigor', 'amber')}</div><b>검을 벼린다</b><span>단련 1점 (나갈 때 찍기)</span></button></div>
+    <button class="pick door t-heal" data-id="oil" ${oilTo <= p.flasks ? 'disabled' : ''}><div class="niche">${icon('flask', 'heal')}</div><b>기름을 짠다</b><span>기름병 +1 (${p.flasks} → ${oilTo})</span></button>
+    <button class="pick door t-amber" data-id="train"><div class="niche">${icon('vigor', 'amber')}</div><b>검을 벼린다</b><span>단련 1점 (나갈 때)</span></button></div>
     <div class="btns"><button class="btn alt" data-id="back">그냥 지나간다</button></div></div>`);
   bindPicks(id => {
     const hp0 = p.hp;
@@ -433,21 +435,17 @@ const WARES = {
   flask:  { name: '기름병', tone: 'heal', ic: 'flask', desc: p => `기름병 +1 (지금 ${p.flasks})`, price: r => 20 + 12 * (r.flaskBuys || 0) },
   salve:  { name: '연고', tone: 'red', ic: 'heart', desc: p => `체력 +2 (${p.hp} → ${Math.min(p.maxHp, p.hp + 2)})`, price: r => 18 + 4 * r.region, ok: p => p.hp < p.maxHp },
   wick:   { name: '불쏘시개', tone: 'amber', ic: 'ember', desc: p => `스킬 게이지 가득 (${p.light | 0} → 100)`, price: r => 14 + 3 * r.region, ok: p => p.light < 100 },
-  whet:   { name: '숫돌', tone: 'amber', ic: 'vigor', desc: () => '단련 1점 (나갈 때 찍기)', price: r => 45 + 10 * r.region, ok: () => run.pending !== 'train1' },
+  whet:   { name: '숫돌', tone: 'amber', ic: 'vigor', desc: () => '단련 1점 (나갈 때)', price: r => 45 + 10 * r.region, ok: () => run.pending !== 'train1' },
 };
-function shopStock(r) {
-  const extra = [['salve', 'wick', 'whet'][(rand(r) * 3) | 0]];
-  r.flaskBuys = 0; return { relics: relicOffer(r, 2), wares: ['flask', ...extra], sold: [] };
-}
+function shopStock(r) { r.flaskBuys = 0; return { wares: ['flask', 'salve', 'wick', 'whet'], sold: [] }; }   // 각인은 팔지 않음 (소모품·단련만)
 function shopScreen() {
   mode = 'shop'; touch.classList.add('hidden');
   const st = world.props.find(o => o.kind === 'merchant');
   st.stock = st.stock || shopStock(run);
-  const p = world.player, S = st.stock, relicPrice = 40 + 10 * (run.region - 1);
+  const p = world.player, S = st.stock;
   const ware = id => { const W = WARES[id], pr = W.price(run), sold = S.sold.includes(id), ok = !sold && run.embers >= pr && (!W.ok || W.ok(p));
     return `<button class="pick t-${W.tone}" data-id="w:${id}" ${ok ? '' : 'disabled'}><div class="niche">${icon(W.ic, W.tone)}</div><b>${W.name}${sold ? ' (팔림)' : ''}</b><span>${W.desc(p)}</span>${cost(pr)}</button>`; };
-  screen(`<div class="card"><h2>떠돌이 상인</h2><div class="quote">"좋은 물건은 하나씩뿐이야. 잘 골라."</div>${runStat()}<div class="picks">
-    ${S.relics.map(id => relicCard(id, cost(relicPrice)).replace('<button', run.embers < relicPrice ? '<button disabled' : '<button')).join('')}
+  screen(`<div class="card wide"><h2>떠돌이 상인</h2><div class="quote">"좋은 물건은 하나씩뿐이야. 잘 골라."</div>${runStat()}<div class="picks">
     ${S.wares.map(ware).join('')}
     </div><div class="btns"><button class="btn alt" data-id="leave">닫기</button></div></div>`);
   bindPicks(id => {
@@ -459,9 +457,6 @@ function shopScreen() {
       if (k === 'flask') { p.flasks++; p.maxFlasks = Math.max(p.maxFlasks, p.flasks); run.flaskBuys = (run.flaskBuys || 0) + 1; if (run.flaskBuys >= 3) S.sold.push(k); }
       else { S.sold.push(k); if (k === 'salve') p.hp = Math.min(p.maxHp, p.hp + 2); else if (k === 'wick') p.light = 100; else if (k === 'whet') run.pending = 'train1'; }
       sfx.play('heal');
-    } else if (RELICS[id] && run.embers >= relicPrice) {
-      run.embers -= relicPrice; takeRelic(run, id); S.relics.splice(S.relics.indexOf(id), 1);
-      const hp = p.hp, fl = p.flasks; applyRelics(p, run.relics); applyStats(p, run.stats); p.hp = Math.min(p.maxHp, hp + (id === 'vigor' ? 1 : 0)); p.flasks = fl + (id === 'oil' ? 1 : 0);
     }
     shopScreen();
   });

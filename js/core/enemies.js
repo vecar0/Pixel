@@ -2,10 +2,10 @@
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
-import { clipBeam } from './gimmick.js?v=mwq14fdq';
-import { CFG } from './config.js?v=mwq14fdq';
-import { moveAndCollide, overlap } from './player.js?v=mwq14fdq';
-import { BOSSES, bossPick, bossWant } from './boss.js?v=mwq14fdq';
+import { clipBeam } from './gimmick.js?v=mwq1nue7';
+import { CFG } from './config.js?v=mwq1nue7';
+import { moveAndCollide, overlap } from './player.js?v=mwq1nue7';
+import { BOSSES, bossPick, bossWant } from './boss.js?v=mwq1nue7';
 
 export const ENEMY_DEFS = {
   ghoul: {
@@ -217,12 +217,13 @@ export function spawnWaves(w, e, a) {
 }
 
 // 낙하 파편: 리라 위쪽에서 떨어짐 (예고 동안 표시는 렌더가 rainMark로)
+const DEBRIS_OF = { bellBoss: 'rock', spider: 'crystal', king: 'star', forge: 'molten', saint: 'water' };   // 떨어지는 것의 모양 (그림만 다름)
 export function spawnRain(w, e, a) {
   const p = w.player;
   for (let i = 0; i < a.rain.n; i++) {
     const x = p.x + p.w / 2 + (i - (a.rain.n - 1) / 2) * a.rain.gap;
     w.projectiles.push({ x: x - 7, y: -20 - i * 30, w: 14, h: 18, vx: 0, vy: a.rain.speed, dmg: a.dmg,
-      parryable: a.parryable, owner: 'enemy', life: 200, src: e, shard: true });
+      parryable: a.parryable, owner: 'enemy', life: 200, src: e, shard: true, debris: DEBRIS_OF[e.kind] || 'rock', spin: (i * 1.7 + w.t * 0.37) % 6.28 });
   }
 }
 

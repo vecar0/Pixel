@@ -30,7 +30,7 @@ await check('PC: 타이틀 → Enter(마을) → Enter(출발) → 지역 입장
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'town');
   await p.screenshot({ path: path.join(out, 'town.png') });
-  await p.keyboard.press('Enter'); await p.waitForTimeout(200);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(2300);   // 마을을 떠날 때 아이리스가 닫힌 뒤 지역 입장
   eq(await p.evaluate(() => window.__lk.mode), 'intro');
   await p.keyboard.press('Enter'); await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__lk.mode), 'play');
@@ -49,11 +49,11 @@ await check('마을: 걸어서 창고·제단·모닥불·허수아비, 오른�
   eq(await p.evaluate(() => window.__lk.mode), 'town');
   await at('rack', 'practice'); await at('altar', 'prep'); await at('board', 'records'); await at('campfire', 'camp');
   ok(await p.evaluate(() => window.__lk.world.enemies.some(e => e.dummy)), 'dummy');
-  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(300);
+  await p.evaluate(() => { const w = window.__lk.world; w.player.x = w.props.find(o => o.kind === 'exit').x; }); await p.waitForTimeout(2300);
   eq(await p.evaluate(() => window.__lk.mode), 'intro');   // 오른쪽 길 = 바로 출발
 });
 await check('첫 순례 튜토리얼: 이동 → 점프 → 항아리 → 불씨 → (적 등장) 패링 단계', PC, async p => {
-  await p.keyboard.press('Enter'); await p.waitForTimeout(1200); await p.keyboard.press('Enter'); await p.waitForTimeout(300); await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
+  await p.keyboard.press('Enter'); await p.waitForTimeout(1200); await p.keyboard.press('Enter'); await p.waitForTimeout(2300); await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
   ok(await p.evaluate(() => window.__lk.world.tutorial && window.__lk.world.holdWaves), 'tutorial room');
   const step = () => p.evaluate(() => window.__lk.tut && window.__lk.tut.step);
   await p.keyboard.down('d'); await p.waitForTimeout(900); await p.keyboard.up('d'); eq(await step(), 1);
@@ -161,7 +161,7 @@ await check('review: 4:3 창에서 화면이 잘리지 않음', { viewport: { wi
 const kev = (p, type, key, code) => p.evaluate(([t, k, c]) => dispatchEvent(new KeyboardEvent(t, { key: k, code: c, bubbles: true })), [type, key, code]);
 await check('review: 한글 입력 상태에서도 키 조작 (ㅏ=K)', PC, async p => {
   await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250);
-  for (let i = 0; i < 2; i++) { await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(250); }   // 마을 → 출발(지역 입장) → 들어간다
+  for (let i = 0; i < 2; i++) { await kev(p, 'keydown', 'Enter', 'Enter'); await kev(p, 'keyup', 'Enter', 'Enter'); await p.waitForTimeout(i ? 250 : 2300); }   // 마을 → (아이리스) 출발(지역 입장) → 들어간다
   eq(await p.evaluate(() => window.__lk.mode), 'play'); await p.waitForTimeout(1300); await watch(p);   // 아이리스가 열릴 때까지
   await kev(p, 'keydown', 'ㅏ', 'KeyK'); await kev(p, 'keyup', 'ㅏ', 'KeyK'); await p.waitForTimeout(150);
   ok((await log(p)).some(l => l.s === 'parry'));

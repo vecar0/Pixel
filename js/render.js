@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwq14fdq';
-import { CFG } from './core/config.js?v=mwq14fdq';
-import { attackBox } from './core/player.js?v=mwq14fdq';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwq14fdq';
-import { nearProp } from './core/world.js?v=mwq14fdq';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwq14fdq';
-import { FxDirector } from './fxmap.js?v=mwq14fdq';
-import { iconCanvas } from './icons.js?v=mwq14fdq';
-import { bodyShade } from './shade.js?v=mwq14fdq';
+import { clipBeam } from './core/gimmick.js?v=mwq1nue7';
+import { CFG } from './core/config.js?v=mwq1nue7';
+import { attackBox } from './core/player.js?v=mwq1nue7';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwq1nue7';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwq1nue7';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwq1nue7';
+import { FxDirector } from './fxmap.js?v=mwq1nue7';
+import { iconCanvas } from './icons.js?v=mwq1nue7';
+import { bodyShade } from './shade.js?v=mwq1nue7';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -112,6 +112,9 @@ export class Renderer {
       else if (ev.type === 'veilBreak') { this.flash = 0.9; this.zoom = 1; this.texts.push({ x: ev.x, y: ev.y - 70, t: 0, s: '장막 붕괴!', life: 70 }); }
       else if (ev.type === 'phase2') { this.flash = 1; this.zoom = 1; const P = PHASE2_TITLE[ev.kind] || ['2막', '']; this.banner = { s: P[0], sub: P[1], t: 170, dur: 170, y: 140 }; }
       else if (ev.type === 'mirrorReflect') { this.beamBack = { x0: ev.x, x1: ev.bx, y: ev.y, t: 14 }; this.flash = 0.8; this.texts.push({ x: ev.bx, y: ev.by - 70, t: 0, s: '반사!', life: 60 }); }
+      else if (ev.type === 'debris' && !(this.debrisHint = this.debrisHint || {})[w.room + ev.crystal + ev.star]) { this.debrisHint[w.room + ev.crystal + ev.star] = 1; this.say(ev.crystal || ev.star ? '떨어지는 것 — 바닥의 금빛 원 자리에 떨어진다. 피하거나 패링하라' : '천장이 무너진다 — 바닥의 붉은 원 자리에 돌이 떨어진다. 비켜서라', 220); }
+      else if (ev.type === 'bossDying') { this.flash = 1; this.zoom = 1; }
+      else if (ev.type === 'bossFall') { this.flash = 1; this.zoom = 1; this.banner = { s: `${ENEMY_DEFS[ev.kind].name} 격파`, sub: '대등에 다시 불이 붙는다', t: 170, dur: 170, y: 120 }; }
       else if (ev.type === 'heatUp') { this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '달아올랐다!', life: 60 }); this.say('거인이 달아올랐다 — 밸브 옆으로 유인해 밸브를 베어라', 200); }
       else if (ev.type === 'quench') { this.flash = ev.hot ? 0.8 : 0.3; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: ev.hot ? '식었다! 갑옷에 금이 갔다' : '증기!', life: 70 }); }
       else if (ev.type === 'steam' && !ev.hit) this.texts.push({ x: ev.x, y: 210, t: 0, s: '쉬익—', life: 30 });
@@ -257,6 +260,7 @@ export class Renderer {
     const hasBeacon = (w.props || []).some(o => o.kind === 'beacon');
     const trapped = bellOf(w).st === 'down' && bellOf(w).trapped;           // 대종에 갇힌 보스는 종 안 (그리지 않음). 허수아비는 그림 + 맞으면 흔들림
     if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; this.drawEnemy(g, w, e); g.globalAlpha = 1; }   // 어둠 속 그림자는 흐릿하게
+    if (w.bossDeath && w.bossDeath.t < BOSS_DEATH_F) this.drawBossDeath(g, w);   // 쓰러지는 보스
     for (const e of w.enemies) if (e.barrier > 0 && !e.dead) this.drawBarrier(g, w, e);   // 강적 수호 방패
     if (w.props) this.drawGimmickFront(g, w);                             // 대종은 보스 위에 (가둠)
     this.drawWarnings(g, w);
@@ -276,6 +280,7 @@ export class Renderer {
       gl.addColorStop(0, `rgba(${col},0.95)`); gl.addColorStop(0.45, `rgba(${col},0.5)`); gl.addColorStop(1, `rgba(${col},0)`);
       g.fillStyle = gl; g.beginPath(); g.arc(bx, by, r * 2.2, 0, Math.PI * 2); g.fill();
     }
+    this.drawDebris(g, w);
     for (const q of this.parts) { g.fillStyle = q.col; g.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s); }
     if (w.level) this.drawPickups(g, w);
     if (this.beamBack && this.beamBack.t > 0) {                            // 거울에서 거미로 되돌아가는 광선
@@ -333,7 +338,7 @@ export class Renderer {
 
   // 리라 임시 실루엣 (진짜 그림은 Higgsfield 단계에서 교체)
   drawLira(g, w, p) {
-    if (p.state !== 'ghost' && p.iframes > 0 && (w.t >> 2) % 2 && p.state !== 'hurt') return;
+    if (p.state !== 'ghost' && p.state !== 'dead' && p.iframes > 0 && (w.t >> 2) % 2 && p.state !== 'hurt') return;   // 죽는 중엔 깜빡이지 않음 (세계가 멈춰 깜빡임이 '안 보임'에 고정되던 버그)
     const f = p.face, cx = Math.round(p.x + p.w / 2), feet = Math.round(p.y + p.h);
     const fr = this.pickAnim(w, p);
     if (fr) { this.drawAnim(g, w, p, fr, cx, feet, f); return; }
@@ -703,6 +708,49 @@ export class Renderer {
     }
   }
 
+  // 보스 사망: 흔들리며 하얗게 번쩍 → 몸 곳곳이 터짐 → 큰 폭발(BOSS_FALL_F)과 함께 아래부터 빛이 되어 흩어짐
+  drawBossDeath(g, w) {
+    const D = w.bossDeath, e = D.e, t = D.t, d = ENEMY_DEFS[e.kind];
+    const f = this.enemyFrame(w, { ...e, st: 'idle', vx: 0, atk: null }, d); if (!f) return;
+    const fall = BOSS_FALL_F, k = t < fall ? 0 : (t - fall) / (BOSS_DEATH_F - fall);   // 0 → 1: 사라짐
+    const sh = t < fall ? Math.round(Math.sin(t * 1.7) * (1 + t / fall * 3)) : 0;
+    g.save(); g.translate(Math.round(e.x + e.w / 2) + sh, Math.round(e.y + e.h)); g.scale(e.face > 0 ? -1 : 1, 1);
+    const H = f.img.naturalHeight, keep = Math.round(H * (1 - k));                        // 위에서부터 남은 높이 (아래부터 흩어짐)
+    g.globalAlpha = 1 - k * 0.4;
+    if (keep > 0) g.drawImage(f.img, 0, 0, f.img.naturalWidth, keep, -f.ax, -f.ay, f.img.naturalWidth, keep);
+    const flick = t < fall ? (t % 10 < 4 ? 0.65 : 0.15) + t / fall * 0.3 : 0.9;           // 하얀 번쩍임 (갈수록 강하게)
+    g.globalAlpha = Math.min(1, flick) * (1 - k * 0.5);
+    if (keep > 0) g.drawImage(this.tinted('#fff2d8', f.img), 0, 0, f.img.naturalWidth, keep, -f.ax, -f.ay, f.img.naturalWidth, keep);
+    g.restore(); g.globalAlpha = 1;
+    if (k > 0 && t % 2 === 0) for (let i = 0; i < 4; i++) this.parts.push({ x: e.x + Math.random() * e.w, y: e.y + e.h * (1 - k) + Math.random() * 10, vx: (Math.random() - 0.5) * 0.6, vy: -0.8 - Math.random() * 1.2, life: 30, col: Math.random() < 0.5 ? '#fff2d8' : '#ffb347', s: 2 });
+  }
+  // 떨어지는 잔해: 무덤종 = 돌덩이(굴러 떨어지는 바위 조각), 용광로 = 쇳물 방울, 왕 = 죽은 별, 성녀 = 물방울 (수정은 fx)
+  drawDebris(g, w) {
+    for (const b of w.projectiles) {
+      if (!b.shard || b.debris === 'crystal') continue;
+      const x = b.x + b.w / 2, y = b.y + b.h / 2, t = w.t;
+      g.save(); g.translate(Math.round(x), Math.round(y));
+      if (b.debris === 'rock') {
+        g.rotate((b.spin || 0) + t * 0.12); g.scale(1.4, 1.4);
+        g.fillStyle = '#1c1820'; g.beginPath(); for (const [px, py] of [[-9, -5], [-3, -10], [6, -8], [10, -1], [6, 8], [-4, 9], [-10, 3]]) g.lineTo(px, py); g.closePath(); g.fill();   // 외곽
+        g.fillStyle = '#5e5866'; g.beginPath(); for (const [px, py] of [[-7, -4], [-2, -8], [5, -6], [8, -1], [5, 6], [-3, 7], [-8, 2]]) g.lineTo(px, py); g.closePath(); g.fill();      // 돌
+        g.fillStyle = '#8a8494'; g.fillRect(-5, -6, 6, 3); g.fillRect(-6, -3, 3, 3);                                                                      // 윗면 빛
+        g.fillStyle = '#3a3640'; g.fillRect(1, 2, 5, 3); g.fillRect(-2, 4, 3, 2);                                                                         // 갈라진 금
+        if (t % 3 === 0) this.parts.push({ x: x + (Math.random() - 0.5) * 10, y: y - 10, vx: (Math.random() - 0.5) * 0.3, vy: -0.4, life: 18, col: '#6e5a40', s: 2 });   // 흙먼지 꼬리
+      } else if (b.debris === 'molten') {
+        const gl = g.createRadialGradient(0, 0, 1, 0, 0, 14); gl.addColorStop(0, 'rgba(255,190,80,0.7)'); gl.addColorStop(1, 'rgba(255,120,30,0)'); g.fillStyle = gl; g.fillRect(-14, -14, 28, 28);
+        g.fillStyle = '#7a2a08'; g.fillRect(-5, -6, 10, 12); g.fillRect(-3, -10, 6, 4); g.fillStyle = '#ff8a2a'; g.fillRect(-4, -5, 8, 10); g.fillStyle = '#ffe08a'; g.fillRect(-2, -3, 3, 5);
+        if (t % 2 === 0) this.parts.push({ x: x + (Math.random() - 0.5) * 6, y: y - 8, vx: 0, vy: -0.3, life: 14, col: Math.random() < 0.5 ? '#ff8a2a' : '#5a5060', s: 2 });
+      } else if (b.debris === 'star') {
+        g.rotate(t * 0.08); const gl = g.createRadialGradient(0, 0, 1, 0, 0, 14); gl.addColorStop(0, 'rgba(140,240,230,0.7)'); gl.addColorStop(1, 'rgba(90,220,210,0)'); g.fillStyle = gl; g.fillRect(-14, -14, 28, 28);
+        g.fillStyle = '#5ae0d8'; g.fillRect(-1, -9, 3, 18); g.fillRect(-9, -1, 18, 3); g.fillStyle = '#dffff8'; g.fillRect(-2, -2, 5, 5);
+        if (t % 3 === 0) this.parts.push({ x, y: y - 8, vx: (Math.random() - 0.5) * 0.4, vy: -0.3, life: 16, col: '#8ff0e6', s: 1 });
+      } else {   // 물방울
+        g.fillStyle = '#14405a'; g.fillRect(-4, -6, 8, 11); g.fillRect(-2, -9, 4, 3); g.fillStyle = '#7cd8e8'; g.fillRect(-3, -4, 6, 8); g.fillStyle = '#e8fbff'; g.fillRect(-2, -3, 2, 3);
+      }
+      g.restore();
+    }
+  }
   // 공격 예고 표시: 광선 예고선 · 고리 원 · 낙하 파편 위치 (패링 불가는 붉게)
   drawWarnings(g, w) {
     const blink = (w.t >> 2) & 1;
@@ -712,8 +760,12 @@ export class Renderer {
       if (a.beam) { const [bx, bl] = clipBeam(w, e, e.face > 0 ? e.x + e.w : e.x - a.beam.len, a.beam.len, e.y + a.beam.y, a.beam.h, true); g.fillStyle = blink ? 'rgba(255,79,94,0.5)' : 'rgba(255,79,94,0.2)'; g.fillRect(bx, e.y + a.beam.y + a.beam.h / 2 - 1, bl, 3); }   // 거울이 있으면 거기서 끊긴 예고
       if (a.ring) { g.strokeStyle = blink ? 'rgba(255,79,94,0.8)' : 'rgba(255,79,94,0.35)'; g.lineWidth = 2; g.beginPath(); g.ellipse(e.x + e.w / 2, e.y + e.h / 2, e.w / 2 + a.ring, e.h / 2 + 10, 0, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1; }
     }
-    for (const b of w.projectiles) if (b.shard && b.y < 0) {          // 떨어질 자리 표시
-      g.fillStyle = blink ? C.white : 'rgba(255,255,255,0.4)'; g.fillRect(b.x + b.w / 2 - 1, 6, 3, 10); g.fillRect(b.x + b.w / 2 - 1, 20, 3, 3);
+    for (const b of w.projectiles) if (b.shard && b.owner === 'enemy') {   // 떨어질 자리: 바닥에 그림자 원이 점점 커지고 진해짐 (붉은색 = 피하기, 금빛 = 패링 가능)
+      const bx = b.x + b.w / 2, gy = groundAt(w, b.x, b.w), k = Math.max(0, Math.min(1, 1 - (gy - (b.y + b.h)) / 240));
+      const col = b.parryable ? '255,214,120' : '255,79,94', a = (0.25 + 0.55 * k) * (k > 0.7 && blink ? 0.6 : 1);
+      g.fillStyle = `rgba(${col},${a * 0.35})`; g.beginPath(); g.ellipse(bx, gy - 1, 8 + 12 * k, 2.5 + 2 * k, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = `rgba(${col},${a})`; g.lineWidth = 1.5; g.beginPath(); g.ellipse(bx, gy - 1, 8 + 12 * k, 2.5 + 2 * k, 0, 0, Math.PI * 2); g.stroke(); g.lineWidth = 1;
+      if (b.y < 40) { g.fillStyle = `rgba(${col},0.18)`; for (let y = Math.max(0, b.y + b.h); y < gy - 6; y += 10) g.fillRect(Math.round(bx) - 1, y, 2, 5); }   // 막 떨어지기 시작할 땐 낙하선
     }
     for (const e of w.enemies) if (e.st === 'active' && e.atk) {
       const a = ENEMY_DEFS[e.kind].attacks[e.atk];

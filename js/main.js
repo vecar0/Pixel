@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick } from './core/world.js?v=mwq14fdq';
-import { Renderer } from './render.js?v=mwq14fdq';
-import { Input } from './input.js?v=mwq14fdq';
-import { Sfx } from './sfx.js?v=mwq14fdq';
-import { stepLoop } from './loop.js?v=mwq14fdq';
-import { spawnEnemy } from './core/enemies.js?v=mwq14fdq';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwq14fdq';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwq14fdq';
-import { icon, RELIC_TONE } from './icons.js?v=mwq14fdq';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwq14fdq';
-import { startTitleScene } from './titlescene.js?v=mwq14fdq';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwq1nue7';
+import { Renderer } from './render.js?v=mwq1nue7';
+import { Input } from './input.js?v=mwq1nue7';
+import { Sfx } from './sfx.js?v=mwq1nue7';
+import { stepLoop } from './loop.js?v=mwq1nue7';
+import { spawnEnemy } from './core/enemies.js?v=mwq1nue7';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwq1nue7';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwq1nue7';
+import { icon, RELIC_TONE } from './icons.js?v=mwq1nue7';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwq1nue7';
+import { startTitleScene } from './titlescene.js?v=mwq1nue7';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwq14fdq';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, spellFor } from './core/spells.js?v=mwq14fdq';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwq14fdq';
-import { takeTrain, runSpell } from './core/run.js?v=mwq14fdq';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwq14fdq';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwq14fdq';
+import { CFG } from './core/config.js?v=mwq1nue7';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, spellFor } from './core/spells.js?v=mwq1nue7';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwq1nue7';
+import { takeTrain, runSpell } from './core/run.js?v=mwq1nue7';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwq1nue7';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwq1nue7';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -75,7 +75,7 @@ function play() {
 // 대화창: 초상·이름·한 글자씩 나오는 대사. 누르면(또는 Enter) 다 보이고, 다시 누르면 다음 줄 → 끝나면 then()
 const TALK = {
   keeper: { name: '등대지기 노라', img: 'assets/keeper.png', lines: [
-    ['등대의 불이 꺼진 지 오래야.', '네 등불로 네 개의 대등을 다시 켜 주렴.'],
+    ['등대의 불이 꺼진 지 오래야.', '네 등불로 여섯 대등을 다시 켜 주렴.'],
     ['기름은 제단에서 골라 가렴.', '성유는 빛의 결계, 귀화유는 귀화 창으로 시작하지.'],
     ['허수아비로 손을 풀고 가렴.', '패링은 적이 번쩍이는 그 순간이 전부야.'],
     ['어둠이 깊을수록 보상도 크다네.', '자신이 생기면 제단에서 어둠을 올려 봐.'],
@@ -391,10 +391,17 @@ function goNext() {
   if (prev && now !== prev) R.say(`새 마법 「${SPELLS[now].name}」 — ${SPELLS[now].desc}`);
 }
 // 출구로 나갈 때: 아이리스가 리라 쪽으로 닫힌 뒤 다음 스테이지
+// 아이리스로 화면을 검게 닫은 뒤 then() (마을 출발·방 이동·보스 포탈 공통)
+function irisThen(then) {
+  mode = 'transition'; touch.classList.add('hidden'); R.iris(world, 'close');
+  const wait = () => { if (R.irisClock >= 1.02) then(); else { R.stepFx(world); requestAnimationFrame(wait); } };
+  requestAnimationFrame(wait);
+}
 function leaveRoom() {
   mode = 'transition'; touch.classList.add('hidden'); R.iris(world, 'close');
   const closed = () => {                                                  // 완전히 닫힌 검은 화면에서 남은 보상을 고른 뒤 다음 방
     const k = run.pending; run.pending = null;
+    if (k === 'bossWon') return overlay('won');                          // 보스 포탈 → 격파 화면 → 단련 2점 → 다음 지역
     if (k === 'train') rewardScreen(goNext); else if (k === 'train1') rewardScreen(goNext, null, null, 1); else if (k === 'train2') rewardScreen(goNext, null, null, 2); else goNext();
   };
   const wait = () => { if (R.irisClock >= 1.02) closed(); else { R.stepFx(world); requestAnimationFrame(wait); } };
@@ -544,11 +551,15 @@ function onEvents(w) {
     if (w.tutorial && tut) tutEvent(ev);
     if (w.town) {                                                         // 마을
       if (ev.type === 'interact') { sfx.play('click'); if (ev.kind === 'keeper') talk('keeper', town); else if (ev.kind === 'rack') practiceScreen(); else if (ev.kind === 'altar') prepScreen(); else if (ev.kind === 'board') recordsScreen(); else if (ev.kind === 'campfire') campMenu(); }
-      if (ev.type === 'exit') { newPilgrimage(); startPilgrimage(); }   // 오른쪽 길 = 출발 (제단에서 고른 설정으로)
+      if (ev.type === 'exit') { newPilgrimage(); irisThen(startPilgrimage); }   // 오른쪽 길 = 출발 (제단에서 고른 설정으로)
       continue;
     }
     if (ev.type === 'interact') { if (ev.kind === 'merchant') { if (run && !run.metMerchant) { run.metMerchant = true; talk('merchant', shopScreen); } else shopScreen(); } else if (ev.kind === 'campfire') restScreen(); }
+    if (ev.type === 'exit' && w.room === 'boss') { run.pending = 'bossWon'; leaveRoom(); return; }   // 보스 포탈
     if (ev.type === 'exit') { saveFromWorld(run, w); if (!w.counted) roomCleared(run); leaveRoom(); return; }
+    if (ev.type === 'win') R.say(practice ? '포탈이 열렸다 — 들어가면 마을로' : '포탈이 열렸다 — 들어가면 다음 지역으로', 240);
+    if (ev.type === 'bossDying') { slowT = 0; if (navigator.vibrate) navigator.vibrate([80, 60, 160]); }
+    if (ev.type === 'bossFall') { sfx.play('slam'); sfx.play('ult'); }
     if (ev.type === 'bellRelease') sfx.play('telegraph');
     if (ev.type === 'bellTrap' || ev.type === 'bellMiss') sfx.play('slam');
     if (ev.type === 'veilBreak' || ev.type === 'mirrorReflect') sfx.play('execute');
@@ -581,7 +592,7 @@ function frameBody(now) {
   const dt = now - last; last = now;
   if (mode === 'title' && input.take('confirm')) town();
   if (mode === 'town' && world && world.town) {                          // 마을 걷기
-    if (input.take('confirm')) { newPilgrimage(); startPilgrimage(); }
+    if (input.take('confirm')) { newPilgrimage(); irisThen(startPilgrimage); }
     else if (input.take('pause')) campMenu();
     else if (!R.irisBusy()) {
       acc = stepLoop(acc, dt, () => { tick(world, input.read()); onEvents(world); R.spawnFx(world); R.stepFx(world); if (TOUCH) syncTouch();
@@ -590,6 +601,7 @@ function frameBody(now) {
   }
   if (mode === 'play' && deathT) {                                     // 사망 연출: 세계는 멈추고 리라 쓰러짐 → 등불이 꺼짐 → 결과
     deathT += dt / (1000 / CFG.TICK); world.player.stateT = Math.floor(deathT); R.death = deathT; R.stepFx(world);
+    { const pl = world.player, gy = groundAt(world, pl.x, pl.w); if (pl.y + pl.h < gy) pl.y = Math.min(gy - pl.h, pl.y + 6); }   // 공중에서 죽으면 바닥까지 떨어져 쓰러짐
     if (deathT > DEATH_F) { deathT = 0; R.death = 0; overlay('dead'); }
   } else if (mode === 'play') {
     if (input.take('pause')) overlay('pause');
@@ -597,11 +609,11 @@ function frameBody(now) {
       if (R.irisBusy() || R.stepCine()) { R.stepFx(world); acc = 0; touch.classList.add('hidden'); world.wasCine = true; }   // 아이리스·보스 등장 연출 동안은 세계 정지, 버튼 숨김
       else {
         if (world.wasCine) { world.wasCine = false; showTouch(); if (run && run.room === 'boss' && !world.hinted) { world.hinted = true; const b = world.enemies.find(e => e.boss); if (b && GIMMICK_HINT[b.kind]) R.say(GIMMICK_HINT[b.kind], 360); } }   // 보스 기믹 힌트
-        const rate = world.player.state === 'execute' && !world.hitstop ? CFG.execute.slow : slowT > 0 && !world.hitstop ? 0.45 : 1;   // 처형 중 슬로모션, 완벽 패링 직후 잠깐 슬로
+        const rate = world.bossDeath && world.bossDeath.t < 120 ? 0.4 : world.player.state === 'execute' && !world.hitstop ? CFG.execute.slow :   // 보스 사망: 슬로모션
+           slowT > 0 && !world.hitstop ? 0.45 : 1;   // 처형 중 슬로모션, 완벽 패링 직후 잠깐 슬로
         acc = stepLoop(acc, dt * rate, step); tutTick();
       }
       if (world.over && !deathT) { deathT = 1; touch.classList.add('hidden'); sfx.stopMusic && sfx.stopMusic(); }   // 사망 연출 시작
-      else if (world.won) overlay('won');
       else if (world.cleared && !world.rewarded) overlay('cleared');
     }
   } else if (mode === 'pause' && input.take('pause')) resume();

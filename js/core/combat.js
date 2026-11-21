@@ -1,9 +1,9 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwq14fdq';
-import { hitLevel } from './level.js?v=mwq14fdq';
-import { CFG } from './config.js?v=mwq14fdq';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwq14fdq';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwq14fdq';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwq1nue7';
+import { hitLevel } from './level.js?v=mwq1nue7';
+import { CFG } from './config.js?v=mwq1nue7';
+import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwq1nue7';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwq1nue7';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -61,7 +61,7 @@ export function resolveEnemyHit(w, hb) {
   p.iframes = Math.round(CFG.player.iframesHurt * (p.mods.hurtIMul || 1));   // 생명 18
   p.buffer = null;
   p.vx = (hb.dir || -p.face) * 1.5; p.vy = -2;
-  if (p.hp <= 0) { p.hp = 0; p.state = 'dead'; p.stateT = 0; w.over = true; w.events.push({ type: 'dead', x: p.x + p.w / 2, y: p.y + p.h }); }
+  if (p.hp <= 0) { p.hp = 0; p.iframes = 0; p.state = 'dead'; p.stateT = 0; w.over = true; w.events.push({ type: 'dead', x: p.x + p.w / 2, y: p.y + p.h }); }
   else { p.state = 'hurt'; p.stateT = 0; }
   w.shake = Math.max(w.shake, 5);
   w.events.push({ type: 'hurt', x: p.x + p.w / 2, y: p.y + 10 });

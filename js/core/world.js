@@ -1,12 +1,13 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
-import { CFG } from './config.js?v=mwq14fdq';
-import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwq14fdq';
-import { updateLevel, dropPickups } from './level.js?v=mwq14fdq';
-import { createPlayer, updatePlayer, overlap } from './player.js?v=mwq14fdq';
-import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwq14fdq';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk } from './combat.js?v=mwq14fdq';
-import { ACTIONS } from './player.js?v=mwq14fdq';
+import { CFG } from './config.js?v=mwq1nue7';
+import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwq1nue7';
+import { updateLevel, dropPickups } from './level.js?v=mwq1nue7';
+import { createPlayer, updatePlayer, overlap } from './player.js?v=mwq1nue7';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwq1nue7';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk } from './combat.js?v=mwq1nue7';
+import { ACTIONS } from './player.js?v=mwq1nue7';
 
+export const BOSS_DEATH_F = 160, BOSS_FALL_F = 96;   // 보스 사망 연출 길이 · 마지막 폭발 시점 (틱)
 // 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판
 const walls = W => [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }];
 const plat = (x, y, w = 120) => ({ x, y, w, h: 8, oneWay: true });
@@ -79,7 +80,7 @@ function propInput(w, inp) {
   if (o && inp.attack) { w.events.push({ type: 'interact', kind: o.kind }); inp = { ...inp, attack: false }; }
   const exit = w.props.find(o => o.kind === 'exit');
   if (exit && w.cleared) exit.locked = false;
-  if (exit && !exit.locked && p.x + p.w / 2 > exit.x - 12 && !w.exited) { w.exited = true; w.events.push({ type: 'exit' }); }
+  if (exit && !exit.locked && (exit.portal ? Math.abs(p.x + p.w / 2 - exit.x) < 22 : p.x + p.w / 2 > exit.x - 12) && !w.exited) { w.exited = true; w.events.push({ type: 'exit' }); }   // 보스 포탈은 그 자리에 들어서면
   return inp;
 }
 
@@ -97,7 +98,13 @@ function updateCamera(w) {
 
 // 웨이브: 적이 다 죽으면 60틱 뒤 다음 웨이브. 마지막까지 끝나면 cleared
 function updateWaves(w) {
-  if (w.room === 'boss') { if (!w.enemies.length && !w.won) { w.won = true; w.events.push({ type: 'win' }); } return; }
+  if (w.room === 'boss') {
+    if (!w.enemies.length && !w.won && (!w.bossDeath || w.bossDeath.t >= BOSS_DEATH_F)) {   // 연출이 끝나면 쓰러진 자리에 포탈이 열린다
+      w.won = true; const D = w.bossDeath, x = D ? Math.max(220, Math.min(w.width - 220, D.e.x + D.e.w / 2)) : w.width / 2;
+      (w.props = w.props || []).push({ kind: 'exit', x, portal: true }); w.events.push({ type: 'win', x });
+    }
+    return;
+  }
   if (w.enemies.length || w.cleared || w.room !== 'arena' || w.holdWaves) return;   // holdWaves: 튜토리얼에서 준비될 때까지 대기
   if (!w.waves.length) { w.cleared = true; w.events.push({ type: 'cleared' }); return; }
   if (++w.waveDelay < 60) return;
@@ -155,6 +162,11 @@ export function tick(w, inp) {
   for (const ev of w.events) if (ev.type === 'kill' && !ev.boss && !ev.dummy && !ev.decoy) dropPickups(w, ev.x, ev.y, ev.elite ? 5 : 1 + (ev.x | 0) % 2);   // 처치: 불씨 1~2 (엘리트 5)
   for (const e of w.enemies) if (e.dead && e.mods && e.mods.includes('split'))   // 분열: 나방 둘
     for (const k of [-1, 1]) spawnEnemy(w, 'moth', e.x + k * 20, e.y - 10, { hpMul: w.hpMul });
+  for (const e of w.enemies) if (e.dead && e.boss && w.room === 'boss' && !w.bossDeath) {   // 보스 쓰러짐: 사망 연출 시작 (적 탄·분출구 정리)
+    w.bossDeath = { t: 0, e }; w.projectiles = w.projectiles.filter(b => b.owner !== 'enemy'); if (w.level) w.level.vents = [];
+    w.events.push({ type: 'bossDying', kind: e.kind, x: e.x + e.w / 2, y: e.y + e.h / 2 });
+  }
+  if (w.bossDeath && w.bossDeath.t < BOSS_DEATH_F && ++w.bossDeath.t === BOSS_FALL_F) w.events.push({ type: 'bossFall', kind: w.bossDeath.e.kind, x: w.bossDeath.e.x + w.bossDeath.e.w / 2, y: w.bossDeath.e.y + w.bossDeath.e.h / 2 });
   w.enemies = w.enemies.filter(e => !e.dead);
   updateWaves(w);
   updateCamera(w);

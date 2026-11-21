@@ -37,15 +37,19 @@ for (let guard = 0; guard < 2000; guard++) {
     await p.keyboard.press('j'); await p.waitForTimeout(250);
     for (let k = 0; k < 8 && (await mode()) === 'talk'; k++) { await tap('#tnext'); await p.waitForTimeout(120); }   // 상인 첫 대화
     (await mode()) === st.room || fail(st.room + ' 창이 안 열림');
-    await tap(st.room === 'rest' ? '.pick:not([disabled])' : '[data-id=leave]');   // 휴식: 고를 수 있는 첫 항목 (체력이 가득하면 치료는 꺼짐) await p.waitForTimeout(250);
+    await tap(st.room === 'rest' ? '.pick:not([disabled])' : '[data-id=leave]'); await p.waitForTimeout(250);   // 휴식: 고를 수 있는 첫 항목 (체력이 가득하면 치료는 꺼짐)
   } else {
     // 전투: 리라는 무적, 적을 차례로 처치 (웨이브 포함)
     await p.evaluate(() => { window.__lk.world.player.iframes = 1e9; window.__lk.world.holdWaves = false; });   // 튜토리얼 방도 바로 진행
     const done = await until(async () => {
       await p.evaluate(async () => { const { damageEnemy } = await import('/js/core/combat.js'); const w = window.__lk.world; for (const e of w.enemies) if (!(e.spawnT > 0)) damageEnemy(w, e, 99999); });
-      const md = await mode(); return md !== 'play' || await p.evaluate(() => !!window.__lk.world.rewarded);
+      const md = await mode(); return md !== 'play' || await p.evaluate(() => !!(window.__lk.world.rewarded || window.__lk.world.won));
     }, 20000);
     done || fail('방을 못 끝냄 ' + JSON.stringify(st) + ' ' + await p.evaluate(() => { const w = window.__lk.world; return JSON.stringify({ en: w.enemies.map(e => [e.kind, e.hp, e.spawnT, Math.round(e.x), Math.round(e.y), e.st]), waves: w.waves.length, cl: w.cleared, rw: w.rewarded, over: w.over, iris: window.__lk.R.irisBusy(), cine: !!window.__lk.R.cine, t: w.t }); }));
+    if (st.room === 'boss') {                                               // 보스: 사망 연출 → 포탈 → 들어가면 아이리스 → 격파 화면
+      await p.evaluate(() => { const w = window.__lk.world, o = w.props.find(o => o.kind === 'exit' && o.portal); w.player.x = o.x - w.player.w / 2; });
+      await until(async () => (await mode()) === 'won', 8000);
+    }
     const md = await mode();
     if (st.room === 'boss') {
       if (md !== 'won') fail('보스 뒤 won 아님: ' + md);

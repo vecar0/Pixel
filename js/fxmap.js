@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwq14fdq';
-import { CFG } from './core/config.js?v=mwq14fdq';
-import { groundAt } from './core/world.js?v=mwq14fdq';
+import { preload } from './fx.js?v=mwq1nue7';
+import { CFG } from './core/config.js?v=mwq1nue7';
+import { groundAt } from './core/world.js?v=mwq1nue7';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -16,6 +16,7 @@ const TEAL = ['#04161a', '#0a3438', '#11606a', '#1aa0a8', '#5ae0d8', '#b8fff4', 
 const SHADE = ['#06020c', '#14081e', '#2a1040', '#4a1a6a', '#7a2ea0', '#c070e0', '#f0d0ff'];   // 흑염: 검보라
 const GHOST = ['#020104', '#0a0414', '#180a2a', '#2c1048', '#48206e', '#74409e', '#b498d6'];   // 귀화(등불): 어두운 보랏빛 영혼불 — 얼음(푸른빛)과 겹치지 않게
 const VOLT = ['#1a1404', '#4a3a08', '#8a6e10', '#d0b020', '#ffe24a', '#fff6a8', '#ffffff'];   // 번개(투지): 노란 전격
+const HELL = ['#0c0204', '#2a0408', '#5a0a10', '#961618', '#d02a1e', '#ff5a30', '#ffb08a'];   // 함정·위험 불 (검붉음)
 const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', '#ffffff'];
 // 마법별 색 (마법진·모이는 빛). 함수라서 아래쪽 팔레트 상수를 써도 됨
 const palOf = sp => ({ bolt: AMBER, wisps: GHOST, pillar: AMBER, tornado: AMBER, meteor: AMBER, ring: GHOST, lance: ICE, spikes: ICE, stars: ICE, ward: GOLD, thunder: GOLD, chain: VOLT,
@@ -46,9 +47,10 @@ const AMBIENT = {
 
 // 적 등장 · 공격 · 쓰러짐
 const SPAWN = { ghoul: 'spawn/summon-rise', moth: 'spawn/poof', spearman: 'water/splash', priest: 'water/geyser', shellguard: 'nature/earth-spike', assassin: 'shadow/shadow-tendrils' };
-const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['melee/claw-swipe', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['melee/hammer-smash', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
-  bellBoss: ['melee/heavy-cleave', DUST], spider: ['melee/claw-swipe', LILAC], shadow: ['melee/sword-slash', VIOLET], saint: ['melee/spear-sweep', CYAN], forge: ['melee/hammer-smash', AMBER], king: ['melee/heavy-cleave', CYAN] };
-const DEATH = { ghoul: ['spawn/poof', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/splash'], priest: ['water/wave-crash'], shellguard: ['ice/ice-shatter', LILAC], assassin: ['explosions/implosion', VIOLET] };
+// 적 공격 궤적은 리라가 쓰는 베기(sword-slash·uppercut·spear-sweep·heavy-cleave·double-slash)와 절대 겹치지 않게 — 한눈에 '내 공격 / 적 공격' 구분
+const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['impacts/hit-flash', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['impacts/blunt-hit', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
+  bellBoss: ['impacts/ground-slam', DUST], spider: ['melee/claw-swipe', LILAC], shadow: ['melee/spin-slash', VIOLET], saint: ['melee/whip-crack', CYAN], forge: ['melee/hammer-smash', AMBER], king: ['melee/scythe-reap', CYAN] };
+const DEATH = { ghoul: ['spawn/poof', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/splash'], priest: ['water/wave-crash'], shellguard: ['ice/ice-shatter', LILAC], assassin: ['explosions/smoke-bomb', VIOLET] };   // 처형 고리(implosion)와 겹치지 않게
 // 착탄 순간 2단 연출 (마법 레이어, 2배 굵은 픽셀): [이펙트, 옵션] 여러 개 + 화면 번쩍 세기
 const LAND = {
   pillar:  [[['impacts/ground-slam', { palette: AMBER }], ['fire/fire-ring', { light: 0.3 }]], 0.35],
@@ -61,7 +63,7 @@ const LAND = {
   spikes:  [[['ice/frost-nova', { light: 0.3 }]], 0.3],
   thorns:  [[['impacts/hit-spark', { palette: GREEN, height: 26, light: 0.3 }], ['nature/quake', { palette: DUST }]], 0.25],   // 덩굴이 땅을 뚫고 나온 자리
 };
-const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], wisp: ['fire/fireball', { palette: GHOST, light: 0.35 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], king: ['arcane/arcane-orb', { palette: CYAN, dy: 50 }], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
+const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], wisp: ['fire/fireball', { palette: GHOST, light: 0.35 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['projectiles/arrow', { palette: CYAN }], king: ['arcane/arcane-orb', { palette: CYAN, dy: 50 }], bellBoss: ['arcane/arcane-orb', { palette: DUST, dy: 50 }], shadow: ['shadow/void-orb', { dy: 62 }] };   // 성녀 물창 = 화살 모양(리라 얼음 창과 구분), 무덤종 종소리 = 흙빛 구슬(리라 번개와 구분)
 
 export const ALL_IDS = [...new Set([
   ...Object.values(AMBIENT).flatMap(a => [...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]),
@@ -136,11 +138,12 @@ export class FxDirector {
           ? ['#1a0508', '#4a0b12', '#8c1420', '#d42a2e', '#ff5a4a', '#ff9a86', '#ffd8cc', '#ffffff']
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
         break;
+      case 'bossFall': P('explosions/big-explosion', ev.x, ev.y + 40, { life: 150, light: 0.6 }, 3); P('holy/holy-pillar', ev.x, ev.y + 40, { light: 0.5, palette: GOLD }, 3); break;   // 보스 마지막 폭발 + 빛기둥
       case 'execDash': P('arcane/blink-out', ev.x0, ev.y - 30, { palette: AMBER, life: 30, light: 0.4 }, 2); P('melee/double-slash', (ev.x0 + ev.x1) / 2, ev.y - 30, { flip: ev.face < 0, palette: AMBER, life: 24, light: 0.35 }, 2); break;   // 연속 처형 돌진: 사라진 자리 + 가르는 궤적
       case 'execute': P('explosions/implosion', ev.x, ev.y + 20, { palette: AMBER, life: 60, light: 0.45 }, 3); break;   // 처형 한 번에 원은 하나만: 큰 고리 (작은 치명타 폭발은 뺌)
       case 'hurt': P('ui/heart-lost', p.x + p.w / 2, p.y - 8, {}, 3); break;   // 붉은 화면·파편은 렌더러가 그림
       case 'kill': {
-        if (ev.boss) { P('explosions/big-explosion', ev.x, ev.y + 40, { life: 150, light: 0.5 }, 3); P('holy/holy-pillar', ev.x, ev.y + 40, { light: 0.5 }, 3); break; }
+        if (ev.boss) { P('impacts/crit-hit', ev.x, ev.y + 20, { light: 0.5 }, 3); break; }   // 큰 폭발은 사망 연출 끝(bossFall)에
         const d = DEATH[ev.kind];
         P(d ? d[0] : 'spawn/poof', ev.x, ev.y + 16, { ...(d && d[1] ? { palette: d[1] } : {}), life: 90, light: 0.3 }, 2);
         break;
@@ -156,7 +159,7 @@ export class FxDirector {
       case 'slam': P('nature/quake', ev.x || (w.enemies.find(e => e.boss)?.x ?? p.x), 300, { palette: DUST, life: 90, light: 0.3 }, 2); break;
       case 'block': P('impacts/shield-block', ev.x, ev.y + 20, { palette: LILAC, light: 0.3 }, 2); break;
       case 'blink': P('arcane/blink-out', ev.x, ev.y + 26, { palette: VIOLET, light: 0.3 }, 2); break;
-      case 'enemyParry': P('impacts/parry', ev.x, ev.y + 40, { palette: VIOLET, light: 0.3 }, 3); break;
+      case 'enemyParry': P('impacts/shield-block', ev.x, ev.y + 30, { palette: VIOLET, light: 0.3 }, 3); break;   // 적이 막음: 리라 패링(impacts/parry)과 다른 그림
       case 'heal': P('nature/healing-bloom', p.x + p.w / 2, feet, { life: 80, light: 0.3 }, 3); break;   // 발밑에서 피어오르는 회복 빛 (리라 실루엣을 덧그리는 이펙트는 쓰지 않음)
       case 'castStart': {                                                  // 시전: 손의 등불에서 짧게 불꽃이 튄다 (마법진·몸 빛 없음, 모든 마법 공통)
         const hx = p.x + p.w / 2 + p.face * 16, hy = p.y + 30;
@@ -196,12 +199,12 @@ export class FxDirector {
       }
       // 강적 기믹
       case 'barrierBreak': P('ice/ice-shatter', ev.x, ev.y + 30, { palette: CYAN, life: 50, light: 0.45 }, 3); break;
-      case 'barrierUp': P('holy/divine-shield', ev.x, ev.y + 40, { palette: CYAN, life: 40, light: 0.3 }, 2); break;
+      case 'barrierUp': P('arcane/rune-circle', ev.x, ev.y + 40, { palette: CYAN, life: 40, light: 0.3 }, 2); break;   // 리라 빛의 결계(divine-shield)와 구분
       case 'mirage': P('arcane/blink-in', ev.x, ev.y + 20, { palette: VIOLET, life: 40, light: 0.35 }, 2); break;
       case 'barrierHit': P('impacts/shield-block', ev.x, ev.y + 20, { palette: CYAN, light: 0.3 }, 2); break;
       // 레벨 요소
       case 'urnBreak': P('spawn/poof', ev.x, ev.y + 14, { palette: DUST, life: 30, light: 0.2 }, 2); break;
-      case 'ventFire': this.spell('fire/flame-pillar', ev.x, 300, { life: 85, light: 0.5 }); break;
+      case 'ventFire': this.spell('fire/flame-pillar', ev.x, 300, { life: 85, light: 0.5, palette: HELL }); break;   // 함정 불기둥: 검붉은색 (리라 화염 기둥은 주황)
       case 'chestOpen': this.spell('holy/sunburst', ev.x, ev.y, { palette: GOLD, life: 60, light: 0.5 }); break;
       case 'gateOpen': P('nature/quake', ev.x, 300, { palette: DUST, life: 40, light: 0.2 }, 2); break;
       case 'lever': P('impacts/hit-spark', ev.x, ev.y - 10, { height: 14, palette: GOLD, life: 30, light: 0.4 }, 2); break;
@@ -233,12 +236,14 @@ export class FxDirector {
   // 매 틱: 탄에 이펙트 붙이기, 엘리트 표시, 화상
   tick(w) {
     const R = this.R, F = R.fx, p = w.player;
+    const D = w.bossDeath;                                                // 보스 사망 연출: 몸 곳곳에서 차례로 작은 폭발
+    if (D && D.t < 96 && D.t % 14 === 6 && D.t !== this.lastBurst) { this.lastBurst = D.t; const e = D.e; this.put('explosions/small-explosion', e.x + e.w * (0.2 + ((D.t * 37) % 60) / 100), e.y + e.h * (0.25 + ((D.t * 53) % 50) / 100), { palette: AMBER, life: 40, light: 0.45 }, 2); }
     for (const b of w.projectiles) {
       if (this.seen.has(b)) continue; this.seen.add(b);
-      b._fx = !!(b.echo || b.wave || b.shard || (b.bolt && BOLT[b.bolt]));   // 이펙트가 붙은 탄은 임시 사각형을 안 그림
+      b._fx = !!(b.echo || b.wave || b.shard || (b.bolt && BOLT[b.bolt]));   // 잔해(shard)는 drawDebris·fx가 그림   // 이펙트가 붙은 탄은 임시 사각형을 안 그림
       if (b.echo) F.spawn('projectiles/energy-disc', 0, 0, { follow: b, palette: AMBER, flip: b.vx < 0 });
       else if (b.wave) F.spawn(b.src?.kind === 'saint' ? 'water/wave-crash' : 'impacts/ground-slam', 0, 0, { follow: b, dy: 6, palette: b.src?.kind === 'saint' ? undefined : DUST, light: 0.5 });
-      else if (b.shard) F.spawn(b.src?.kind === 'bellBoss' ? 'nature/boulder' : 'ice/ice-crystal', 0, 0, { follow: b, palette: b.src?.kind === 'bellBoss' ? DUST : LILAC });   // 종탑 잔해는 돌
+      else if (b.shard && b.debris === 'crystal') F.spawn('ice/ice-crystal', 0, 0, { follow: b, palette: LILAC });   // 수정 파편만 이펙트, 나머지(돌·쇳물·별·물방울)는 render.drawDebris가 직접 그림
       else if (b.bolt && BOLT[b.bolt]) (b.owner === 'player' ? R.mfx : F).spawn(BOLT[b.bolt][0], 0, 0, { follow: b, flip: b.vx < 0, ...BOLT[b.bolt][1] });   // 리라 마법탄은 2배 레이어
     }
     // 물 속을 걸으면 발밑에 잔물결, 착지하면 물보라 (성녀 2막)

@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqazull';
-import { CFG } from './core/config.js?v=mwqazull';
-import { attackBox } from './core/player.js?v=mwqazull';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqazull';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqazull';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqazull';
-import { FxDirector } from './fxmap.js?v=mwqazull';
-import { iconCanvas } from './icons.js?v=mwqazull';
-import { bodyShade } from './shade.js?v=mwqazull';
+import { clipBeam } from './core/gimmick.js?v=mwqbmxdd';
+import { CFG } from './core/config.js?v=mwqbmxdd';
+import { attackBox } from './core/player.js?v=mwqbmxdd';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqbmxdd';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqbmxdd';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqbmxdd';
+import { FxDirector } from './fxmap.js?v=mwqbmxdd';
+import { iconCanvas } from './icons.js?v=mwqbmxdd';
+import { bodyShade } from './shade.js?v=mwqbmxdd';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -176,7 +176,8 @@ export class Renderer {
       if (e.burnT > 0 && w.t % 3 === 0) this.parts.push({ x: e.x + Math.random() * e.w, y: e.y + e.h * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 0.3, vy: -0.8 - Math.random() * 0.6, life: 16, col: Math.random() < 0.5 ? '#ff7a2a' : '#ffd27a', s: 2 });
       if (e.frozenT > 0 && w.t % 4 === 0) this.parts.push({ x: e.x + Math.random() * e.w, y: e.y + Math.random() * e.h, vx: 0, vy: 0.3, life: 18, col: '#dff4ff', s: 1 });
     }
-    if (pl.enchantT > 0 && w.t % 2 === 0) { const c = EL_SLASH[pl.element || null]; this.parts.push({ x: pl.x + pl.w / 2 + pl.face * (14 + Math.random() * 18), y: pl.y + 26 + Math.random() * 22, vx: (Math.random() - 0.5) * 0.3, vy: -0.4 - Math.random() * 0.5, life: 16, col: c[4 + (Math.random() * 2 | 0)], s: 2 }); }   // 두른 검: 칼끝에서 속성 불티
+    if (pl.enchantT > 0 && this.lastFr && this.blade) { const D = this.blade[this.lastFr.src], M = D && D.m && D.m.length ? D.m : D && D.o; if (M && M.length) { const c = EL_SLASH[pl.element || null], f = pl.face, fr = this.lastFr;   // 두른 칼: 날 전체에서 속성 불꽃이 타오름
+      for (let k = 0; k < 3; k++) { const row = M[(Math.random() * M.length) | 0], px = row[1][(Math.random() * row[1].length) | 0]; this.parts.push({ x: pl.x + pl.w / 2 + f * (px - fr.ax), y: pl.y + pl.h + (row[0] - fr.ay), vx: (Math.random() - 0.5) * 0.3, vy: -0.6 - Math.random() * 0.9, life: 10 + Math.random() * 8, col: c[3 + ((Math.random() * 4) | 0)], s: Math.random() < 0.3 ? 2 : 1 }); } } }
     if (pl.state === 'execute' && pl.execMode === 'chain' && pl.stateT < CFG.execute.chainHitF && pl.stateT % 2 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 14, st: 'execute', stT: pl.stateT, mode: 'chain', amber: true });   // 연속 처형 돌진 잔상
     for (const g of this.ghosts) g.life--;
     this.ghosts = this.ghosts.filter(g => g.life > 0);
@@ -756,6 +757,18 @@ export class Renderer {
     g.restore(); g.globalAlpha = 1;
     if (k > 0 && t % 2 === 0) for (let i = 0; i < 4; i++) this.parts.push({ x: e.x + Math.random() * e.w, y: e.y + e.h * (1 - k) + Math.random() * 10, vx: (Math.random() - 0.5) * 0.6, vy: -0.8 - Math.random() * 1.2, life: 30, col: Math.random() < 0.5 ? '#fff2d8' : '#ffb347', s: 2 });
   }
+  // 속성 색으로 다시 칠한 프레임: 등불·칼에 붙은 불(o)은 늘, 칼날(m)은 두른 동안만. 밝기를 속성 팔레트 단계로 옮김 (프레임·속성·모드마다 한 번)
+  elFrame(fr, el, lit) {
+    const B = this.blade && this.blade[fr.src]; if (!B || !fr.img.naturalWidth || (!el && !lit)) return fr.img;
+    this.elCache = this.elCache || new Map(); const key = fr.src + '|' + el + '|' + (lit ? 1 : 0);
+    let c = this.elCache.get(key); if (c) return c;
+    c = document.createElement('canvas'); c.width = fr.img.naturalWidth; c.height = fr.img.naturalHeight; const x = c.getContext('2d'); x.drawImage(fr.img, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height), P = EL_SLASH[el].map(h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+    const paint = (rows, lo) => { for (const [y, xs] of rows) for (const px of xs) { const i = (y * c.width + px) * 4, L = (d.data[i] * 0.3 + d.data[i + 1] * 0.55 + d.data[i + 2] * 0.15) / 255, k = Math.min(P.length - 1, lo + Math.floor(L * (P.length - lo))); d.data[i] = P[k][0]; d.data[i + 1] = P[k][1]; d.data[i + 2] = P[k][2]; } };
+    if (el) paint(B.o || [], 2);                                            // 불꽃: 어두운 끝은 2단계부터 (너무 검지 않게)
+    if (lit && !fr.src.includes('enchant')) paint(B.m || [], 1);            // 칼날: 속성 색 금속 (두르기 동작은 칼이 불꽃(o)으로 덮여 있어 생략)
+    x.putImageData(d, 0, 0); this.elCache.set(key, c); return c;
+  }
   // 칼날 테두리 그림 (프레임·속성마다 한 번 만들어 재사용): 안쪽 1px = 밝은 속성 색, 바깥 1px = 반투명
   bladeOutline(fr, el) {
     const B = this.blade && this.blade[fr.src]; if (!B || !fr.img.naturalWidth) return null;
@@ -920,7 +933,8 @@ export class Renderer {
         if (A.flurry) { n = 'flurry'; i = Math.min(11, Math.floor(t / CFG.flurry.totalF * 12)); break; }
         n = 'atk3'; i = span(0, 7, t / CFG.flurry.totalF); break;
       }
-      case 'cast': n = 'parry'; i = t < 3 ? 2 : t < CFG.skill[p.spell].castF - 4 ? 4 : 6; break;   // 등불을 앞으로 내밀어 시전
+      case 'cast': if (p.spell === 'enchant' && A.enchant) { n = 'enchant'; i = Math.min(11, Math.floor(t / CFG.skill.enchant.castF * 12)); break; }   // 두르기: 칼을 등불에 대어 불을 옮김
+        n = 'parry'; i = t < 3 ? 2 : t < CFG.skill[p.spell].castF - 4 ? 4 : 6; break;   // 등불을 앞으로 내밀어 시전
       case 'roll': case 'ghost': n = 'roll'; i = span(0, 7, (p.stateT || 0) / (CFG.roll.totalF + CFG.roll.endLagF)); break;
       case 'hurt': n = 'hurt'; i = span(0, 5, t / CFG.player.hurtStunF); break;
       case 'dead': if (A.death) { n = 'death'; i = Math.min(9, Math.floor(t / 9)); } else { n = 'hurt'; i = 1; } break;   // 쓰러짐 10프레임 → 마지막에 멈춤
@@ -931,11 +945,13 @@ export class Renderer {
   }
 
   drawAnim(g, w, p, fr, cx, feet, f) {
+    if (p === w.player) this.lastFr = fr;                                  // 칼날 불꽃 위치용 (지금 프레임)
     const sq = this.squash, sy = 1 - sq * 0.15, sx = 1 + sq * 0.12;
-    const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50', fr.img) : fr.img;
+    const lit = p.enchantT > 0 || (p.state === 'cast' && p.spell === 'enchant'), base = p.element || lit ? this.elFrame(fr, p.element || null, lit) : fr.img;   // 등불 = 속성 색, 두르면 칼도
+    const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50', fr.img) : base;
     g.save(); g.translate(cx, feet); g.scale(sx * f, sy);
     g.drawImage(img, -fr.ax, -fr.ay);
-    if (p.state !== 'ghost') this.applyLight(g, fr.img, fr.ax, fr.ay, cx, feet - 40, false, true);   // 손에 든 등불: 앞쪽 림, 등쪽 그림자
+    if (p.state !== 'ghost') this.applyLight(g, base, fr.ax, fr.ay, cx, feet - 40, false, true);   // 손에 든 등불: 앞쪽 림, 등쪽 그림자 (속성 색으로 다시 칠한 그림 기준 — 원본을 덧칠하면 색이 되돌아감)
     if (p.enchantT > 0 && p.state !== 'ghost') { const o = this.bladeOutline(fr, p.element || null); if (o) { g.globalAlpha = 0.8 + 0.2 * Math.sin(w.t * 0.3); g.drawImage(o, -fr.ax, -fr.ay); g.globalAlpha = 1; } }   // 두른 칼: 속성 색 테두리
     g.restore();
     this.drawParryArc(g, p, cx, feet, f);
@@ -994,7 +1010,7 @@ export class Renderer {
   shadeMasks(im) {
     this.masks = this.masks || new WeakMap();
     let M = this.masks.get(im); if (M) return M;
-    const W = im.naturalWidth, H = im.naturalHeight; if (!W) return null;
+    const W = im.naturalWidth || im.width, H = im.naturalHeight || im.height; if (!W) return null;
     const c0 = document.createElement('canvas'); c0.width = W; c0.height = H; const x0 = c0.getContext('2d'); x0.drawImage(im, 0, 0);
     const A = x0.getImageData(0, 0, W, H).data, op = (x, y) => x >= 0 && y >= 0 && x < W && y < H && A[(y * W + x) * 4 + 3] > 96;
     const make = (col, dx, dy) => {

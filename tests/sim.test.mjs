@@ -173,7 +173,7 @@ test('마법 엔진: 시전하면 빛을 쓰지 않고 마법 피해 · 시전 �
 });
 test('불꽃 두르기: 빛 30 소모, 15초 동안 베기 피해 +12%·속성 게이지 / 빛 부족하면 못 두름', () => {
   const w = W(); settle(w); w.player.face = 1; w.player.spells = ['bolt']; w.player.light = 40; w.player.element = 'str';
-  tick(w, I({ skill: true })); steps(w, 20);
+  tick(w, I({ skill: true })); steps(w, CFG.skill.enchant.castF + 2);   // 칼을 등불에 대는 동작이 끝날 때까지
   eq(w.player.light, 10); ok(w.player.enchantT > CFG.enchant.dur - 30, '두름');
   const d = makeDummy(w, { hp: 300 }); d.x = w.player.x + 30;
   tick(w, I({ attack: true })); steps(w, 20); ok(d.elB > 0, '속성 게이지'); eq(d.hp, 300 - Math.round(CFG.attack.dmg[0] * CFG.enchant.dmgMul));
@@ -184,7 +184,7 @@ test('두르기 단계: 17 개화는 게이지가 터질 때 속성 마법이 �
   const d = makeDummy(w, { hp: 2000 }); d.x = w.player.x + 30;
   let sk = []; for (let i = 0; i < 10; i++) { tick(w, I({ attack: true })); sk.push(...w.events.filter(e => e.type === 'skill').map(e => e.spell)); for (let k = 0; k < 24; k++) { tick(w, I()); sk.push(...w.events.filter(e => e.type === 'skill').map(e => e.spell)); } }
   ok(sk.includes('tornado'), 'tornado ' + sk.join());
-  w.player.light = 100; tick(w, I({ skill: true })); steps(w, 20); ok(w.player.enchantT > 800, '다시 누르면 두르기 시간만 다시 채움'); ok(!w.events.some(e => e.type === 'skill'));
+  w.player.light = 100; tick(w, I({ skill: true })); steps(w, CFG.skill.enchant.castF + 2); ok(w.player.enchantT > 800, '다시 누르면 두르기 시간만 다시 채움'); ok(!w.events.some(e => e.type === 'skill'));
 });
 test('속성 게이지가 차면 터짐: 화염 = 화상, 얼음 = 빙결, 번개 = 옆 적 전격', () => {
   for (const [el, chk] of [['str', d => d.burnT > 0], ['agi', d => d.frozenT > 0 || d.staggerT > 0], ['fury', (d, o) => o.hp < 300]]) {

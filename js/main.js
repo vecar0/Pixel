@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick } from './core/world.js?v=mwprvpq2';
-import { Renderer } from './render.js?v=mwprvpq2';
-import { Input } from './input.js?v=mwprvpq2';
-import { Sfx } from './sfx.js?v=mwprvpq2';
-import { stepLoop } from './loop.js?v=mwprvpq2';
-import { spawnEnemy } from './core/enemies.js?v=mwprvpq2';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwprvpq2';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwprvpq2';
-import { icon, RELIC_TONE } from './icons.js?v=mwprvpq2';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwprvpq2';
-import { startTitleScene } from './titlescene.js?v=mwprvpq2';
+import { createWorld, tick } from './core/world.js?v=mwpskyfg';
+import { Renderer } from './render.js?v=mwpskyfg';
+import { Input } from './input.js?v=mwpskyfg';
+import { Sfx } from './sfx.js?v=mwpskyfg';
+import { stepLoop } from './loop.js?v=mwpskyfg';
+import { spawnEnemy } from './core/enemies.js?v=mwpskyfg';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwpskyfg';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwpskyfg';
+import { icon, RELIC_TONE } from './icons.js?v=mwpskyfg';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwpskyfg';
+import { startTitleScene } from './titlescene.js?v=mwpskyfg';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwprvpq2';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwprvpq2';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwprvpq2';
-import { takeTrain, runSpell } from './core/run.js?v=mwprvpq2';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwprvpq2';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwprvpq2';
+import { CFG } from './core/config.js?v=mwpskyfg';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwpskyfg';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpskyfg';
+import { takeTrain, runSpell } from './core/run.js?v=mwpskyfg';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwpskyfg';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwpskyfg';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -263,10 +263,11 @@ const chip = (id, label, sub, canPrev, canNext) => `<div class="chip"><button id
 let stopTitle = null;
 function title() {
   mode = 'title'; touch.classList.add('hidden'); sfx.musicFor(0);
-  screen(`<div class="titlescene" id="go"><canvas id="tcv" width="240" height="135"></canvas>
-    <div class="tlogo"><div class="tl-pre">꺼져 가는 지하 왕국에서</div><h1>등불지기</h1><div class="tl-rule"></div>
-      <div class="tl-sub">마지막 등불을 든 순례자, 리라</div><div class="tl-start">화면을 눌러 시작</div>
-      <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 마법 I · 기름병 Q · Enter 시작</div></div></div>`);
+  screen(`<div class="titlescene" id="go"><canvas id="tcv" width="480" height="270"></canvas>
+    <div class="tlogo"><div class="tl-pre">꺼져 가는 지하 왕국에서</div><h1>등불지기</h1>
+      <div class="tl-rule"><i></i><b></b><i></i></div><div class="tl-sub">마지막 등불을 든 순례자, 리라</div></div>
+    <div class="tl-start"><span>화면을 눌러 시작</span></div>
+    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 마법 I · 기름병 Q · Enter 시작</div><div class="tl-ver">v${(window.__V || '').slice(-4)}</div></div>`);
   stopTitle && stopTitle(); stopTitle = startTitleScene($('#tcv'));
   bind('go', town);
 }

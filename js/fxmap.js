@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwqexx7u';
-import { CFG } from './core/config.js?v=mwqexx7u';
-import { groundAt } from './core/world.js?v=mwqexx7u';
+import { preload } from './fx.js?v=mwqf2rs4';
+import { CFG } from './core/config.js?v=mwqf2rs4';
+import { groundAt } from './core/world.js?v=mwqf2rs4';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -49,7 +49,7 @@ const AMBIENT = {
 // 적 등장 · 공격 · 쓰러짐
 const SPAWN = { ghoul: 'spawn/summon-rise', moth: 'spawn/poof', spearman: 'water/splash', priest: 'water/geyser', shellguard: 'nature/earth-spike', assassin: 'shadow/shadow-tendrils' };
 // 적 공격 궤적은 리라가 쓰는 베기(sword-slash·uppercut·spear-sweep·heavy-cleave·double-slash)와 절대 겹치지 않게 — 한눈에 '내 공격 / 적 공격' 구분
-const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['impacts/hit-flash', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['impacts/blunt-hit', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
+const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['nature/spore-burst', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['impacts/blunt-hit', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
   bellBoss: ['impacts/ground-slam', DUST], spider: ['melee/scythe-reap', LILAC], shadow: ['melee/spin-slash', VIOLET], saint: ['melee/whip-crack', CYAN], forge: ['melee/hammer-smash', AMBER], king: ['impacts/impact-frame', CYAN] };   // 적 11종 모두 서로 다른 궤적
 const DEATH = { ghoul: ['shadow/necro-skulls', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/rain-splash'], priest: ['water/bubbles'], shellguard: ['explosions/dirt-explosion', LILAC], assassin: ['shadow/hex-sigil', VIOLET] };   // 적 죽음: 보스 기믹(물결·얼음 깨짐·연기)·처형 고리와 겹치지 않게   // 처형 고리(implosion)와 겹치지 않게
 // 착탄 순간 2단 연출 (마법 레이어, 2배 굵은 픽셀): [이펙트, 옵션] 여러 개 + 화면 번쩍 세기
@@ -60,7 +60,7 @@ const LAND = {
   stars:   [[['ice/snowflake-burst', { light: 0.3 }]], 0.2],
   smite:   [[['holy/sunburst', { palette: GOLD, dy: -40, life: 50 }]], 0.6],
   thunder: [[['holy/sunburst', { palette: GOLD, light: 0.5 }], ['impacts/ground-slam', { palette: GOLD }]], 0.7],   // 빛기둥 착탄
-  blast:   [[['explosions/plasma-explosion', { palette: VOLT, light: 0.6 }], ['lightning/thunderclap', { palette: VOLT, light: 0.5 }]], 0.75],   // 뇌전 폭발
+  blast:   [[['explosions/plasma-explosion', { palette: VOLT, light: 0.6 }], ['lightning/zap-hit', { palette: VOLT, light: 0.5 }]], 0.75],   // 뇌전 폭발
   spikes:  [[['ice/frost-nova', { light: 0.3 }]], 0.3],
   thorns:  [[['impacts/hit-spark', { palette: GREEN, height: 26, light: 0.3 }], ['nature/quake', { palette: DUST }]], 0.25],   // 덩굴이 땅을 뚫고 나온 자리
 };
@@ -73,7 +73,7 @@ export const ALL_IDS = [...new Set([
   'impacts/shield-block', 'impacts/heavy-landing', 'impacts/ground-slam', 'nature/quake', 'ui/damage-quiet', 'ui/crit-number', 'ui/heart-lost', 'ui/combo-counter',
   'ui/quest-complete', 'ui/achievement', 'nature/healing-bloom', 'fire/fire-ring', 'holy/sunburst', 'holy/feather-burst', 'shadow/dark-explosion', 'spawn/soul-rise',
   'projectiles/energy-disc', 'ice/ice-crystal', 'water/wave-crash', 'ice/snowflake-burst', 'lightning/spark-arc', 'lightning/lightning-strike', 'status/stunned',
-  'status/burning', 'status/rage', 'arcane/rune-circle', 'arcane/blink-out', 'pickups/collect-burst', 'explosions/big-explosion', 'explosions/plasma-explosion',
+  'status/burning', 'status/rage', 'arcane/rune-circle', 'shadow/shadow-tendrils', 'pickups/collect-burst', 'explosions/big-explosion', 'explosions/plasma-explosion',
   'holy/holy-pillar', 'ice/icicle-fall', 'fire/spirit-flame', 'lightning/spark-arc', 'shadow/shadow-flames', 'nature/vine-whip', 'transitions/iris', 'transitions/slash-wipe', 'transitions/pixel-dissolve', 'transitions/shatter-wipe', 'transitions/burn-away',
 ])];
 
@@ -169,8 +169,8 @@ export class FxDirector {
       }
       case 'slam': P('nature/quake', ev.x || (w.enemies.find(e => e.boss)?.x ?? p.x), 300, { palette: DUST, life: 90, light: 0.3 }, 2); break;
       case 'block': P('impacts/shield-block', ev.x, ev.y + 20, { palette: LILAC, light: 0.3 }, 2); break;
-      case 'blink': P('arcane/blink-out', ev.x, ev.y + 26, { palette: VIOLET, light: 0.3 }, 2); break;
-      case 'enemyParry': P('shadow/curse', ev.x, ev.y + 30, { palette: VIOLET, light: 0.3 }, 3); break;   // 순례자가 막음: 리라 패링·방패병 막기와 다른 그림   // 적이 막음: 리라 패링(impacts/parry)과 다른 그림
+      case 'blink': P('shadow/shadow-tendrils', ev.x, ev.y + 26, { palette: VIOLET, light: 0.3 }, 2); break;
+      case 'enemyParry': P('impacts/ricochet', ev.x, ev.y + 30, { palette: VIOLET, light: 0.3 }, 3); break;   // 순례자가 막음: 리라 패링·방패병 막기와 다른 그림   // 적이 막음: 리라 패링(impacts/parry)과 다른 그림
       case 'heal': P('nature/healing-bloom', p.x + p.w / 2, feet, { life: 80, light: 0.3 }, 3); break;   // 발밑에서 피어오르는 회복 빛 (리라 실루엣을 덧그리는 이펙트는 쓰지 않음)
       case 'castStart': {                                                  // 시전: 손의 등불에서 짧게 불꽃이 튄다 (마법진·몸 빛 없음, 모든 마법 공통)
         const hx = p.x + p.w / 2 + p.face * 16, hy = p.y + 30;
@@ -211,7 +211,7 @@ export class FxDirector {
       // 강적 기믹
       case 'barrierBreak': P('ice/ice-shatter', ev.x, ev.y + 30, { palette: CYAN, life: 50, light: 0.45 }, 3); break;
       case 'barrierUp': P('arcane/rune-circle', ev.x, ev.y + 40, { palette: CYAN, life: 40, light: 0.3 }, 2); break;   // 리라 빛의 결계(divine-shield)와 구분
-      case 'mirage': P('arcane/blink-in', ev.x, ev.y + 20, { palette: VIOLET, life: 40, light: 0.35 }, 2); break;
+      case 'mirage': P('shadow/void-orb', ev.x, ev.y + 20, { palette: VIOLET, life: 40, light: 0.35 }, 2); break;
       case 'barrierHit': P('impacts/shield-block', ev.x, ev.y + 20, { palette: CYAN, light: 0.3 }, 2); break;
       // 레벨 요소
       case 'urnBreak': P('spawn/poof', ev.x, ev.y + 14, { palette: DUST, life: 30, light: 0.2 }, 2); break;

@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqexx7u';
-import { CFG } from './core/config.js?v=mwqexx7u';
-import { attackBox } from './core/player.js?v=mwqexx7u';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqexx7u';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqexx7u';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqexx7u';
-import { FxDirector } from './fxmap.js?v=mwqexx7u';
-import { iconCanvas } from './icons.js?v=mwqexx7u';
-import { bodyShade } from './shade.js?v=mwqexx7u';
+import { clipBeam } from './core/gimmick.js?v=mwqf2rs4';
+import { CFG } from './core/config.js?v=mwqf2rs4';
+import { attackBox } from './core/player.js?v=mwqf2rs4';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqf2rs4';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqf2rs4';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqf2rs4';
+import { FxDirector } from './fxmap.js?v=mwqf2rs4';
+import { iconCanvas } from './icons.js?v=mwqf2rs4';
+import { bodyShade } from './shade.js?v=mwqf2rs4';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -215,7 +215,7 @@ export class Renderer {
     const boss = this.cine && this.cine.focusBoss && w.enemies.find(e => e.boss);
     const camX = Math.max(0, Math.min(w.width - vw, boss ? boss.x + boss.w / 2 - vw / 2 : p.x + p.w / 2 - vw * 0.4));   // 등장 연출 중엔 보스를 비춤
     const still = this.hud === false;                                   // 메뉴 화면이 열려 있으면 뒤 배경은 멈춘 그림 (흔들림·확대 없음)
-    const sh = !still && w.shake > 0 ? Math.min(5, w.shake / 2) : 0;
+    const sh = !still && !this.death && p.state !== 'dead' && w.shake > 0 ? Math.min(5, w.shake / 2) : 0;   // 죽는 중엔 흔들지 않음 (세계가 멈춰 흔들림이 계속되던 문제)
     const sx = Math.round((Math.random() - 0.5) * 2 * sh), sy = Math.round((Math.random() - 0.5) * 2 * sh);
     const ox = Math.round(-camX) + sx, oy = sy;
 
@@ -1019,7 +1019,7 @@ export class Renderer {
     const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50', fr.img) : base;
     const dk = p !== w.player ? 0 : p.dark ? 1 : p.state === 'relight' ? Math.max(0, 1 - p.stateT / CFG.snuff.relightF) : 0;   // 소등: 몸은 어둠에 묻히고 눈과 칼 불꽃만
     g.save(); g.translate(cx, feet); g.scale(sx * f, sy);
-    if (dk > 0) g.globalAlpha = 1 - dk;
+    if (dk > 0) g.globalAlpha = 1 - dk * 0.82;                               // 어둠 속 몬스터와 같은 정도로 흐릿하게
     g.drawImage(img, -fr.ax, -fr.ay);
     if (p.state !== 'ghost') this.applyLight(g, base, fr.ax, fr.ay, cx, feet - 40, false, true);
     g.globalAlpha = 1;

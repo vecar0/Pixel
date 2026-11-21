@@ -18,7 +18,7 @@ export function resolveEnemyHit(w, hb) {
   if (hb.src.done || p.state === 'dead' || !overlap(guard, hb)) return 'ignored';
   const lag = p.lagTicks || 0;                                   // 설정의 타이밍 보정 (터치 지연만큼 판정창을 늘림)
   if (p.state === 'parry' && p.stateT < PR.normalF + lag && hb.parryable && front) {
-    const perfect = p.stateT < Math.min(PR.normalF, Math.max(2, PR.perfectF + (p.mods.perfectExtra || 0))) + lag || p.blueT > 0 || p.mods.allPerfect;   // 의지: 점마다 ±1프레임   // 결계·의지 10: 모든 패링이 완벽
+    const perfect = p.stateT < Math.min(PR.normalF, Math.max(2, PR.perfectF + (p.mods.perfectExtra || 0) + (p.sharpT > 0 ? 2 : 0))) + lag || p.blueT > 0 || p.mods.allPerfect;   // 의지: 점마다 ±1프레임   // 결계·의지 10: 모든 패링이 완벽
     hb.src.done = true;
     p.parryOk = true; p.recoverWait = PR.successRecoverF;
     p.light = Math.min(CFG.light.max, p.light + (perfect ? CFG.light.perfect : CFG.light.normal) * p.mods.lightMul + (perfect ? 0 : p.mods.parryLight || 0));   // 의지 12: 일반 패링 빛 +5
@@ -27,7 +27,8 @@ export function resolveEnemyHit(w, hb) {
     if (perfect) p.counterT = CFG.flurry.window;
     if (perfect && hb.owner && hb.owner.barrier > 0) breakBarrier(w, hb.owner);       // 완벽 패링은 강적 방패를 한 번에 깸                                   // 반격 기회: 이 안에 공격하면 회전 베기
     if (perfect && RES.riposte) p.riposte = true;                                // 공명 철벽 반격
-    if (perfect && RES.retribute) p.crit = true;                                 // 공명 응징
+    if (perfect && RES.retribute) p.crit = true;
+    if (p.blueT > 0) p.light = Math.min(CFG.light.max, p.light + 10);           // 푸른 결계: 막을 때마다 빛 (낮은 등불 보완)                                 // 공명 응징
     if (perfect && p.mods.echo) w.projectiles.push({                           // 반향: 앞으로 검기
       x: p.face > 0 ? p.x + p.w : p.x - 24, y: p.y + 18, w: 24, h: 14, vx: p.face * 6, vy: 0,
       dmg: 1.5, parryable: true, owner: 'player', life: 50, echo: true, src: {} });
@@ -48,6 +49,10 @@ export function resolveEnemyHit(w, hb) {
     return 'ignored';
   }
   hb.src.done = true;
+  if (p.shieldT > 0) {                                                         // 성광 기둥 보호막: 한 번 막음
+    p.shieldT = 0; p.iframes = 30; w.hitstop = Math.max(w.hitstop, 6);
+    w.events.push({ type: 'aegis', x: p.x + p.w / 2, y: p.y + 20 }); return 'blocked';
+  }
   if ((p.mods.res || {}).aegis && p.aegisReady) {                              // 공명 수호: 방마다 한 번 피해를 막음
     p.aegisReady = false; p.iframes = 30; w.hitstop = Math.max(w.hitstop, 6);
     w.events.push({ type: 'aegis', x: p.x + p.w / 2, y: p.y + 20 }); return 'blocked';
@@ -85,6 +90,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
   if (e.roarT > 0) return 0;                                           // 2막 포효 중엔 무적
   if (!raw && e.boss) { const k = gimmickDamageMul(w, e); if (k !== 1) { dmg = Math.round(dmg * k); poiseFrac *= k; if (k < 1 && dmg > 0) w.events.push({ type: 'resist', x: e.x + e.w / 2, y: e.y, veil: !!e.veil }); } }
   if (ENEMY_DEFS[e.kind]?.oneHit && dmg > 0) dmg = e.hp;              // 나방: 한 방
+  if (e.brittleT > 0 && dmg > 0) dmg = Math.round(dmg * (e.boss ? 1.15 : 1.25));   // 마법 효과: 취약(얼음·덩굴)
   e.hp -= dmg;
   e.flash = 6;
   addPoise(w, e, poiseFrac);
@@ -136,7 +142,7 @@ export function resolvePlayerAttacks(w) {
       if (!p.crit && cc) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < cc) p.crit = true; }   // 투지·질풍: 치명타 확률
       p.galeT = 0;
       const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? (p.mods.critMul || 2) : 1) * (p.mods.atkMul || 1)
-        * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1);   // 공명 철벽 반격·버팀
+        * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1) * (p.powT > 0 ? 1 + (p.powK || 0) : 1);   // 마법 효과: 공격 강화   // 공명 철벽 반격·버팀
       p.riposte = false;
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
       const spin = p.state === 'flurry', FL = CFG.flurry, fk = spin ? Math.max(0, flurryHit(p)) : 0, last = spin && fk === FL.hits.length - 1;
@@ -157,9 +163,27 @@ const liveOf = w => w.enemies.filter(e => !e.dead && !(e.spawnT > 0));
 function spellHit(w, e, dmg, poise, spell) {
   const p = w.player; let crit = false;
   if ((p.mods.res || {}).wildfire && p.mods.critChance) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < p.mods.critChance) { crit = true; dmg = Math.round(dmg * (p.mods.critMul || 2)); } }   // 공명 폭주 등불
-  dmg = damageEnemy(w, e, dmg, poise);
+  const wasDead = e.dead; dmg = damageEnemy(w, e, dmg, poise); spellPerk(w, e, spell, !wasDead && e.dead);
   w.hitstop = Math.max(w.hitstop, 3);                                   // 마법도 맞는 순간 멈칫 (손맛)
   w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 1, face: w.player.face, dmg, crit, spell });
+}
+// 마법 효과: 올린 스탯의 장점을 키우거나, 내려간 반대 스탯의 약점을 메운다 (spells.js의 perk 설명과 짝)
+// 적에게: rootT 발 묶음 · slowT 둔화 · brittleT 취약(받는 피해 +25%) · 예고 끊기 / 리라에게: 빛 환급 · 회복
+export function spellPerk(w, e, spell, killed) {
+  const p = w.player, B = e.boss ? 0.5 : 1, refund = n => { p.light = Math.min(CFG.light.max, p.light + n); };
+  switch (spell) {
+    case 'pillar': e.rootT = Math.max(e.rootT || 0, 120 * B); break;                         // 힘↑ 민첩↓: 느린 발 대신 적을 묶음
+    case 'tornado': if (!e.boss) e.kvx = Math.sign((e.pullX ?? e.x) - e.x) * 3; e.rootT = Math.max(e.rootT || 0, 60 * B); break;
+    case 'lance': e.brittleT = Math.max(e.brittleT || 0, 180); break;                         // 민첩↑ 힘↓: 약한 칼 대신 취약
+    case 'spikes': e.slowT = Math.max(e.slowT || 0, 180); e.brittleT = Math.max(e.brittleT || 0, 120); break;
+    case 'stars': e.slowT = Math.max(e.slowT || 0, 150); e.brittleT = Math.max(e.brittleT || 0, 180); break;
+    case 'smite': refund(8); break;                                                          // 의지↑ 등불↓: 비싼 마법값 환급
+    case 'thunder': refund(6); break;
+    case 'wisps': if (!e.boss && e.st === 'telegraph') { e.st = 'idle'; e.stT = 0; e.cd = 40; w.events.push({ type: 'interrupt', x: e.x + e.w / 2, y: e.y }); } break;   // 등불↑ 의지↓: 막기 대신 끊기
+    case 'spear': refund(12); break;
+    case 'thorns': e.rootT = Math.max(e.rootT || 0, 150 * B); e.brittleT = Math.max(e.brittleT || 0, 150); break;   // 생명↑ 투지↓: 약한 공격 대신 취약
+    case 'blast': if (killed && (p.blastHeal || 0) < 2 && p.hp < p.maxHp) { p.blastHeal = (p.blastHeal || 0) + 1; const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h, spell: true }); } break;   // 투지↑ 생명↓: 처치로 회복
+  }
 }
 // 가까운 적 (앞쪽 우선). 없으면 null
 function nearestTarget(w, range) {
@@ -173,6 +197,14 @@ export function resolveSkill(w, ev) {
   if ((p.mods.res || {}).warmLamp && ++p.castCount % 3 === 0 && p.hp < p.maxHp) {   // 공명 따스한 등불
     const hp0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: hp0, x: cx, y: p.y + p.h });
   }
+  p.blastHeal = 0;
+  const PK = { meteor: [300, 0.3], heal: [300, 0.25] }[ev.spell];          // 운석: 힘 강화 / 치유의 빛: 약한 투지 보완 — 공격 피해 +%
+  if (PK) { p.powT = PK[0]; p.powK = PK[1]; }
+  if (ev.spell === 'thunder') p.sharpT = 240;                            // 낙뢰: 4초 완벽 패링 +2프레임
+  if (ev.spell === 'ring') p.iframes = Math.max(p.iframes, 50);           // 불꽃 고리: 약한 패링 보완 — 잠깐 무적
+  if (ev.spell === 'chain') p.crit = true;                                // 연쇄 번개: 다음 공격 치명타
+  if (ev.spell === 'sanctum') p.shieldT = 600;                            // 성광 기둥: 10초 보호막 1회
+  if (ev.spell === 'drain') p.powT = 0;
   const aim = nearestTarget(w, 520);                                    // 자동 조준: 가장 가까운 적(앞쪽 우선) 쪽으로 돌아서 쏜다
   if (aim) { p.face = Math.sign(aim.x + aim.w / 2 - cx) || p.face; ev.face = p.face; }
   const live = liveOf(w);
@@ -181,7 +213,7 @@ export function resolveSkill(w, ev) {
     const spread = n === 3 ? [-0.9, 0, 0.9] : n === 2 ? [-0.25, 0.25] : [0];
     for (let i = 0; i < n; i++) w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 16, y: p.y + 18 + (n > 1 ? (i - (n - 1) / 2) * 10 : 0), w: 16, h: 12,
       vx: p.face * S.speed, vy: spread[i], pdmg: Math.round(S.dmg * M), poise: S.poise, owner: 'player',
-      bolt: ev.spell === 'lance' ? 'lance' : ev.spell === 'wisps' ? 'wisp' : 'lamp', pierce: ev.spell === 'lance', homing: !!S.homing, spd: S.speed, life: 110, hits: [], src: {} });
+      bolt: ev.spell === 'lance' ? 'lance' : ev.spell === 'wisps' ? 'wisp' : 'lamp', spell: ev.spell, pierce: ev.spell === 'lance', homing: !!S.homing, spd: S.speed, life: 110, hits: [], src: {} });
   } else if (S.line) {                                                 // 바닥 직선: 앞쪽 line px 안의 땅 위 적 (가시가 지나가는 시간만큼 늦게)
     const x0 = p.face > 0 ? p.x + p.w : p.x - S.line;
     ev.tx = cx; w.pending.push({ t: S.delay, spell: ev.spell, x: x0 + S.line / 2, dmg: Math.round(S.dmg * M), poise: S.poise * PM, r: S.line / 2, y0: p.y - 20, y1: p.y + p.h + 10 });
@@ -190,6 +222,7 @@ export function resolveSkill(w, ev) {
     if (ev.spell === 'stars') tx = cx + p.face * S.ahead;
     else { const t = nearestTarget(w, S.range); tx = t ? t.x + t.w / 2 : cx + p.face * 120; }
     ev.tx = tx; ev.ty = 300;
+    if (ev.spell === 'tornado') for (const e of live) e.pullX = tx - e.w / 2;
     (S.ticks || [0]).forEach((ox, i) => w.pending.push({ t: S.delay + i * (S.gap || 0), spell: ev.spell, x: tx + ox * p.face, dmg: Math.round(S.dmg * M), poise: S.poise * PM, r: S.radius }));
   } else if (ev.spell === 'drain') {                                   // 흡혈: 가장 가까운 적 하나, 맞히면 체력 회복
     const t = nearestTarget(w, S.range); ev.tx = t ? t.x + t.w / 2 : null;

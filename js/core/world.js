@@ -4,7 +4,7 @@ import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=
 import { updateLevel, dropPickups } from './level.js?v=mwpskyfg';
 import { createPlayer, updatePlayer, overlap } from './player.js?v=mwpskyfg';
 import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwpskyfg';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute } from './combat.js?v=mwpskyfg';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk } from './combat.js?v=mwpskyfg';
 import { ACTIONS } from './player.js?v=mwpskyfg';
 
 // 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판
@@ -203,7 +203,8 @@ function updateProjectiles(w) {
       if (e) {
         let dmg = b.pdmg ?? b.dmg * 15;                                     // 반사탄은 dmg×15, 마법·검기는 pdmg
         if (breakVeil(w, e, b)) { b.dead = true; dmg = damageEnemy(w, e, GIMMICK.veil.breakDmg, GIMMICK.veil.breakPoise); w.hitstop = Math.max(w.hitstop, 8); w.shake = Math.max(w.shake, 10); w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 2, face: Math.sign(b.vx) || 1, dmg, crit: true }); continue; }   // 물의 장막 깨기
-        dmg = damageEnemy(w, e, dmg, (b.poise ?? CFG.poise.normal) * (w.player.mods.poiseMul || 1));
+        const wasDead = e.dead; dmg = damageEnemy(w, e, dmg, (b.poise ?? CFG.poise.normal) * (w.player.mods.poiseMul || 1));
+        if (b.spell) spellPerk(w, e, b.spell, !wasDead && e.dead);         // 마법 효과 (얼음 창 취약 · 도깨비불 예고 끊기)
         if (b.pierce) b.hits.push(e); else b.dead = true;                  // 얼음 창: 관통
         w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 0, face: Math.sign(b.vx) || 1, dmg, crit: false, spell: b.bolt === 'lamp' ? 'bolt' : b.bolt === 'lance' ? 'lance' : undefined });
         if (b.homing) w.hitstop = Math.max(w.hitstop, 3);

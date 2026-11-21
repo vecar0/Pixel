@@ -12,7 +12,7 @@ import { installPixelUI, roundBtn } from './pixelui.js?v=mwpskyfg';
 import { startTitleScene } from './titlescene.js?v=mwpskyfg';
 installPixelUI();
 import { CFG } from './core/config.js?v=mwpskyfg';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, spellFor } from './core/spells.js?v=mwpskyfg';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, spellFor } from './core/spells.js?v=mwpskyfg';
 import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpskyfg';
 import { takeTrain, runSpell } from './core/run.js?v=mwpskyfg';
 import { GIMMICK_HINT } from './core/gimmick.js?v=mwpskyfg';
@@ -204,7 +204,7 @@ function spellCard(id, label = '지금 마법') {
   return `<div class="spellcard t-${S.tone}"><div class="niche">${icon(S.icon, S.tone)}</div><div class="sc-body">
     <div class="sc-top"><small>${label}</small><b>${S.name}</b><span class="sc-cost">빛 ${Math.round(C.cost * cm)}</span>${dmg ? `<span class="sc-dmg">피해 ${dmg}${n}</span>` : ''}</div>
     <div class="sc-tags">${(SPELL_TAGS[id] || []).map(t => `<i>${t}</i>`).join('')}</div>
-    <div class="sc-desc">${S.desc}${delay}</div></div></div>`;
+    <div class="sc-desc">${S.desc}${delay}</div>${SPELL_PERK[id] ? `<div class="sc-perk">${SPELL_PERK[id]}</div>` : ''}</div></div>`;
 }
 const spellMap = () => `<div class="sc-map"><b>마법</b> 가장 높은 스탯이 14·17·20이면 그 스탯의 마법이 차례로 바뀐다 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name} ${STAT_SPELL[k].map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
 // 단련 미리 보기: 지금(run.stats) → 찍은 뒤(draft). 바뀌는 수치, 열리고 잃는 능력·약점·공명, 마법 변화
@@ -226,8 +226,8 @@ function trainPreview(draft, lastUp) {
   return `<div class="tprev"><div class="tls">${lines.join('')}</div>${notes.map(n => `<div class="note">${n}</div>`).join('')}
     ${s1 !== s0 ? spellCard(s1, `마법이 바뀐다 (${SPELLS[s0].name} →)`) : ''}</div>`;
 }
-// 전투방 보상: 단련 점수 2점을 ▲▼ 화살표로 자유롭게 찍고(반대 화살표로 되돌림) '단련 완료'로 확정. 엘리트·보스는 각인 3택1
-function rewardScreen(after, draft = null, lastUp = null, total = 2) {
+// 전투방 보상: 단련 점수 1점을 ▲▼ 화살표로 자유롭게 찍고(반대 화살표로 되돌림) '단련 완료'로 확정. 엘리트·보스는 각인 3택1
+function rewardScreen(after, draft = null, lastUp = null, total = 1) {   // 단련은 한 번에 1점
   mode = 'relic'; touch.classList.add('hidden');
   if (!draft && !PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b))) return relicScreen(after);
   draft = draft || { ...run.stats };
@@ -390,7 +390,7 @@ function startPilgrimage() { if (!run || run.relics.length || run.roomIdx) newPi
 function relicScreen(after) {
   mode = 'relic'; touch.classList.add('hidden');
   const offer = relicOffer(run, 3);
-  if (!offer.length) return PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b)) ? rewardScreen(after) : after();   // 각인이 바닥나면 단련 2점으로
+  if (!offer.length) return PAIRS.some(([a, b]) => canTrain(run.stats, a) || canTrain(run.stats, b)) ? rewardScreen(after) : after();   // 각인이 바닥나면 단련 1점으로
   screen(`<div class="card"><h2>각인을 하나 고르세요</h2>${runStat()}<div class="picks">${offer.map(id => relicCard(id)).join('')}</div></div>`);
   bindPicks(id => takeReward(id, after));
 }
@@ -433,10 +433,10 @@ function restScreen() {
 }
 // 상점(상인 앞에서): 매번 다른 물건 몇 가지. 물건마다 한 번만, 기름병은 살수록 비싸짐 → 불씨로 다 살 수는 없다 (고르는 재미)
 const WARES = {
-  flask:  { name: '기름병', tone: 'heal', ic: 'flask', desc: p => `기름병 +1 (지금 ${p.flasks})`, price: r => 20 + 12 * (r.flaskBuys || 0) },
-  salve:  { name: '연고', tone: 'red', ic: 'heart', desc: p => `체력 +2 (${p.hp} → ${Math.min(p.maxHp, p.hp + 2)})`, price: r => 18 + 4 * r.region, ok: p => p.hp < p.maxHp },
-  wick:   { name: '불쏘시개', tone: 'amber', ic: 'ember', desc: p => `스킬 게이지 가득 (${p.light | 0} → 100)`, price: r => 14 + 3 * r.region, ok: p => p.light < 100 },
-  whet:   { name: '숫돌', tone: 'amber', ic: 'vigor', desc: () => '단련 1점 (나갈 때)', price: r => 45 + 10 * r.region, ok: () => run.pending !== 'train1' },
+  flask:  { name: '기름병', tone: 'heal', ic: 'flask', desc: p => `기름병 +1 (지금 ${p.flasks})`, price: r => 35 + 15 * (r.flaskBuys || 0) },
+  salve:  { name: '연고', tone: 'red', ic: 'heart', desc: p => `체력 +2 (${p.hp} → ${Math.min(p.maxHp, p.hp + 2)})`, price: r => 30 + 6 * r.region, ok: p => p.hp < p.maxHp },
+  wick:   { name: '불쏘시개', tone: 'amber', ic: 'ember', desc: p => `스킬 게이지 가득 (${p.light | 0} → 100)`, price: r => 28 + 5 * r.region, ok: p => p.light < 100 },
+  whet:   { name: '숫돌', tone: 'amber', ic: 'vigor', desc: () => '단련 1점 (나갈 때)', price: r => 70 + 15 * r.region, ok: () => run.pending !== 'train1' },
 };
 function shopStock(r) { r.flaskBuys = 0; return { wares: ['flask', 'salve', 'wick', 'whet'], sold: [] }; }   // 각인은 팔지 않음 (소모품·단련만)
 function shopScreen() {

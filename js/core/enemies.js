@@ -124,14 +124,17 @@ export function updateEnemy(w, e) {
   const d = ENEMY_DEFS[e.kind], p = w.player;
   const dx = (p.x + p.w / 2) - (e.x + e.w / 2);
   e.stT++;
+  if (e.rootT > 0) e.rootT--; if (e.slowT > 0) e.slowT--; if (e.brittleT > 0) e.brittleT--;   // 마법 효과: 발 묶음 · 둔화 · 취약
   if (e.staggerT > 0) { e.staggerT--; if (!d.fly) { e.vx = 0; physics(w, e); } return; }
 
   if (e.st === 'idle') {
     if (e.cd > 0) e.cd--;
+    const sp0 = e.speed; if (e.rootT > 0) e.speed = 0; else if (e.slowT > 0) e.speed *= 0.5;   // 발 묶음 · 둔화: 이동 속도만
     if (e.boss) bossMove(w, e, dx);
     else if (d.fly) mothHover(w, e, dx);
     else if (d.keepAway) keepDistance(w, e, dx, d.keepAway);
     else walkToward(w, e, dx);
+    e.speed = sp0;
     if (d.blink && e.cd <= 0 && Math.abs(dx) > 90 && Math.abs(dx) < 400 && attackers(w) < CFG.enemy.maxAttackers && onScreen(w, e)) {
       // 순간이동: 리라 등 뒤로. 예고는 새 위치에서 시작하므로 공정함
       const nx = p.x + p.w / 2 - p.face * 56 - e.w / 2;

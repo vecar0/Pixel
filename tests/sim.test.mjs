@@ -184,7 +184,14 @@ test('얼음 창은 여러 적을 꿰뚫고, 흑염 창은 앞쪽 일직선만',
   const b = makeDummy(w, { hp: 300 }); b.x = w.player.x + 200;
   const c = makeDummy(w, { hp: 300, behind: true });
   cast(w, 'lance'); steps(w, 60); const L = CFG.skill.lance.dmg; eq(a.hp, 300 - L); eq(b.hp, 300 - L);
-  cast(w, 'spear'); steps(w, 30); const SP = CFG.skill.spear.dmg; eq(a.hp, 300 - L - SP); eq(b.hp, 300 - L - SP); eq(c.hp, 300);
+  cast(w, 'spear'); steps(w, 30); const SP = Math.round(CFG.skill.spear.dmg * 1.25); eq(a.hp, 300 - L - SP); eq(b.hp, 300 - L - SP); eq(c.hp, 300);   // 얼음 창 맞은 적은 취약 (+25%)
+});
+test('마법 효과: 화염 기둥은 발을 묶고, 연쇄 번개는 다음 공격 치명타, 성광 기둥 보호막은 한 번 막는다', () => {
+  const w = W(); settle(w); w.player.face = 1;
+  const a = makeDummy(w, { hp: 900 }); a.x = w.player.x + 100;
+  cast(w, 'pillar'); steps(w, 60); ok(a.rootT > 0, '발 묶음');
+  cast(w, 'chain'); steps(w, 40); eq(w.player.crit, true);
+  cast(w, 'sanctum'); steps(w, 30); ok(w.player.shieldT > 0, '보호막');
 });
 test('치유의 빛·성광 기둥: 정한 만큼 회복, 성광 기둥은 주변 피해도', () => {
   const w = W(); settle(w); w.player.hp = 1; w.player.maxHp = 10;

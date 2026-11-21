@@ -507,3 +507,5 @@ button.scard:disabled { opacity: .45; cursor: default; }
 #b-flask b { right: -2px; bottom: -2px; }
 #b-pause { background: radial-gradient(circle, rgba(13,10,17,.42) 0 66%, transparent 70%) !important; }
 #stick { opacity: .22 !important; } #stick.on { opacity: .75 !important; }
+
+.sc-perk { margin-top: 3px; color: #9fe08a; font-size: 10.5px; line-height: 1.4; }   /* 마법 효과 (스탯 보완·강화) */

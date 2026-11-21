@@ -416,7 +416,7 @@ export class Renderer {
     g.save(); g.translate(Math.round(-camX) + sx, sy);
     for (const s of w.solids) {
       if (s.oneWay) continue;                       // 발판은 drawPlatforms에서 어둠 위에
-      else if (s.h >= 40 && s.w > 100) {
+      else if (s.h >= 16 && s.w > 100) {                     // 낮은 언덕(높이 26·34)도 그림 — 안 그리면 '투명 발판'이 됨
         if (s.y < 300) {                             // 언덕: 타일을 언덕 폭으로 잘라 그리고 옆면에 그림자·윗면에 빛
           for (let x = s.x; x < s.x + s.w; x += gw) { const ww = Math.min(gw, s.x + s.w - x); g.drawImage(G, 0, 0, ww, G.naturalHeight, x, s.y - top, ww, G.naturalHeight); }
           const fg = g.createLinearGradient(0, s.y + 6, 0, 300);                 // 앞면: 아래로 갈수록 어둡게 (높이가 느껴지게)

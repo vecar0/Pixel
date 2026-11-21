@@ -99,6 +99,7 @@ export function updatePlayer(w, inp) {
   if (p.recoverWait > 0) p.recoverWait--;
   if (p.dropT > 0) p.dropT--;
   if (p.blueT > 0) p.blueT--;
+  if (p.powT > 0) p.powT--; if (p.sharpT > 0) p.sharpT--; if (p.shieldT > 0) p.shieldT--;   // 마법 효과 타이머 (공격 강화 · 패링 판정 · 보호막)
   if (p.comboT > 0) p.comboT--;
   if (p.counterT > 0) p.counterT--;
   if (p.execChainT > 0 && --p.execChainT === 0) p.execChain = 0;

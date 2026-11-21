@@ -1,10 +1,10 @@
 // 한 판(런)의 진행: 서약 → 방 → 각인 → 문 선택 → … → 보스. 순수 로직 (DOM 없음)
-import { CFG } from './config.js?v=mwpskyfg';
-import { createWorld } from './world.js?v=mwpskyfg';
-import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwpskyfg';
-import { startStats, statMods, train } from './stats.js?v=mwpskyfg';
-import { OIL_SPELL, spellFor } from './spells.js?v=mwpskyfg';
-import { populateArena, parTime } from './level.js?v=mwpskyfg';
+import { CFG } from './config.js?v=mwpttsns';
+import { createWorld } from './world.js?v=mwpttsns';
+import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwpttsns';
+import { startStats, statMods, train } from './stats.js?v=mwpttsns';
+import { OIL_SPELL, spellFor } from './spells.js?v=mwpttsns';
+import { populateArena, parTime } from './level.js?v=mwpttsns';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -32,12 +32,14 @@ export const OATHS = [
 // 스테이지 순서는 정해져 있다 (고르지 않음). 상점·휴식도 걸어 들어가는 스테이지
 const ROUTE = ['combat', 'combat', 'rest', 'elite', 'shop', 'boss'];
 const SHORT_ROUTE = ['combat', 'rest', 'boss'];     // 지역 1 단축 (종지기 3회 처치 후)
-// 지역 4곳. 지역마다 적 구성·보스·배경·체력 배수가 다르다
+// 지역 6곳. 지역마다 적 구성·보스·배경·체력 배수가 다르다
 export const REGIONS = [
   { id: 1, name: '이끼 묘지', bg: 'bg1', enemies: ['ghoul', 'moth'], boss: 'bellBoss', route: ROUTE, hp: 1.0 },
   { id: 2, name: '침수 대성당', bg: 'bg2', enemies: ['spearman', 'priest', 'ghoul'], boss: 'saint', route: ROUTE, hp: 1.3 },
   { id: 3, name: '유리 광산', bg: 'bg3', enemies: ['shellguard', 'moth', 'spearman'], boss: 'spider', route: ROUTE, hp: 1.6 },
-  { id: 4, name: '꺼진 태양의 심연', bg: 'bg4', enemies: ['assassin', 'shellguard', 'priest'], boss: 'shadow', route: ['combat', 'rest', 'elite', 'shop', 'boss'], hp: 2.0 },
+  { id: 4, name: '꺼진 태양의 심연', bg: 'bg4', enemies: ['assassin', 'shellguard', 'priest'], boss: 'shadow', route: ROUTE, hp: 2.0 },
+  { id: 5, name: '잿불 용광로', bg: 'bg5', enemies: ['shellguard', 'spearman', 'assassin'], boss: 'forge', route: ROUTE, hp: 2.4 },
+  { id: 6, name: '별 없는 왕좌', bg: 'bg6', enemies: ['assassin', 'priest', 'shellguard', 'spearman'], boss: 'king', route: ['combat', 'rest', 'elite', 'shop', 'boss'], hp: 2.8 },
 ];
 
 // 이번 판 도전 (출발 시 1개)

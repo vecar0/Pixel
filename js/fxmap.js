@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwpskyfg';
-import { CFG } from './core/config.js?v=mwpskyfg';
-import { groundAt } from './core/world.js?v=mwpskyfg';
+import { preload } from './fx.js?v=mwpttsns';
+import { CFG } from './core/config.js?v=mwpttsns';
+import { groundAt } from './core/world.js?v=mwpttsns';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -36,12 +36,16 @@ const AMBIENT = {
        screen: ['weather/fog'], boss: [['fire/torch', 0.04, 250], ['fire/torch', 0.96, 250]] },
   4: { world: [['fire/spirit-flame', 0.03, 300], ['fire/spirit-flame', 0.97, 300]],
        screen: ['weather/aurora'], boss: [['shadow/shadow-flames', 0.03, 300], ['shadow/shadow-flames', 0.97, 300]] },
+  5: { world: [['fire/brazier', 0.03, 300], ['fire/brazier', 0.97, 300]],
+       screen: ['weather/fog'], boss: [['fire/brazier', 0.03, 300], ['fire/brazier', 0.97, 300]] },   // 용광로: 양끝 화로 · 연기
+  6: { world: [['fire/spirit-flame', 0.03, 300], ['fire/spirit-flame', 0.97, 300]],
+       screen: ['weather/fog', 'weather/shooting-stars'], boss: [['fire/spirit-flame', 0.03, 300], ['fire/spirit-flame', 0.97, 300]] },   // 왕좌: 푸른 귀화 · 떨어지는 별
 };
 
 // 적 등장 · 공격 · 쓰러짐
 const SPAWN = { ghoul: 'spawn/summon-rise', moth: 'spawn/poof', spearman: 'water/splash', priest: 'water/geyser', shellguard: 'nature/earth-spike', assassin: 'shadow/shadow-tendrils' };
 const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['melee/claw-swipe', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['melee/hammer-smash', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
-  bellBoss: ['melee/heavy-cleave', DUST], spider: ['melee/claw-swipe', LILAC], shadow: ['melee/sword-slash', VIOLET], saint: ['melee/spear-sweep', CYAN] };
+  bellBoss: ['melee/heavy-cleave', DUST], spider: ['melee/claw-swipe', LILAC], shadow: ['melee/sword-slash', VIOLET], saint: ['melee/spear-sweep', CYAN], forge: ['melee/hammer-smash', AMBER], king: ['melee/heavy-cleave', CYAN] };
 const DEATH = { ghoul: ['spawn/poof', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/splash'], priest: ['water/wave-crash'], shellguard: ['ice/ice-shatter', LILAC], assassin: ['explosions/implosion', VIOLET] };
 // 착탄 순간 2단 연출 (마법 레이어, 2배 굵은 픽셀): [이펙트, 옵션] 여러 개 + 화면 번쩍 세기
 const LAND = {
@@ -55,7 +59,7 @@ const LAND = {
   spikes:  [[['ice/frost-nova', { light: 0.3 }]], 0.3],
   thorns:  [[['impacts/hit-spark', { palette: GREEN, height: 26, light: 0.3 }], ['nature/quake', { palette: DUST }]], 0.25],   // 덩굴이 땅을 뚫고 나온 자리
 };
-const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], wisp: ['fire/fireball', { palette: TEAL, light: 0.4 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
+const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], wisp: ['fire/fireball', { palette: TEAL, light: 0.4 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], king: ['arcane/arcane-orb', { palette: CYAN, dy: 50 }], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
 
 export const ALL_IDS = [...new Set([
   ...Object.values(AMBIENT).flatMap(a => [...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]),
@@ -209,7 +213,13 @@ export class FxDirector {
       case 'beaconLit': R.fx.spawn('fire/brazier', ev.x, 280, { light: 0.55, key: 'beacon' + ev.x, iron: NO_IRON }); this.spell('impacts/hit-spark', ev.x, 255, { height: 10, palette: AMBER, life: 30, light: 0.5 }); break;
       case 'beaconOut': R.fx.stopKey('beacon' + ev.x); break;
       case 'phase2': if (ev.kind === 'saint') for (const dx of [-500, -250, 0, 250, 500]) this.spell('water/wave-crash', ev.x + dx, 300, { life: 80, light: 0.4 });   // 물이 밀려든다
-        this.spell('explosions/implosion', ev.x, ev.y + 40, { palette: ev.kind === 'saint' ? CYAN : ev.kind === 'spider' ? LILAC : ev.kind === 'shadow' ? VIOLET : AMBER, life: 90, light: 0.5 }); this.spell('nature/quake', ev.x, 300, { palette: DUST, life: 100, light: 0.3 }); break;
+        this.spell('explosions/implosion', ev.x, ev.y + 40, { palette: ev.kind === 'saint' || ev.kind === 'king' ? CYAN : ev.kind === 'spider' ? LILAC : ev.kind === 'shadow' ? VIOLET : AMBER, life: 90, light: 0.5 }); this.spell('nature/quake', ev.x, 300, { palette: DUST, life: 100, light: 0.3 }); break;
+      case 'steam': this.spell('explosions/smoke-bomb', ev.x, 270, { palette: GREY, life: 70, light: 0.2 }); this.spell('water/geyser', ev.x, 300, { palette: GREY, life: 60, light: 0.2 }); break;   // 증기 밸브
+      case 'quench': this.spell('ice/ice-shatter', ev.x, ev.y + 30, { palette: GREY, life: 50, light: 0.4 }); if (ev.hot) this.spell('impacts/crit-hit', ev.x, ev.y, { life: 50, light: 0.5 }); break;
+      case 'heatUp': P('fire/fire-ring', ev.x, ev.y + 60, { life: 60, light: 0.5 }, 2); break;
+      case 'anchorHit': P('impacts/hit-spark', ev.x, 262, { height: 24, palette: CYAN, life: 26, light: 0.4 }, 2); if (ev.broke) this.spell('nature/boulder', ev.x, 300, { palette: GREY, life: 60, light: 0.3 }); break;
+      case 'chainsBroken': this.spell('explosions/implosion', ev.x, ev.y + 40, { palette: CYAN, life: 80, light: 0.6 }); break;
+      case 'anchorRise': P('arcane/rune-circle', ev.x, 300, { palette: CYAN, life: 60, light: 0.35 }, 2); break;
       case 'exposed': P('impacts/hit-spark', ev.x, ev.y + 30, { height: 20, palette: GOLD, life: 30, light: 0.4 }, 2); break;
       case 'land': if (w.water != null && w.water < 296 && ev.y > w.water) { this.spell('water/splash', ev.x, w.water + 6, { life: 45, light: 0.35 }); break; }   // 물에 착지 → 물보라
         if (ev.v > 7) P('impacts/heavy-landing', ev.x, ev.y, { palette: DUST, life: 40, light: 0.2 }, 1); break;

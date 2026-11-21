@@ -82,4 +82,4 @@ console.log(`스테이지 ${stages}개 진행, 결과: ${end}`);
 console.log('콘솔 에러/경고:', errs.length, JSON.stringify(errs.slice(0, 5)));
 console.log('404:', JSON.stringify([...new Set(missing)]));
 await browser.close(); srv.close();
-process.exit(stages === 23 && end && !errs.length && !missing.length ? 0 : 1);
+process.exit(stages === 35 && end && !errs.length && !missing.length ? 0 : 1);

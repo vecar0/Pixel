@@ -1,9 +1,9 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwpskyfg';
-import { hitLevel } from './level.js?v=mwpskyfg';
-import { CFG } from './config.js?v=mwpskyfg';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwpskyfg';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwpskyfg';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwpttsns';
+import { hitLevel } from './level.js?v=mwpttsns';
+import { CFG } from './config.js?v=mwpttsns';
+import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwpttsns';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwpttsns';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -88,7 +88,7 @@ export function addPoise(w, e, frac) {
 export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
   if (e.dead) return 0;
   if (e.roarT > 0) return 0;                                           // 2막 포효 중엔 무적
-  if (!raw && e.boss) { const k = gimmickDamageMul(w, e); if (k !== 1) { dmg = Math.round(dmg * k); poiseFrac *= k; if (k < 1 && dmg > 0) w.events.push({ type: 'resist', x: e.x + e.w / 2, y: e.y, veil: !!e.veil }); } }
+  if (!raw && e.boss) { const k = gimmickDamageMul(w, e); if (k !== 1) { dmg = Math.round(dmg * k); poiseFrac *= k; if (k < 1 && dmg > 0) w.events.push({ type: 'resist', x: e.x + e.w / 2, y: e.y, veil: !!e.veil, kind: e.kind }); } }
   if (ENEMY_DEFS[e.kind]?.oneHit && dmg > 0) dmg = e.hp;              // 나방: 한 방
   if (e.brittleT > 0 && dmg > 0) dmg = Math.round(dmg * (e.boss ? 1.15 : 1.25));   // 마법 효과: 취약(얼음·덩굴)
   e.hp -= dmg;

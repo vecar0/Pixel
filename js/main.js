@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick } from './core/world.js?v=mwpskyfg';
-import { Renderer } from './render.js?v=mwpskyfg';
-import { Input } from './input.js?v=mwpskyfg';
-import { Sfx } from './sfx.js?v=mwpskyfg';
-import { stepLoop } from './loop.js?v=mwpskyfg';
-import { spawnEnemy } from './core/enemies.js?v=mwpskyfg';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwpskyfg';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwpskyfg';
-import { icon, RELIC_TONE } from './icons.js?v=mwpskyfg';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwpskyfg';
-import { startTitleScene } from './titlescene.js?v=mwpskyfg';
+import { createWorld, tick } from './core/world.js?v=mwpttsns';
+import { Renderer } from './render.js?v=mwpttsns';
+import { Input } from './input.js?v=mwpttsns';
+import { Sfx } from './sfx.js?v=mwpttsns';
+import { stepLoop } from './loop.js?v=mwpttsns';
+import { spawnEnemy } from './core/enemies.js?v=mwpttsns';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwpttsns';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwpttsns';
+import { icon, RELIC_TONE } from './icons.js?v=mwpttsns';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwpttsns';
+import { startTitleScene } from './titlescene.js?v=mwpttsns';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwpskyfg';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, spellFor } from './core/spells.js?v=mwpskyfg';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpskyfg';
-import { takeTrain, runSpell } from './core/run.js?v=mwpskyfg';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwpskyfg';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwpskyfg';
+import { CFG } from './core/config.js?v=mwpttsns';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, spellFor } from './core/spells.js?v=mwpttsns';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpttsns';
+import { takeTrain, runSpell } from './core/run.js?v=mwpttsns';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwpttsns';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwpttsns';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -566,6 +566,7 @@ function onEvents(w) {
     if (ev.type === 'beaconLit') sfx.play('ignite');
     if (ev.type === 'phase2') { sfx.play('slam'); sfx.play('ult'); slowT = 50; if (navigator.vibrate) navigator.vibrate([60, 40, 120]); }
     if (ev.type === 'debris') sfx.play('telegraph');
+    if (ev.type === 'steam') sfx.play('roll'); if (ev.type === 'quench' || ev.type === 'chainsBroken') sfx.play('execute'); if (ev.type === 'heatUp' || ev.type === 'anchorRise') sfx.play('ignite'); if (ev.type === 'anchorHit') sfx.play(ev.broke ? 'slam' : 'hit');
   }
   const p = w.player;
   if (p.stateT === 0 && p.state === 'attack') sfx.play('swing');

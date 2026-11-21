@@ -7,7 +7,7 @@ import { invulnerable, attackBox } from '../js/core/player.js';
 import { ENEMY_DEFS, spawnEnemy, makeElite } from '../js/core/enemies.js';
 import { I, steps, FLAT, makeDummy } from './helpers.mjs';
 import { stepLoop } from '../js/loop.js';
-import { GIMMICK } from '../js/core/gimmick.js';
+import { GIMMICK, hitGimmick } from '../js/core/gimmick.js';
 import { initLevel, LV } from '../js/core/level.js';
 import { newRun, enterRoom, buildRoomWorld, setRegion } from '../js/core/run.js';
 import { SPELLS, STAT_SPELL, spellFor } from '../js/core/spells.js';
@@ -587,5 +587,20 @@ test('사제 탄: 몸에 닿기 전(앞 여유 안)에 누른 패링도 막는�
   ok(b.x - (p.x + p.w) > 4, 'bolt already touching');                   // 아직 몸에 안 닿은 거리
   tick(w, I({ parry: true })); steps(w, 12);
   eq(b.owner, 'player'); eq(p.hp, p.maxHp);                             // 튕겨 나감 (완벽 패링 반사)
+});
+test('용광로 거인: 달아오르면 피해 1/4, 옆의 증기 밸브를 베면 식어 그로기 + 금 (피해 1.6배)', () => {
+  const r = newRun(5); setRegion(r, 5); enterRoom(r, 'boss'); const w = buildRoomWorld(r); const b = w.enemies.find(e => e.boss);
+  steps(w, 1); b.spawnT = 0; b.hotCd = 1; steps(w, 2); ok(b.hot, '달아오름');
+  const hp0 = b.hp; damageEnemy(w, b, 100); eq(hp0 - b.hp, 25);
+  const v = w.props.find(o => o.kind === 'valve'); b.x = v.x - b.w / 2 + 40; b.st = 'idle';
+  hitGimmick(w, { x: v.x - 5, y: 250, w: 10, h: 20 }); steps(w, 1);
+  ok(!b.hot, '식음'); ok(b.stunT > 0, '그로기'); ok(b.crackT > 0, '금');
+  const h1 = b.hp; damageEnemy(w, b, 100); eq(h1 - b.hp, 160);
+});
+test('꺼진 왕: 닻이 서 있을수록 단단하고, 닻 셋을 모두 부수면 무너진다', () => {
+  const r = newRun(5); setRegion(r, 6); enterRoom(r, 'boss'); const w = buildRoomWorld(r); const k = w.enemies.find(e => e.boss);
+  const hp0 = k.hp; damageEnemy(w, k, 100); eq(hp0 - k.hp, 30);
+  for (const a of w.props.filter(o => o.kind === 'anchor')) for (let i = 0; i < GIMMICK.anchor.hp; i++) hitGimmick(w, { x: a.x - 5, y: 250, w: 10, h: 20 });
+  steps(w, 1); ok(k.stunT > 0, '무너짐'); const h1 = k.hp; damageEnemy(w, k, 100); eq(h1 - k.hp, 100);
 });
 run();

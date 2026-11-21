@@ -172,5 +172,37 @@
    "w": 104,
    "h": 94
   }
+ },
+ "forge": {
+  "idle": {
+   "src": "assets/forge-idle.png",
+   "ax": 83,
+   "ay": 150,
+   "w": 159,
+   "h": 150
+  },
+  "strike": {
+   "src": "assets/forge-strike.png",
+   "ax": 83,
+   "ay": 150,
+   "w": 159,
+   "h": 150
+  }
+ },
+ "king": {
+  "idle": {
+   "src": "assets/king-idle.png",
+   "ax": 73,
+   "ay": 128,
+   "w": 140,
+   "h": 128
+  },
+  "strike": {
+   "src": "assets/king-strike.png",
+   "ax": 73,
+   "ay": 128,
+   "w": 140,
+   "h": 128
+  }
  }
 }

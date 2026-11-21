@@ -79,11 +79,11 @@ test('각인 효과: 화염 칼날 → 3타에 화상 (3초간 초당 3)', () =>
   const hp = e.hp; steps(w, 200); eq(hp - e.hp, 9);
 });
 /* ── 지역 2~4 · 새 적 · 보스 · 영구 진행 ── */
-test('지역 4곳: 보스 격파 → 다음 지역, 마지막이면 끝', () => {
-  const r = newRun(9); chooseOath(r, 'parry'); eq(REGIONS.length, 4);
-  for (let i = 1; i < 4; i++) { ok(advanceRegion(r)); eq(r.region, i + 1); eq(r.roomIdx, 0); }
+test('지역 6곳: 보스 격파 → 다음 지역, 마지막이면 끝', () => {
+  const r = newRun(9); chooseOath(r, 'parry'); eq(REGIONS.length, 6);
+  for (let i = 1; i < 6; i++) { ok(advanceRegion(r)); eq(r.region, i + 1); eq(r.roomIdx, 0); }
   ok(!advanceRegion(r));
-  eq(r.length, REGIONS[3].route.length); eq(r.route.at(-1), 'boss');
+  eq(r.length, REGIONS[5].route.length); eq(r.route.at(-1), 'boss');
 });
 test('지역별 적 구성과 보스', () => {
   const r = newRun(9); chooseOath(r, 'parry'); advanceRegion(r); enterRoom(r, 'combat');

@@ -1,4 +1,4 @@
-// 보스 4종. 공격은 enemies.js의 공용 공격 종류를 데이터로 조합한다.
+// 보스 6종. 공격은 enemies.js의 공용 공격 종류를 데이터로 조합한다.
 // 모든 보스: 체력 50% 이하에서 예고 -4f (보스 최소 14f 보장), 판마다 변형 패턴 1개(variant)가 섞인다.
 export const BOSSES = {
   // 지역 1: 무덤종 — 종을 든 묘지기 거인
@@ -58,9 +58,40 @@ export const BOSSES = {
       dash2: { name: 'dash2', telegraphF: 22, activeF: 30, recoverF: 36, dmg: 1, parryable: true, charge: 6 },
     },
   },
+  // 지역 5: 용광로 거인 — 달아오르면(붉은 갑옷) 피해가 거의 안 들어간다. 옆으로 유인해 증기 밸브를 베면 식으며 금이 간다
+  forge: {
+    name: '용광로 거인', hp: 720, w: 64, h: 140, speed: 0.75, range: 150, boss: true, poise: true, cooldown: [32, 60],
+    near: ['swing', 'slam', 'double'], far: ['slam', 'pour'], phase2: ['quake'], variants: ['sweep', 'pour2', 'charge'],
+    attacks: {
+      swing: { name: 'swing', telegraphF: 26, activeF: 6, recoverF: 32, dmg: 1, parryable: true, reach: 110, height: 80 },
+      double: { name: 'double', telegraphF: 22, activeF: 5, recoverF: 34, dmg: 1, parryable: true, reach: 110, height: 80, hits: 2, gapF: 18 },
+      slam: { name: 'slam', telegraphF: 32, activeF: 6, recoverF: 42, dmg: 1, parryable: false, wave: { w: 26, h: 20, speed: 4, life: 150 } },
+      pour: { name: 'pour', telegraphF: 30, activeF: 1, recoverF: 40, dmg: 1, parryable: true, rain: { n: 3, gap: 70, speed: 4 } },
+      quake: { name: 'quake', telegraphF: 34, activeF: 6, recoverF: 46, dmg: 1, parryable: false, ring: 74 },
+      sweep: { name: 'sweep', telegraphF: 28, activeF: 6, recoverF: 36, dmg: 1, parryable: true, reach: 150, height: 56 },
+      pour2: { name: 'pour2', telegraphF: 32, activeF: 1, recoverF: 44, dmg: 1, parryable: true, rain: { n: 5, gap: 60, speed: 4 } },
+      charge: { name: 'charge', telegraphF: 30, activeF: 28, recoverF: 44, dmg: 1, parryable: true, charge: 4.6 },
+    },
+  },
+  // 지역 6: 꺼진 왕 — 사슬 닻 세 개에 묶여 있는 동안 피해를 덜 받는다. 닻을 모두 부수면 무너진다 (닻은 다시 솟음)
+  king: {
+    name: '꺼진 왕', hp: 760, w: 40, h: 120, speed: 1.45, range: 130, boss: true, poise: true, cooldown: [26, 50],
+    near: ['cleave', 'cleave2', 'thrust'], far: ['dash', 'starbolt'], phase2: ['nova'], variants: ['cleave3', 'dash2', 'bolt3'],
+    attacks: {
+      cleave: { name: 'cleave', telegraphF: 22, activeF: 5, recoverF: 28, dmg: 1, parryable: true, reach: 100, height: 70 },
+      cleave2: { name: 'cleave2', telegraphF: 22, activeF: 5, recoverF: 32, dmg: 1, parryable: true, reach: 100, height: 70, hits: 2, gapF: 16 },
+      thrust: { name: 'thrust', telegraphF: 20, activeF: 5, recoverF: 28, dmg: 1, parryable: true, reach: 130, height: 24 },
+      dash: { name: 'dash', telegraphF: 22, activeF: 22, recoverF: 32, dmg: 1, parryable: true, charge: 6.5 },
+      starbolt: { name: 'starbolt', telegraphF: 24, activeF: 1, recoverF: 34, dmg: 1, parryable: true, bolt: { speed: 4.4, w: 18, h: 18 } },
+      nova: { name: 'nova', telegraphF: 32, activeF: 6, recoverF: 46, dmg: 1, parryable: false, ring: 80 },
+      cleave3: { name: 'cleave3', telegraphF: 22, activeF: 5, recoverF: 36, dmg: 1, parryable: true, reach: 100, height: 70, hits: 3, gapF: 16 },
+      dash2: { name: 'dash2', telegraphF: 24, activeF: 30, recoverF: 38, dmg: 1, parryable: true, charge: 6 },
+      bolt3: { name: 'bolt3', telegraphF: 26, activeF: 1, recoverF: 40, dmg: 1, parryable: true, hits: 3, gapF: 16, bolt: { speed: 4.2, w: 18, h: 18 } },
+    },
+  },
 };
 
-import { rng } from './enemies.js?v=mwpskyfg';
+import { rng } from './enemies.js?v=mwpttsns';
 
 export const bossWant = (w, e, dx) => !!e.forceNext || Math.abs(dx) < BOSSES[e.kind].range || rng(w) < 0.012;
 

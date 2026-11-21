@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwpskyfg';
-import { CFG } from './core/config.js?v=mwpskyfg';
-import { attackBox } from './core/player.js?v=mwpskyfg';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwpskyfg';
-import { nearProp } from './core/world.js?v=mwpskyfg';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwpskyfg';
-import { FxDirector } from './fxmap.js?v=mwpskyfg';
-import { iconCanvas } from './icons.js?v=mwpskyfg';
-import { bodyShade } from './shade.js?v=mwpskyfg';
+import { clipBeam } from './core/gimmick.js?v=mwpttsns';
+import { CFG } from './core/config.js?v=mwpttsns';
+import { attackBox } from './core/player.js?v=mwpttsns';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwpttsns';
+import { nearProp } from './core/world.js?v=mwpttsns';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwpttsns';
+import { FxDirector } from './fxmap.js?v=mwpttsns';
+import { iconCanvas } from './icons.js?v=mwpttsns';
+import { bodyShade } from './shade.js?v=mwpttsns';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -35,7 +35,8 @@ const loadImg = src => { const im = new Image(); let n = 0; im.onerror = () => {
 const okImg = im => !!(im && im.complete && im.naturalWidth);
 const bellOf = w => (w.props || []).find(o => o.kind === 'bell') || {};
 const PHASE2_TITLE = { bellBoss: ['2막 · 무너지는 종탑', '천장에서 잔해가 떨어진다 · 대종이 더 빨리 다시 걸린다'], saint: ['2막 · 차오르는 물', '낮은 바닥에선 느려진다 · 양쪽 제단 위로'],
-  spider: ['2막 · 깨어나는 광맥', '세 번째 거울이 자란다 · 천장 수정이 쏟아진다'], shadow: ['2막 · 개기일식', '더 어두워지고 등대가 짧게 탄다'] };
+  spider: ['2막 · 깨어나는 광맥', '세 번째 거울이 자란다 · 천장 수정이 쏟아진다'], shadow: ['2막 · 개기일식', '더 어두워지고 등대가 짧게 탄다'] ,
+  forge: ['2막 · 갈라지는 바닥', '바닥에서 쇳물이 솟는다 · 더 자주 달아오른다'], king: ['2막 · 별이 진다', '죽은 별이 떨어진다 · 닻이 더 빨리 다시 솟는다'] };
 export class Renderer {
   constructor(canvas) {
     this.cv = canvas; this.ctx = canvas.getContext('2d');
@@ -110,9 +111,15 @@ export class Renderer {
       else if (ev.type === 'veilBreak') { this.flash = 0.9; this.zoom = 1; this.texts.push({ x: ev.x, y: ev.y - 70, t: 0, s: '장막 붕괴!', life: 70 }); }
       else if (ev.type === 'phase2') { this.flash = 1; this.zoom = 1; const P = PHASE2_TITLE[ev.kind] || ['2막', '']; this.banner = { s: P[0], sub: P[1], t: 170, dur: 170, y: 140 }; }
       else if (ev.type === 'mirrorReflect') { this.beamBack = { x0: ev.x, x1: ev.bx, y: ev.y, t: 14 }; this.flash = 0.8; this.texts.push({ x: ev.bx, y: ev.by - 70, t: 0, s: '반사!', life: 60 }); }
+      else if (ev.type === 'heatUp') { this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '달아올랐다!', life: 60 }); this.say('거인이 달아올랐다 — 밸브 옆으로 유인해 밸브를 베어라', 200); }
+      else if (ev.type === 'quench') { this.flash = ev.hot ? 0.8 : 0.3; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: ev.hot ? '식었다! 갑옷에 금이 갔다' : '증기!', life: 70 }); }
+      else if (ev.type === 'steam' && !ev.hit) this.texts.push({ x: ev.x, y: 210, t: 0, s: '쉬익—', life: 30 });
+      else if (ev.type === 'anchorHit' && ev.broke) this.texts.push({ x: ev.x, y: 200, t: 0, s: '닻이 부서졌다', life: 50 });
+      else if (ev.type === 'chainsBroken') { this.flash = 1; this.texts.push({ x: ev.x, y: ev.y - 80, t: 0, s: '사슬이 끊겼다!', life: 80 }); }
+      else if (ev.type === 'anchorRise') this.texts.push({ x: ev.x, y: 210, t: 0, s: '닻이 다시 솟았다', life: 50 });
       else if (ev.type === 'exposed') this.texts.push({ x: ev.x, y: ev.y - 16, t: 0, s: '드러났다!', life: 50 });
       else if (ev.type === 'beaconOut' && ev.snuffed) this.texts.push({ x: ev.x, y: 230, t: 0, s: '등대가 꺼졌다', life: 50 });
-      else if (ev.type === 'resist' && w.t - (this.resistT || 0) > 40) { this.resistT = w.t; this.texts.push({ x: ev.x, y: ev.y - 10, t: 0, s: ev.veil ? '장막' : '어둠', life: 30 }); }
+      else if (ev.type === 'resist' && w.t - (this.resistT || 0) > 40) { this.resistT = w.t; this.texts.push({ x: ev.x, y: ev.y - 10, t: 0, s: ev.veil ? '장막' : ev.kind === 'forge' ? '달군 갑옷' : ev.kind === 'king' ? '사슬' : '어둠', life: 30 }); }
       else if (ev.type === 'heal') this.healFx(p, ev.amount, ev.from);
       else if (ev.type === 'aegis') this.texts.push({ x: ev.x, y: ev.y - 30, t: 0, s: '수호!' });
       else if (ev.type === 'resonance') this.texts.push({ x: p.x + p.w / 2, y: p.y - 20, t: 0, s: '흘려 막기' });
@@ -596,6 +603,18 @@ export class Renderer {
     } else if (o.kind === 'altar' && this.img('shrine')) {                 // 마을 순례 제단: 등대 모양 돌 제단 (꼭대기 그릇에 늘 불)
       const im = this.img('shrine'); g.drawImage(im, Math.round(o.x - im.naturalWidth / 2), 300 - im.naturalHeight + 1);
       const gl = g.createRadialGradient(o.x, 214, 4, o.x, 214, 90); gl.addColorStop(0, 'rgba(255,170,70,0.3)'); gl.addColorStop(1, 'rgba(255,170,70,0)'); g.fillStyle = gl; g.fillRect(o.x - 80, 160, 160, 140);
+    } else if (o.kind === 'valve' && this.img('valve')) {                 // 증기 밸브: 쓸 수 있으면 바퀴가 빛남, 쓰면 다시 찰 때까지 어둡게
+      const im = this.img('valve'), x = Math.round(o.x - im.naturalWidth / 2);
+      if (o.cd <= 0) { const k = 0.5 + 0.5 * Math.sin(t * 0.14), gl = g.createRadialGradient(o.x, 262, 3, o.x, 262, 34); gl.addColorStop(0, `rgba(255,190,110,${0.35 * k})`); gl.addColorStop(1, 'rgba(255,190,110,0)'); g.fillStyle = gl; g.fillRect(o.x - 34, 228, 68, 68); }
+      g.globalAlpha = o.cd > 0 ? 0.6 : 1; g.drawImage(im, x, 300 - im.naturalHeight + 1); g.globalAlpha = 1;
+    } else if (o.kind === 'anchor' && this.img('anchor')) {               // 사슬 닻: 서 있으면 왕에게 사슬이 이어짐 · 맞을수록 금 · 부서지면 밑동만
+      const im = this.img('anchor'), x = Math.round(o.x - im.naturalWidth / 2), b = w.enemies.find(e => e.kind === 'king' && !e.dead), chain = this.img('chain');
+      if (o.hp > 0) {
+        if (b && chain && !(b.stunT > 0)) this.drawChain(g, chain, o.x + 6, 300 - im.naturalHeight + 10, b.x + b.w / 2, b.y + b.h * 0.45);
+        g.drawImage(im, x, 300 - im.naturalHeight + 1);
+        const dmg = 1 - o.hp / 4; if (dmg > 0) { g.fillStyle = `rgba(10,8,16,${0.35 * dmg})`; g.fillRect(x, 300 - im.naturalHeight + 1, im.naturalWidth, im.naturalHeight); }
+        const k = 0.5 + 0.5 * Math.sin(t * 0.1), gl = g.createRadialGradient(o.x, 262, 2, o.x, 262, 26); gl.addColorStop(0, `rgba(90,230,220,${0.3 * k * (o.hp / 4)})`); gl.addColorStop(1, 'rgba(90,230,220,0)'); g.fillStyle = gl; g.fillRect(o.x - 26, 236, 52, 52);
+      } else { const hh = Math.round(im.naturalHeight * 0.3); g.globalAlpha = 0.7; g.drawImage(im, 0, im.naturalHeight - hh, im.naturalWidth, hh, x, 300 - hh + 1, im.naturalWidth, hh); g.globalAlpha = 1; }
     } else if (o.kind === 'beacon' && this.img('beacon')) {               // 빛의 등대: 돌 받침 + 쇠 그릇 (켜지면 불꽃은 fxmap)
       const im = this.img('beacon'), x = Math.round(o.x - im.naturalWidth / 2);
       g.drawImage(im, x, 300 - im.naturalHeight);
@@ -766,6 +785,8 @@ export class Renderer {
     }
     g.drawImage(img, -f.ax, -f.ay);
     this.applyLight(g, f.img, f.ax, f.ay, e.x + e.w / 2, e.y + e.h / 2, e.face > 0);
+    if (e.hot) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.13 + 0.07 * Math.sin(w.t * 0.18); g.drawImage(this.tinted('#ff6a1a', f.img), -f.ax, -f.ay); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }   // 달아오른 갑옷
+    else if (e.crackT > 0) { g.globalAlpha = 0.25; g.drawImage(this.tinted('#b8c4d0', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }   // 식어서 잿빛, 금 간 갑옷
     if (hitFlash) { g.globalAlpha = e.flash > 5 ? 0.55 : 0.3; g.drawImage(this.tinted('#ffffff', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }
     else if (over) { g.globalAlpha = over === '#ffffff' ? 0.4 : 0.5; g.drawImage(this.tinted(over, f.img), -f.ax, -f.ay); g.globalAlpha = 1; }
     g.restore();

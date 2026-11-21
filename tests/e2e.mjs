@@ -84,15 +84,14 @@ await check('런: 클리어 → 출구 열림 → 아이리스 닫힘 뒤 단련
   ok(await p.locator('#train').isDisabled(), 'train enabled before spending');   // 점수가 남으면 완료 불가
   await p.locator('[data-up=str]').dispatchEvent('pointerup'); await p.waitForTimeout(120);
   await p.locator('[data-up=agi]').dispatchEvent('pointerup'); await p.waitForTimeout(120);   // 반대 화살표 = 되돌리기
-  eq(await p.evaluate(() => document.querySelector('.pts b').textContent), '2');
-  await p.locator('[data-up=str]').dispatchEvent('pointerup'); await p.waitForTimeout(120);
+  eq(await p.evaluate(() => document.querySelector('.pts b').textContent), '1');   // 단련은 1점
   await p.locator('[data-up=str]').dispatchEvent('pointerup'); await p.waitForTimeout(120);
   eq(await p.evaluate(() => document.querySelector('.pts b').textContent), '0');
   ok(await p.locator('[data-up=str]').isDisabled(), 'can over-spend');
   await p.screenshot({ path: path.join(out, 'relic.png') });
   eq(await p.evaluate(() => window.__lk.run.stats.str), 10);             // 확정 전엔 그대로
   await p.locator('#train').dispatchEvent('pointerup'); await p.waitForTimeout(200);
-  eq(await p.evaluate(() => window.__lk.run.stats.str + ',' + window.__lk.run.stats.agi), '12,8');
+  eq(await p.evaluate(() => window.__lk.run.stats.str + ',' + window.__lk.run.stats.agi), '11,9');
   await p.waitForTimeout(1200);
   eq(await p.evaluate(() => window.__lk.mode), 'play');                 // 단련 뒤 다음 방
   eq(await p.evaluate(() => window.__lk.run.roomIdx), 1);

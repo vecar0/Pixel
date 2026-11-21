@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwpvebig';
-import { CFG } from './core/config.js?v=mwpvebig';
-import { attackBox } from './core/player.js?v=mwpvebig';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwpvebig';
-import { nearProp } from './core/world.js?v=mwpvebig';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwpvebig';
-import { FxDirector } from './fxmap.js?v=mwpvebig';
-import { iconCanvas } from './icons.js?v=mwpvebig';
-import { bodyShade } from './shade.js?v=mwpvebig';
+import { clipBeam } from './core/gimmick.js?v=mwpvktog';
+import { CFG } from './core/config.js?v=mwpvktog';
+import { attackBox } from './core/player.js?v=mwpvktog';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwpvktog';
+import { nearProp } from './core/world.js?v=mwpvktog';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwpvktog';
+import { FxDirector } from './fxmap.js?v=mwpvktog';
+import { iconCanvas } from './icons.js?v=mwpvktog';
+import { bodyShade } from './shade.js?v=mwpvktog';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)

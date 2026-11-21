@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwpvebig';
-import { CFG } from './core/config.js?v=mwpvebig';
-import { groundAt } from './core/world.js?v=mwpvebig';
+import { preload } from './fx.js?v=mwpvktog';
+import { CFG } from './core/config.js?v=mwpvktog';
+import { groundAt } from './core/world.js?v=mwpvktog';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -137,7 +137,7 @@ export class FxDirector {
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
         break;
       case 'execDash': P('arcane/blink-out', ev.x0, ev.y - 30, { palette: AMBER, life: 30, light: 0.4 }, 2); P('melee/double-slash', (ev.x0 + ev.x1) / 2, ev.y - 30, { flip: ev.face < 0, palette: AMBER, life: 24, light: 0.35 }, 2); break;   // 연속 처형 돌진: 사라진 자리 + 가르는 궤적
-      case 'execute': P('impacts/crit-hit', ev.x, ev.y + 30, { light: 0.5 }, 3); break;   // 처형 한 번에 원은 하나만 (빨려드는 고리 이펙트는 뺌)
+      case 'execute': P('explosions/implosion', ev.x, ev.y + 20, { palette: AMBER, life: 60, light: 0.45 }, 3); break;   // 처형 한 번에 원은 하나만: 큰 고리 (작은 치명타 폭발은 뺌)
       case 'hurt': P('ui/heart-lost', p.x + p.w / 2, p.y - 8, {}, 3); break;   // 붉은 화면·파편은 렌더러가 그림
       case 'kill': {
         if (ev.boss) { P('explosions/big-explosion', ev.x, ev.y + 40, { life: 150, light: 0.5 }, 3); P('holy/holy-pillar', ev.x, ev.y + 40, { light: 0.5 }, 3); break; }

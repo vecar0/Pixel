@@ -4,23 +4,26 @@ export const SPELLS = {
   bolt:    { name: '등불 탄',   icon: 'ember',       tone: 'amber', fx: 'fire/fireball',            desc: '등불에서 불덩이를 쏜다. 가까운 적을 쫓아가 맞고 터진다' },
   lance:   { name: '얼음 창',   icon: 'sword',       tone: 'moon',  fx: 'ice/ice-lance',            desc: '얼음 창을 던진다. 적을 쫓아가며 여러 적을 꿰뚫는다' },
   pillar:  { name: '화염 기둥', icon: 'ult',         tone: 'ember', fx: 'fire/flame-pillar',        desc: '가장 가까운 적 발밑이 갈라지며 불기둥이 솟는다' },
-  thunder: { name: '낙뢰',      icon: 'afterglow',   tone: 'moon',  fx: 'lightning/lightning-strike', desc: '가장 가까운 적에게 벼락이 떨어져 자세를 크게 무너뜨린다' },
+  thunder: { name: '빛기둥', icon: 'afterglow', tone: 'amber', fx: 'holy/holy-pillar', desc: '가장 가까운 적 자리에 하늘에서 빛기둥이 꽂혀 자세를 크게 무너뜨린다' },
   stars:   { name: '고드름 비', icon: 'afterglow',   tone: 'moon',  fx: 'ice/icicle-fall',         desc: '앞쪽 넓은 땅에 고드름이 세 차례 쏟아져 여럿을 한꺼번에 친다' },
   meteor:  { name: '운석',      icon: 'ember',       tone: 'ember', fx: 'fire/meteor',              desc: '가장 가까운 적에게 운석이 떨어져 크게 폭발한다' },
-  ring:    { name: '불꽃 고리', icon: 'ult',         tone: 'ember', fx: 'fire/fire-ring',           desc: '리라 주변으로 불꽃이 퍼지고, 날아오던 적 탄을 모두 지운다' },
-  ward:    { name: '푸른 결계', icon: 'parry',       tone: 'moon',  fx: 'holy/divine-shield',       desc: '주변을 얼리고, 5초 동안 모든 패링이 완벽 판정이 된다' },
-  spear:   { name: '흑염 창',   icon: 'executioner', tone: 'ember', fx: 'shadow/shadow-flames',     desc: '검은 불꽃을 일으켜 앞으로 검은 광선을 쏴 일직선의 적을 모두 꿰뚫는다' },
-  chain:   { name: '연쇄 번개', icon: 'afterglow',   tone: 'moon',  fx: 'lightning/chain-lightning', desc: '앞쪽 가까운 적 셋에게 번개가 차례로 옮겨 간다' },
-  blast:   { name: '암흑 폭발', icon: 'elite',       tone: 'ember', fx: 'shadow/dark-explosion',    desc: '가장 가까운 적 자리에서 검은 별이 터진다' },
+  ring: { name: '귀화 고리', icon: 'ult', tone: 'moon', fx: 'fire/fire-ring', desc: '리라 주변으로 푸른 귀화가 퍼지고, 날아오던 적 탄을 모두 지운다' },
+  ward: { name: '빛의 결계', icon: 'parry', tone: 'amber', fx: 'holy/divine-shield', desc: '금빛 결계가 몸을 감싸 주변 적을 밀쳐 내고, 5초 동안 모든 패링이 완벽 판정이 된다' },
+  spear: { name: '귀화 창', icon: 'executioner', tone: 'moon', fx: 'arcane/arcane-beam', desc: '등불의 귀화를 한 줄로 모아 앞으로 쏴, 일직선의 적을 모두 꿰뚫는다' },
+  chain: { name: '연쇄 번개', icon: 'afterglow', tone: 'ember', fx: 'lightning/chain-lightning', desc: '앞쪽 가까운 적 셋에게 번개가 차례로 옮겨 간다' },
+  blast: { name: '뇌전 폭발', icon: 'elite', tone: 'ember', fx: 'lightning/thunderclap', desc: '가장 가까운 적 자리에 벼락 덩어리가 떨어져 크게 터진다' },
   tornado: { name: '불꽃 회오리', icon: 'ult',       tone: 'ember', fx: 'fire/fire-tornado',        desc: '가장 가까운 적 자리에 불꽃 회오리가 일어 세 번 연달아 태운다' },
   spikes:  { name: '서리 가시', icon: 'roll',        tone: 'moon',  fx: 'ice/ice-spikes',           desc: '앞쪽 바닥을 따라 얼음 가시가 솟아 줄지어 선 적을 모두 찌른다' },
-  smite:   { name: '심판',      icon: 'parry',       tone: 'amber', fx: 'holy/smite',               desc: '가장 가까운 적 머리 위로 빛의 망치가 떨어져 자세를 크게 무너뜨린다' },
-  wisps:   { name: '도깨비불',  icon: 'ember',       tone: 'moon',  fx: 'fire/fireball',            desc: '등불에서 푸른 도깨비불 셋이 흩어져 날아가 각자 가까운 적을 쫓는다' },
-  thorns:  { name: '가시 덩굴', icon: 'heart',       tone: 'heal',  fx: 'nature/thorns',            desc: '앞쪽 바닥에서 가시 덩굴이 솟아 적을 찌르고 발을 묶는다 (자세 피해 큼)' },
-  drain:   { name: '피의 갈취', icon: 'afterglow',   tone: 'red',   fx: 'shadow/soul-drain',       desc: '가장 가까운 적의 피를 뽑아 와 피해를 주고 맞히면 체력 1을 되찾는다' },
-  heal:    { name: '치유의 빛', icon: 'heart',       tone: 'heal',  fx: 'holy/heal',                desc: '빛이 몸을 감싸 체력을 2 되찾는다' },
-  sanctum: { name: '성광 기둥', icon: 'vigor',       tone: 'heal',  fx: 'holy/holy-pillar',         desc: '빛기둥이 내려와 주변 적을 치고 체력을 1 되찾는다' },
+  smite: { name: '심판', icon: 'parry', tone: 'amber', fx: 'holy/smite', desc: '가장 가까운 적 머리 위로 빛의 망치가 떨어져 자세를 크게 무너뜨린다' },
+  wisps: { name: '도깨비불', icon: 'ember', tone: 'moon', fx: 'fire/fireball', desc: '등불에서 푸른 도깨비불 셋이 흩어져 날아가 각자 가까운 적을 쫓는다' },
+  thorns: { name: '가시 덩굴', icon: 'heart', tone: 'heal', fx: 'nature/thorns', desc: '앞쪽 바닥에서 가시 덩굴이 솟아 적을 찌르고 발을 묶는다 (자세 피해 큼)' },
+  drain: { name: '흡전', icon: 'afterglow', tone: 'ember', fx: 'lightning/zap-hit', desc: '가장 가까운 적에게 전격을 꽂아 기운을 빨아들여, 맞히면 체력 1을 되찾는다' },
+  heal: { name: '생명의 꽃', icon: 'heart', tone: 'heal', fx: 'nature/healing-bloom', desc: '발밑에 생명의 꽃이 피어 체력을 2 되찾는다' },
+  sanctum: { name: '생명의 숲', icon: 'vigor', tone: 'heal', fx: 'nature/thorns', desc: '리라 양옆 바닥에서 덩굴이 솟아 주변 적을 치고, 꽃이 피어 체력을 1 되찾는다' },
 };
+// 스탯별 마법 속성: 같은 스탯의 마법 셋은 모두 같은 속성 (이펙트 색·종류가 통일)
+export const STAT_ELEMENT = { str: '화염', agi: '얼음', wil: '빛', lmp: '귀화', vit: '생명', fury: '번개' };
+export const SPELL_ELEMENT = { bolt: '등불' };
 // 마법 효과: 그 스탯을 올렸을 때의 장점을 키우거나(▲), 반대로 내려간 스탯의 약점을 메운다(▼). combat.js spellPerk와 짝
 export const SPELL_PERK = {
   pillar: '▼민첩 보완 · 맞은 적 2초 발 묶음 (보스 1초)', tornado: '▼민첩 보완 · 적을 회오리 쪽으로 끌어와 묶음', meteor: '▲힘 강화 · 5초간 검 공격 피해 +30%',
@@ -40,6 +43,7 @@ export const OIL_SPELL = { refined: 'bolt', blue: 'ward', black: 'spear' };
 export const SPELL_AT = [14, 17, 20];
 export const STAT_SPELL = { str: ['pillar', 'tornado', 'meteor'], agi: ['lance', 'spikes', 'stars'], wil: ['ward', 'smite', 'thunder'], lmp: ['ring', 'wisps', 'spear'], vit: ['heal', 'thorns', 'sanctum'], fury: ['chain', 'drain', 'blast'] };
 // 지금 빌드의 마법: 가장 높은 스탯(14 이상)이 정한다. 동점이면 마지막으로 올린 스탯, 그래도 같으면 표 순서
+for (const [k, ids] of Object.entries(STAT_SPELL)) for (const id of ids) SPELL_ELEMENT[id] = STAT_ELEMENT[k];
 export function spellFor(stats, base = 'bolt', lastUp = null) {
   const ids = Object.keys(STAT_SPELL), top = Math.max(...ids.map(k => stats[k]));
   if (top < 14) return base;

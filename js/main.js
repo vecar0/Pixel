@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick } from './core/world.js?v=mwpttsns';
-import { Renderer } from './render.js?v=mwpttsns';
-import { Input } from './input.js?v=mwpttsns';
-import { Sfx } from './sfx.js?v=mwpttsns';
-import { stepLoop } from './loop.js?v=mwpttsns';
-import { spawnEnemy } from './core/enemies.js?v=mwpttsns';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwpttsns';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwpttsns';
-import { icon, RELIC_TONE } from './icons.js?v=mwpttsns';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwpttsns';
-import { startTitleScene } from './titlescene.js?v=mwpttsns';
+import { createWorld, tick } from './core/world.js?v=mwpuscod';
+import { Renderer } from './render.js?v=mwpuscod';
+import { Input } from './input.js?v=mwpuscod';
+import { Sfx } from './sfx.js?v=mwpuscod';
+import { stepLoop } from './loop.js?v=mwpuscod';
+import { spawnEnemy } from './core/enemies.js?v=mwpuscod';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwpuscod';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwpuscod';
+import { icon, RELIC_TONE } from './icons.js?v=mwpuscod';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwpuscod';
+import { startTitleScene } from './titlescene.js?v=mwpuscod';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwpttsns';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, spellFor } from './core/spells.js?v=mwpttsns';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpttsns';
-import { takeTrain, runSpell } from './core/run.js?v=mwpttsns';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwpttsns';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwpttsns';
+import { CFG } from './core/config.js?v=mwpuscod';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, spellFor } from './core/spells.js?v=mwpuscod';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwpuscod';
+import { takeTrain, runSpell } from './core/run.js?v=mwpuscod';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwpuscod';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwpuscod';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -75,7 +75,7 @@ function play() {
 const TALK = {
   keeper: { name: '등대지기 노라', img: 'assets/keeper.png', lines: [
     ['등대의 불이 꺼진 지 오래야.', '네 등불로 네 개의 대등을 다시 켜 주렴.'],
-    ['기름은 제단에서 골라 가렴.', '청유는 결계, 흑유는 검은 광선으로 시작하지.'],
+    ['기름은 제단에서 골라 가렴.', '성유는 빛의 결계, 귀화유는 귀화 창으로 시작하지.'],
     ['허수아비로 손을 풀고 가렴.', '패링은 적이 번쩍이는 그 순간이 전부야.'],
     ['어둠이 깊을수록 보상도 크다네.', '자신이 생기면 제단에서 어둠을 올려 봐.'],
     ['방마다 목표 시간이 있어.', '빨리 정리하면 불씨를 더 얹어 주지.'],
@@ -203,10 +203,10 @@ function spellCard(id, label = '지금 마법') {
   const delay = C.delay ? ` · ${(C.delay / 60).toFixed(1)}초 뒤 착탄` : '';
   return `<div class="spellcard t-${S.tone}"><div class="niche">${icon(S.icon, S.tone)}</div><div class="sc-body">
     <div class="sc-top"><small>${label}</small><b>${S.name}</b><span class="sc-cost">빛 ${Math.round(C.cost * cm)}</span>${dmg ? `<span class="sc-dmg">피해 ${dmg}${n}</span>` : ''}</div>
-    <div class="sc-tags">${(SPELL_TAGS[id] || []).map(t => `<i>${t}</i>`).join('')}</div>
+    <div class="sc-tags"><i class="el">${SPELL_ELEMENT[id] || ''} 속성</i>${(SPELL_TAGS[id] || []).map(t => `<i>${t}</i>`).join('')}</div>
     <div class="sc-desc">${S.desc}${delay}</div>${SPELL_PERK[id] ? `<div class="sc-perk">${SPELL_PERK[id]}</div>` : ''}</div></div>`;
 }
-const spellMap = () => `<div class="sc-map"><b>마법</b> 가장 높은 스탯이 14·17·20이면 그 스탯의 마법이 차례로 바뀐다 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name} ${STAT_SPELL[k].map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
+const spellMap = () => `<div class="sc-map"><b>마법</b> 가장 높은 스탯이 14·17·20이면 그 스탯의 마법이 차례로 바뀐다 — ${PAIRS.flat().map(k => `${STAT_BY_ID[k].name}(${STAT_ELEMENT[k]}) ${STAT_SPELL[k].map(id => SPELLS[id].name).join('/')}`).join(' · ')}</div>`;
 // 단련 미리 보기: 지금(run.stats) → 찍은 뒤(draft). 바뀌는 수치, 열리고 잃는 능력·약점·공명, 마법 변화
 function trainPreview(draft, lastUp) {
   const st0 = run.stats, ch = STATS.filter(S => draft[S.id] !== st0[S.id]);

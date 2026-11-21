@@ -1,9 +1,9 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwpttsns';
-import { hitLevel } from './level.js?v=mwpttsns';
-import { CFG } from './config.js?v=mwpttsns';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwpttsns';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwpttsns';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwpuscod';
+import { hitLevel } from './level.js?v=mwpuscod';
+import { CFG } from './config.js?v=mwpuscod';
+import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwpuscod';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwpuscod';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -28,7 +28,7 @@ export function resolveEnemyHit(w, hb) {
     if (perfect && hb.owner && hb.owner.barrier > 0) breakBarrier(w, hb.owner);       // 완벽 패링은 강적 방패를 한 번에 깸                                   // 반격 기회: 이 안에 공격하면 회전 베기
     if (perfect && RES.riposte) p.riposte = true;                                // 공명 철벽 반격
     if (perfect && RES.retribute) p.crit = true;
-    if (p.blueT > 0) p.light = Math.min(CFG.light.max, p.light + 10);           // 푸른 결계: 막을 때마다 빛 (낮은 등불 보완)                                 // 공명 응징
+    if (p.blueT > 0) p.light = Math.min(CFG.light.max, p.light + 10);           // 빛의 결계: 막을 때마다 빛 (낮은 등불 보완)                                 // 공명 응징
     if (perfect && p.mods.echo) w.projectiles.push({                           // 반향: 앞으로 검기
       x: p.face > 0 ? p.x + p.w : p.x - 24, y: p.y + 18, w: 24, h: 14, vx: p.face * 6, vy: 0,
       dmg: 1.5, parryable: true, owner: 'player', life: 50, echo: true, src: {} });

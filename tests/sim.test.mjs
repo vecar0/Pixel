@@ -4,7 +4,8 @@ import { CFG } from '../js/core/config.js';
 import { damageEnemy, resolveEnemyHit } from '../js/core/combat.js';
 import { createWorld, tick } from '../js/core/world.js';
 import { invulnerable, attackBox } from '../js/core/player.js';
-import { ENEMY_DEFS, spawnEnemy, makeElite } from '../js/core/enemies.js';
+import { ENEMY_DEFS, spawnEnemy, makeElite, seesPlayer, affinity } from '../js/core/enemies.js';
+import { elBuild, relightFlash } from '../js/core/combat.js';
 import { I, steps, FLAT, makeDummy } from './helpers.mjs';
 import { stepLoop } from '../js/loop.js';
 import { GIMMICK, hitGimmick } from '../js/core/gimmick.js';
@@ -644,5 +645,32 @@ test('소등 중 두른 상태: 불꽃이 멈추고, 다시 켜는 섬광이 속
   const e = spawnEnemy(w, 'ghoul', p.x + 60, p.y, {}); e.spawnT = 0; e.cd = 1e9; e.maxHp = e.hp = 999;
   tick(w, I({ snuff: true })); const e0 = p.enchantT; steps(w, 30); eq(p.enchantT, e0);
   tick(w, I({ snuff: true })); steps(w, CFG.snuff.relightF + 2); ok(e.burnT > 0, '화염 폭발');
+});
+test('속성 상성: 약점이면 게이지 1.6배, 저항이면 절반', () => {
+  const w = W(); settle(w); const p = w.player; p.enchTier = 1;
+  const g = spawnEnemy(w, 'ghoul', p.x + 200, p.y, {}); g.spawnT = 0;
+  eq(affinity(g, 'wil'), 1); eq(affinity(g, 'agi'), -1); eq(affinity(g, 'vit'), 0);
+  p.element = 'wil'; elBuild(w, g, 10); eq(g.elB, 16);
+  g.elB = 0; p.element = 'agi'; elBuild(w, g, 10); eq(g.elB, 5);
+});
+test('빛·어둠 반응: 나방은 어둠에서 못 보고, 구울은 멀리 듣고, 갑각수호자는 잘 못 들음', () => {
+  const w = W(); settle(w); const p = w.player; p.dark = true; p.noiseT = 10; p.noiseR = 100;
+  const mk = (k, dx) => { const e = spawnEnemy(w, k, p.x + dx, p.y, {}); e.spawnT = 0; return e; };
+  ok(!seesPlayer(w, mk('moth', 40)), '나방: 소리도 못 들음');
+  ok(seesPlayer(w, mk('ghoul', 130)), '구울: 1.5배 거리');
+  ok(!seesPlayer(w, mk('shellguard', 80)), '갑각수호자: 0.6배');
+  ok(seesPlayer(w, mk('spearman', 80)), '창병: 보통');
+});
+test('창병 경보: 어둠 속에서 리라를 찾아내면 주변 적이 그쪽으로', () => {
+  const w = W(); settle(w); const p = w.player; p.dark = true; p.darkT = 999;
+  const s = spawnEnemy(w, 'spearman', p.x + 60, p.y, {}); s.spawnT = 0; s.cd = 1e9; s.unaware = true;
+  const g = spawnEnemy(w, 'ghoul', p.x + 200, p.y, {}); g.spawnT = 0; g.cd = 1e9; g.lastX = 9999;
+  p.noiseT = 10; p.noiseR = 120; steps(w, 1);
+  ok(w.events.some(e => e.type === 'alarm') || Math.abs(g.lastX - (p.x + p.w / 2)) < 20, '경보'); ok(Math.abs(g.lastX - (p.x + p.w / 2)) < 20, g.lastX);
+});
+test('암살자: 어둠은 보지만 다시 켜는 섬광에 눈이 멂', () => {
+  const w = W(); settle(w); const p = w.player; p.dark = true;
+  const a = spawnEnemy(w, 'assassin', p.x + 60, p.y, {}); a.spawnT = 0;
+  ok(seesPlayer(w, a), '어둠눈'); relightFlash(w); ok(a.blindT > 0); ok(!seesPlayer(w, a), '눈부심');
 });
 run();

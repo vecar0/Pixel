@@ -2,10 +2,10 @@
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
-import { clipBeam } from './gimmick.js?v=mwqffg78';
-import { CFG } from './config.js?v=mwqffg78';
-import { moveAndCollide, overlap } from './player.js?v=mwqffg78';
-import { BOSSES, bossPick, bossWant } from './boss.js?v=mwqffg78';
+import { clipBeam } from './gimmick.js?v=mwqfomuu';
+import { CFG } from './config.js?v=mwqfomuu';
+import { moveAndCollide, overlap } from './player.js?v=mwqfomuu';
+import { BOSSES, bossPick, bossWant } from './boss.js?v=mwqfomuu';
 
 export const ENEMY_DEFS = {
   ghoul: {
@@ -42,6 +42,40 @@ export const ENEMY_DEFS = {
     attacks: { cut: { name: 'cut', telegraphF: 18, activeF: 4, recoverF: 26, dmg: 1, parryable: true, reach: 40 } },
   },
   ...BOSSES,
+};
+
+// 속성 상성: 두른 속성이 약점이면 게이지 1.6배·피해 +20%, 저항이면 게이지 절반·피해 -15%
+//   화염(str) 빛(wil) 얼음(agi) 귀화(lmp) 생명(vit) 번개(fury)
+export const AFFINITY = {
+  ghoul: { weak: ['wil', 'str'], resist: ['agi'] },        // 무덤 구울: 빛과 불에 사그라듦, 차가운 시체라 얼음엔 무덤덤
+  moth: { weak: ['str', 'agi'], resist: [] },              // 나방: 불에 타고 얼면 떨어짐
+  spearman: { weak: ['fury', 'wil'], resist: ['agi'] },    // 물에 잠긴 창병: 젖은 뼈에 번개, 찬물에 익숙
+  priest: { weak: ['fury', 'lmp'], resist: ['wil'] },      // 순례자: 물빛 구슬은 번개와 어둠에 약하고 빛엔 강함
+  shellguard: { weak: ['vit', 'fury'], resist: ['str'] },  // 갑각수호자: 뿌리가 수정 틈을 가르고 번개가 울림, 불엔 단단
+  assassin: { weak: ['wil', 'str'], resist: ['lmp'] },     // 암살자: 빛에 드러나고, 어둠은 제 편
+  bellBoss: { weak: ['wil'], resist: ['lmp'] },
+  saint: { weak: ['fury', 'lmp'], resist: ['wil'] },
+  spider: { weak: ['vit'], resist: ['agi'] },
+  shadow: { weak: ['wil'], resist: ['lmp'] },
+  forge: { weak: ['agi'], resist: ['str'] },              // 용광로: 식히면 갈라짐
+  king: { weak: ['str'], resist: ['agi'] },               // 꺼진 태양의 왕: 다시 붙는 불에 약함
+};
+export const ENEMY_NAME = { ghoul: '구울', moth: '나방', spearman: '창병', priest: '순례자', shellguard: '갑각수호자', assassin: '암살자' };
+export const nameOf = k => ENEMY_NAME[k] || (ENEMY_DEFS[k] && ENEMY_DEFS[k].name) || k;
+export function affinity(e, el) {                          // 1 약점 · -1 저항 · 0 보통
+  const A = el && AFFINITY[e.kind]; if (!A) return 0;
+  return A.weak.includes(el) ? 1 : A.resist.includes(el) ? -1 : 0;
+}
+// 빛·어둠 반응 (보스 제외): 적마다 소등에 다르게 반응한다
+//   나방: 빛을 쫓아 밝을 땐 빠르고, 어둠에선 아무것도 못 봄 · 구울: 귀가 밝아 소리를 멀리서 들음
+//   갑각수호자: 귀가 어두움 · 창병: 어둠 속에서 리라를 찾아내면 주변에 경보 · 암살자: 어둠을 보지만 섬광에 눈이 멂
+export const DARK_REACT = {
+  moth: { name: '빛을 쫓음', desc: '밝으면 빠르게 달려들고, 어둠에선 아무것도 못 봄', hear: 0, litSpeed: 1.35 },
+  ghoul: { name: '밝은 귀', desc: '어둠 속 소리를 멀리서 들음', hear: 1.5 },
+  shellguard: { name: '둔한 귀', desc: '어둠 속 소리를 잘 못 들음', hear: 0.6 },
+  spearman: { name: '경계병', desc: '어둠 속에서 리라를 찾아내면 주변에 경보', alarm: 220 },
+  assassin: { name: '어둠눈', desc: '어둠도 보지만 다시 켜는 섬광에 눈이 멂', flashBlind: 180 },
+  priest: { name: '물빛 구슬', desc: '어둠 속에서도 가까이 오면 보임' },
 };
 
 // 엘리트 수식어 (판마다 무작위)
@@ -122,7 +156,8 @@ export function seesPlayer(w, e) {
   if (e.boss || d.darkSight) return true;
   const dist = Math.abs(p.x + p.w / 2 - (e.x + e.w / 2)) + Math.abs(p.y - e.y) * 0.5;
   if (e.kind === 'priest' && dist < 110) return true;                    // 사제의 물빛 구슬
-  return p.noiseT > 0 && dist < (p.noiseR || 0);
+  const R = DARK_REACT[e.kind], hear = R && R.hear !== undefined ? R.hear : 1;   // 귀가 밝은 적·어두운 적 (나방은 소리를 못 들음)
+  return p.noiseT > 0 && dist < (p.noiseR || 0) * hear;
 }
 export function updateEnemy(w, e) {
   if (Math.abs(e.kvx) > 0.05) {          // 넉백: 벽에 막히면 멈춤
@@ -135,8 +170,13 @@ export function updateEnemy(w, e) {
   let dx = (p.x + p.w / 2) - (e.x + e.w / 2);
   e.stT++;
   if (e.blindT > 0) e.blindT--;
-  const vis = seesPlayer(w, e); e.unaware = !vis;                          // 소등: 리라를 못 보면 마지막으로 본 자리를 뒤진다
+  const vis = seesPlayer(w, e), was = e.unaware; e.unaware = !vis;        // 소등: 리라를 못 보면 마지막으로 본 자리를 뒤진다
   if (vis) { e.lastX = p.x + p.w / 2; e.searchT = 0; }
+  const RX = DARK_REACT[e.kind];
+  if (vis && was && p.dark && RX && RX.alarm && !e.boss) {               // 경계병: 어둠 속에서 찾아내면 주변 적이 그쪽으로
+    for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < RX.alarm) o.lastX = p.x + p.w / 2;
+    w.events.push({ type: 'alarm', x: e.x + e.w / 2, y: e.y, r: RX.alarm });
+  }
   else { const ex = e.x + e.w / 2, tx = e.lastX ?? ex; e.searchT = (e.searchT || 0) + 1; dx = Math.abs(tx - ex) > 14 ? tx - ex : ((e.searchT >> 6) & 1 ? 0.001 : -0.001); }
   if (e.frozenT > 0) e.frozenT--; if (e.rootT > 0) e.rootT--; if (e.slowT > 0) e.slowT--; if (e.brittleT > 0) e.brittleT--;   // 마법 효과: 발 묶음 · 둔화 · 취약
   if (e.staggerT > 0) { e.staggerT--; if (!d.fly) { e.vx = 0; physics(w, e); } return; }
@@ -144,6 +184,7 @@ export function updateEnemy(w, e) {
   if (e.st === 'idle') {
     if (e.cd > 0) e.cd--;
     const sp0 = e.speed; if (e.rootT > 0) e.speed = 0; else if (e.slowT > 0) e.speed *= 0.5;   // 발 묶음 · 둔화: 이동 속도만
+    if (RX && RX.litSpeed && !p.dark && !e.boss) e.speed *= RX.litSpeed;  // 나방: 등불빛을 쫓아 빨라짐
     if (e.boss) bossMove(w, e, dx);
     else if (d.fly) mothHover(w, e, dx);
     else if (d.keepAway) keepDistance(w, e, dx, d.keepAway);

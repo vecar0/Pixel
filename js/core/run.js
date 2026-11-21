@@ -1,10 +1,10 @@
 // 한 판(런)의 진행: 서약 → 방 → 각인 → 문 선택 → … → 보스. 순수 로직 (DOM 없음)
-import { CFG } from './config.js?v=mwqffg78';
-import { createWorld } from './world.js?v=mwqffg78';
-import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwqffg78';
-import { startStats, statMods, train } from './stats.js?v=mwqffg78';
-import { OIL_SPELL, OIL_EL, spellFor, elementSpell, awakenPick } from './spells.js?v=mwqffg78';
-import { populateArena, parTime } from './level.js?v=mwqffg78';
+import { CFG } from './config.js?v=mwqfomuu';
+import { createWorld } from './world.js?v=mwqfomuu';
+import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwqfomuu';
+import { startStats, statMods, train } from './stats.js?v=mwqfomuu';
+import { OIL_SPELL, OIL_EL, spellFor, elementSpell, awakenPick } from './spells.js?v=mwqfomuu';
+import { populateArena, parTime } from './level.js?v=mwqfomuu';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }

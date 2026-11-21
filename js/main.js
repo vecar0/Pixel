@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick, groundAt } from './core/world.js?v=mwqffg78';
-import { Renderer } from './render.js?v=mwqffg78';
-import { Input } from './input.js?v=mwqffg78';
-import { Sfx } from './sfx.js?v=mwqffg78';
-import { stepLoop } from './loop.js?v=mwqffg78';
-import { spawnEnemy } from './core/enemies.js?v=mwqffg78';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqffg78';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwqffg78';
-import { icon, RELIC_TONE } from './icons.js?v=mwqffg78';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwqffg78';
-import { startTitleScene } from './titlescene.js?v=mwqffg78';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwqfomuu';
+import { Renderer } from './render.js?v=mwqfomuu';
+import { Input } from './input.js?v=mwqfomuu';
+import { Sfx } from './sfx.js?v=mwqfomuu';
+import { stepLoop } from './loop.js?v=mwqfomuu';
+import { spawnEnemy } from './core/enemies.js?v=mwqfomuu';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqfomuu';
+import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqfomuu';
+import { icon, RELIC_TONE } from './icons.js?v=mwqfomuu';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwqfomuu';
+import { startTitleScene } from './titlescene.js?v=mwqfomuu';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwqffg78';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqffg78';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqffg78';
-import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqffg78';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwqffg78';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqffg78';
+import { CFG } from './core/config.js?v=mwqfomuu';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqfomuu';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqfomuu';
+import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqfomuu';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwqfomuu';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqfomuu';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -137,10 +137,10 @@ function tutEvent(ev) {
 // 디버그·테스트용: 방 바로 열기
 function setRoom(room) { if (!run) { run = newRun(); } enterRoom(run, room === 'arena' ? 'combat' : room); play(); }
 // 빠른 시작 (패링의 서약)
-function start() { run = newRun(); enterRoom(run, 'combat'); bossesKilled = []; practice = false; play(); R.irisMode = null; R.trans.clear(); }   // 테스트용 빠른 시작: 전환 연출 생략
+function start() { run = newRun(); R.seenKind = {}; enterRoom(run, 'combat'); bossesKilled = []; practice = false; play(); R.irisMode = null; R.trans.clear(); }   // 테스트용 빠른 시작: 전환 연출 생략
 function newPilgrimage(opts = {}) {
   bossesKilled = []; practice = false;
-  run = newRun(opts.seed, { dark: save.dark, pool: relicPool(save), oil: save.oil, shortcut: false, daily: !!opts.daily, tutorial: !save.records.runs && !save.tutorialDone });   // 첫 순례 = 튜토리얼 방
+  run = newRun(opts.seed, { dark: save.dark, pool: relicPool(save), oil: save.oil, shortcut: false, daily: !!opts.daily, tutorial: !save.records.runs && !save.tutorialDone });  R.seenKind = {};   // 첫 순례 = 튜토리얼 방
 }
 
 function bindPicks(fn) { for (const b of ui.querySelectorAll('.pick, [data-id]')) b.addEventListener('pointerup', e => { e.preventDefault(); sfx.unlock(); sfx.play('click'); if (!b.disabled) fn(b.dataset.id); }); }
@@ -425,11 +425,18 @@ function leaveRoom() {
 }
 // 휴식(모닥불 앞에서): 한 번만, 셋 중 하나. 상황에 따라 답이 달라지게 (다쳤으면 치료, 기름이 바닥이면 기름, 멀쩡하면 단련)
 // 등불 다시 붙이기: 휴식방에서만 등불 속성을 바꿀 수 있다 (14 이상인 다른 스탯). 휴식 선택과 별개로 무료
+// 이 지역 적들의 상성 (속성을 고를 때 참고): '약점 구울·나방 · 저항 창병'
+function regionAff(el) {
+  const g = regionOf(run); if (!g || !el) return '';
+  const kinds = [...new Set([...g.enemies, g.boss])], pick = t => kinds.filter(k => (AFFINITY[k] || {})[t]?.includes(el)).map(nameOf).join('·');
+  const wk = pick('weak'), rs = pick('resist');
+  return [wk && `약점 ${wk}`, rs && `저항 ${rs}`].filter(Boolean).join(' · ') || '이 지역엔 상성 없음';
+}
 const attuneTargets = () => Object.keys(STAT_SPELL).filter(k => run.stats[k] >= 14 && k !== run.element);
 function attuneScreen() {
   const p = world.player, list = attuneTargets();
-  screen(`<div class="card wide"><h2>등불 다시 붙이기</h2><div class="quote">지금: ${run.element ? STAT_ELEMENT[run.element] : '각성 전'} — 어떤 불꽃으로 탈까</div><div class="picks">
-    ${list.map(k => { const sp = elementSpell(run.stats, k, run.baseSpell), S = SPELLS[sp]; return `<button class="pick door t-${S.tone}" data-id="${k}"><div class="niche">${icon(S.icon, S.tone)}</div><b>${STAT_ELEMENT[k]} · ${ENCHANT[k].name}</b><span>${tierText(k, enchTier(run.stats, k))}</span></button>`; }).join('')}
+  screen(`<div class="card wide"><h2>등불 다시 붙이기</h2><div class="quote">지금: ${run.element ? `${STAT_ELEMENT[run.element]} (${regionAff(run.element)})` : '각성 전'} — 어떤 불꽃으로 탈까</div><div class="picks">
+    ${list.map(k => { const sp = elementSpell(run.stats, k, run.baseSpell), S = SPELLS[sp]; return `<button class="pick door t-${S.tone}" data-id="${k}"><div class="niche">${icon(S.icon, S.tone)}</div><b>${STAT_ELEMENT[k]} · ${ENCHANT[k].name}</b><span>${tierText(k, enchTier(run.stats, k))}</span><span class="aff">${regionAff(k)}</span></button>`; }).join('')}
     </div><div class="btns"><button class="btn alt" data-id="back">그대로 둔다</button></div></div>`);
   bindPicks(id => {
     if (id !== 'back' && STAT_SPELL[id]) { run.element = id; p.element = id; p.spells = [runSpell(run)]; p.enchantT = 0; hudKey = ''; R.say(`등불이 ${STAT_ELEMENT[id]}의 불꽃으로 탄다`); sfx.play('ignite'); }

@@ -1,10 +1,10 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqffg78';
-import { hitLevel } from './level.js?v=mwqffg78';
-import { STAT_SPELL } from './spells.js?v=mwqffg78';
-import { CFG } from './config.js?v=mwqffg78';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwqffg78';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqffg78';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqfomuu';
+import { hitLevel } from './level.js?v=mwqfomuu';
+import { STAT_SPELL } from './spells.js?v=mwqfomuu';
+import { CFG } from './config.js?v=mwqfomuu';
+import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT } from './enemies.js?v=mwqfomuu';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqfomuu';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -151,7 +151,7 @@ export function resolvePlayerAttacks(w) {
       if (!p.crit && cc) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < cc) p.crit = true; }   // 투지·질풍: 치명타 확률
       p.galeT = 0;
       const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? (p.mods.critMul || 2) : 1) * (p.mods.atkMul || 1)
-        * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1) * (p.powT > 0 ? 1 + (p.powK || 0) : 1) * (p.enchantT > 0 ? CFG.enchant.dmgMul : 1);   // 두른 검은 피해 +12%   // 마법 효과: 공격 강화   // 공명 철벽 반격·버팀
+        * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1) * (p.powT > 0 ? 1 + (p.powK || 0) : 1) * (p.enchantT > 0 ? CFG.enchant.dmgMul * AFF_DMG[affinity(e, p.element) + 1] : 1);   // 상성: 약점 +20% · 저항 -15%   // 두른 검은 피해 +12%   // 마법 효과: 공격 강화   // 공명 철벽 반격·버팀
       p.riposte = false;
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
       const spin = p.state === 'flurry', FL = CFG.flurry, fk = spin ? Math.max(0, flurryHit(p)) : 0, last = spin && fk === FL.hits.length - 1;
@@ -160,6 +160,7 @@ export function resolvePlayerAttacks(w) {
       if (wasCrit && p.mods.critLight) p.light = Math.min(CFG.light.max, p.light + p.mods.critLight);   // 투지 16
       if (!e.dead) p.hitChain = (p.hitChain || 0) + 1;
       if (p.dark) { p.noiseT = 20; p.noiseR = CFG.snuff.noiseAtk * (p.mods.quietMul || 1); }   // 어둠 속에서 베면 소리가 나 다른 적이 돌아봄 (휘두르는 것만으론 소리 없음)
+      if (p.enchantT > 0 && p.element && !e._affShown && affinity(e, p.element)) { e._affShown = true; w.events.push({ type: 'affinity', x: e.x + e.w / 2, y: e.y, el: p.element, aff: affinity(e, p.element) }); }   // 처음 벨 때 '약점'/'저항' 표시
       if (p.enchantT > 0 && !e.dead) elBuild(w, e, meleeBuild(p, e, spin, last, wasCrit));   // 두른 불꽃: 속성마다 다른 방식으로 게이지
       if (p.combo === 2 && (p.mods.flame || RES.emberEdge)) e.burnT = 180;   // 화염 칼날 각인·공명 불꽃 칼날                       // 화염 칼날
       w.hitstop = Math.max(w.hitstop, spin ? FL.hitstop[fk] : CFG.attack.hitstop[p.combo]);
@@ -200,6 +201,7 @@ export function spellPerk(w, e, spell, killed) {
 // 속성마다 게이지가 쌓이는 방식 = 그 스탯의 싸움 방식
 //  화염(힘): 큰 한 방(3타·연참 마무리)  얼음(민첩): 구르기로 흘리기(패링·피격 쪽에서)  빛(의지): 패링(패링 쪽에서)
 //  귀화(그림자): 등 뒤·어둠 속 공격  생명: 맞기(피격 쪽에서)  번개(투지): 맞지 않고 이어 때릴수록, 치명타
+const AFF_BUILD = [0.5, 1, 1.6], AFF_DMG = [0.85, 1, 1.2];   // [저항, 보통, 약점]
 function meleeBuild(p, e, spin, last, crit) {
   const behind = Math.sign((p.x + p.w / 2) - (e.x + e.w / 2)) === -e.face;
   switch (p.element || null) {
@@ -215,7 +217,7 @@ function meleeBuild(p, e, spin, last, crit) {
 // 속성 게이지: 두른 검으로 벨 때마다 쌓이고, 가득 차면 속성 효과가 터진다 (보스는 훨씬 많이 필요)
 export function elBuild(w, e, amt) {
   const p = w.player, E = CFG.enchant, el = p.element || null;
-  e.elB = (e.elB || 0) + amt; e.elK = el;
+  e.elB = (e.elB || 0) + amt * AFF_BUILD[affinity(e, el) + 1]; e.elK = el;   // 상성: 약점 1.6배 · 저항 절반
   if (e.elB < (e.boss ? E.needBoss : E.need[p.enchTier || 0])) return;
   e.elB = 0; const B = e.boss ? 0.4 : 1, cx = e.x + e.w / 2, cy = e.y + e.h / 2, T = p.enchTier >= 2 ? 1.5 : 1;   // 17 이상: 폭발 1.5배
   switch (el) {
@@ -240,6 +242,7 @@ export function relightFlash(w) {
   for (const e of liveOf(w)) {
     if (Math.hypot(e.x + e.w / 2 - cx, (e.y + e.h / 2 - cy) * 1.4) > R + e.w / 2) continue;
     if (e.boss) addPoise(w, e, 0.18 * (p.mods.flashMul || 1)); else { e.staggerT = Math.max(e.staggerT || 0, S.flashStagger); e.st = 'idle'; e.atk = null; e.srcs = []; }
+    const FB = (DARK_REACT[e.kind] || {}).flashBlind; if (FB && !e.boss) { e.blindT = Math.max(e.blindT || 0, FB); w.events.push({ type: 'dazzle', x: e.x + e.w / 2, y: e.y }); }   // 어둠눈(암살자): 섬광에 눈이 멂 → 암살 기회
     if (p.enchantT > 0) elBuild(w, e, e.boss ? CFG.enchant.needBoss * 0.5 : 999);
   }
   w.hitstop = Math.max(w.hitstop, 4); w.shake = Math.max(w.shake, 6);

@@ -517,3 +517,4 @@ button.scard:disabled { opacity: .45; cursor: default; }
 .sc-perk .dim { opacity: .45; }   /* 아직 안 열린 두르기 단계 */
 #b-snuff { --img: var(--px-snuff); --img-down: var(--px-snuff-down); --c: #b070e0; width: calc(var(--u) * .86); height: calc(var(--u) * .86); right: calc(var(--r0) + var(--u) * 2.82); bottom: calc(var(--b0) + var(--u) * 2.25); top: auto; }   /* 소등: 마법 버튼 위 */
 #b-snuff.lit { filter: drop-shadow(0 0 6px rgba(176,112,224,.8)); } #b-snuff.cool { opacity: .3; }
+.pick span.aff { color: #e8c37a; font-size: 10px; }

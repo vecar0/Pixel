@@ -57,7 +57,7 @@ for (let guard = 0; guard < 2000; guard++) {
   }
   (await mode()) === 'play' || fail('방으로 안 돌아옴: ' + (await mode()) + ' ' + JSON.stringify(st) + ' ' + log.slice(-3).join('|') + ' html=' + (await p.evaluate(() => document.querySelector('#ui').innerText.slice(0, 120))));
   await p.evaluate(() => { const w = window.__lk.world; window.__oldW = w; w.player.x = w.props.find(o => o.kind === 'exit').x; });
-  // 출구 → 아이리스가 검게 닫힘 → (전투방이면 단련, 강적방이면 각인) → 새 방
+  // 출구 → 아이리스가 검게 닫힘 → 단련(전투방 1점, 강적방 2점) → 새 방
   let rewarded = false;
   const moved = await until(async () => {
     if (await mode() === 'relic') {

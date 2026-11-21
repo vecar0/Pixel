@@ -135,6 +135,7 @@ export class Renderer {
       else if (ev.type === 'alarm') { this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '경보!', life: 60, col: '#ff4f5e' }); (this.ripples = this.ripples || []).push({ x: ev.x, y: ev.y + 30, r: 6, t: 0, c: '255,79,94', max: ev.r }); }
       else if (ev.type === 'sigil') { this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '각인!', life: 50, col: EL_SLASH[ev.el][5] }); if (!this.sigilHint) { this.sigilHint = 1; this.say(`마법 각인 — 이 적을 처형하면 「${SPELLS[ev.spell] ? SPELLS[ev.spell].name : '마법'}」이 터진다`, 220); } }
       else if (ev.type === 'enrage') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '버팀!', life: 45, col: '#ff8a5a' });   // 연타당한 적이 버티고 반격
+      else if (ev.type === 'enemyStrike' && ev.kind === 'moth') { const e = w.enemies.find(o => o.kind === 'moth' && o.st === 'active' && Math.abs(o.x + o.w / 2 - ev.x) < 40); if (e) e.dustT = 24; }   // 나방 돌진: 날개 가루가 흩날림 (아래 parts)
       else if (ev.type === 'dazzle') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '눈부심', life: 50, col: '#ffe9a0' });
       else if (ev.type === 'assassinate') { this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: ev.elite ? '급습!' : '암살!', life: 50 }); this.flash = Math.max(this.flash, 0.3); }
       else if (ev.type === 'flash') { this.flash = Math.max(this.flash, 0.3); this.zoom = Math.max(this.zoom || 0, 0.15); this.lampFlash = { t: 0, el: ev.el }; }   // 다시 켬: 등불에서 작은 섬광
@@ -303,6 +304,9 @@ export class Renderer {
       const [, ey] = this.eyePos(w, e), x = Math.round(e.x + e.w / 2), y = Math.round(Math.min(e.y - 10, ey - 22) - (e.elB > 0 ? 8 : 0) - (af > 0 ? Math.abs(Math.sin(w.t * 0.12)) * 2 : 0));   // 머리 위 (그림 꼭대기 근처)
       const tri = (r, up) => { g.beginPath(); if (up) { g.moveTo(x - r, y + r * 0.6); g.lineTo(x + r, y + r * 0.6); g.lineTo(x, y - r); } else { g.moveTo(x - r, y - r * 0.6); g.lineTo(x + r, y - r * 0.6); g.lineTo(x, y + r); } g.fill(); };
       g.fillStyle = 'rgba(8,6,14,.85)'; tri(7, af > 0); g.fillStyle = af > 0 ? EL_SLASH[p.element][5] : '#8a8494'; tri(4.5, af > 0);
+    }
+    for (const e of w.enemies) if (e.dustT > 0 && !e.dead) {                // 나방 날개 가루: 돌진하는 동안 뒤로 옅은 가루가 떨어짐
+      e.dustT--; if (w.t % 2 === 0) this.parts.push({ x: e.x + e.w / 2 - e.face * 6 + (Math.random() - 0.5) * 10, y: e.y + e.h / 2 + (Math.random() - 0.5) * 8, vx: -e.face * 0.3 + (Math.random() - 0.5) * 0.3, vy: 0.25 + Math.random() * 0.3, life: 26, col: Math.random() < 0.5 ? '#b89f78' : '#dcc8a2', s: 1 });
     }
     for (const e of w.enemies) if (e.sigil && !e.dead && this.farK(w, e) < 0.6) {   // 마법 각인: 몸 둘레를 도는 속성 색 고리 (처형하면 마법)
       const P = EL_SLASH[e.sigilEl || null], cx = e.x + e.w / 2, cy = e.y + e.h * 0.55, rx = e.w / 2 + 10, ry = 7, a0 = w.t * 0.06;

@@ -49,7 +49,7 @@ const AMBIENT = {
 // 적 등장 · 공격 · 쓰러짐
 const SPAWN = { ghoul: 'spawn/summon-rise', moth: 'spawn/poof', spearman: 'water/splash', priest: 'water/geyser', shellguard: 'nature/earth-spike', assassin: 'shadow/shadow-tendrils' };
 // 적 공격 궤적은 리라가 쓰는 베기(sword-slash·uppercut·spear-sweep·heavy-cleave·double-slash)와 절대 겹치지 않게 — 한눈에 '내 공격 / 적 공격' 구분
-const STRIKE = { ghoul: ['melee/claw-swipe', GREY], moth: ['nature/spore-burst', DUST], spearman: ['melee/thrust', CYAN], shellguard: ['impacts/blunt-hit', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
+const STRIKE = { ghoul: ['melee/claw-swipe', GREY], spearman: ['melee/thrust', CYAN], shellguard: ['impacts/blunt-hit', LILAC], assassin: ['melee/dagger-flurry', VIOLET],
   bellBoss: ['impacts/ground-slam', DUST], spider: ['melee/scythe-reap', LILAC], shadow: ['melee/spin-slash', VIOLET], saint: ['melee/whip-crack', CYAN], forge: ['melee/hammer-smash', AMBER], king: ['impacts/impact-frame', CYAN] };   // 적 11종 모두 서로 다른 궤적
 const DEATH = { ghoul: ['shadow/necro-skulls', GREY], moth: ['holy/feather-burst', DUST], spearman: ['water/rain-splash'], priest: ['water/bubbles'], shellguard: ['explosions/dirt-explosion', LILAC], assassin: ['shadow/hex-sigil', VIOLET] };   // 적 죽음: 보스 기믹(물결·얼음 깨짐·연기)·처형 고리와 겹치지 않게   // 처형 고리(implosion)와 겹치지 않게
 // 착탄 순간 2단 연출 (마법 레이어, 2배 굵은 픽셀): [이펙트, 옵션] 여러 개 + 화면 번쩍 세기

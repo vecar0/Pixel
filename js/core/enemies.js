@@ -2,10 +2,10 @@
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
-import { clipBeam } from './gimmick.js?v=mwqeh41g';
-import { CFG } from './config.js?v=mwqeh41g';
-import { moveAndCollide, overlap } from './player.js?v=mwqeh41g';
-import { BOSSES, bossPick, bossWant } from './boss.js?v=mwqeh41g';
+import { clipBeam } from './gimmick.js?v=mwqeq7k2';
+import { CFG } from './config.js?v=mwqeq7k2';
+import { moveAndCollide, overlap } from './player.js?v=mwqeq7k2';
+import { BOSSES, bossPick, bossWant } from './boss.js?v=mwqeq7k2';
 
 export const ENEMY_DEFS = {
   ghoul: {

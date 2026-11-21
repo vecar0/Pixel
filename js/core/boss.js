@@ -91,7 +91,7 @@ export const BOSSES = {
   },
 };
 
-import { rng } from './enemies.js?v=mwqeh41g';
+import { rng } from './enemies.js?v=mwqeq7k2';
 
 export const bossWant = (w, e, dx) => !!e.forceNext || Math.abs(dx) < BOSSES[e.kind].range || rng(w) < 0.012;
 

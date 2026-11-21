@@ -1,13 +1,13 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqeh41g';
-import { CFG } from './core/config.js?v=mwqeh41g';
-import { attackBox } from './core/player.js?v=mwqeh41g';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqeh41g';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqeh41g';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqeh41g';
-import { FxDirector } from './fxmap.js?v=mwqeh41g';
-import { iconCanvas } from './icons.js?v=mwqeh41g';
-import { bodyShade } from './shade.js?v=mwqeh41g';
+import { clipBeam } from './core/gimmick.js?v=mwqeq7k2';
+import { CFG } from './core/config.js?v=mwqeq7k2';
+import { attackBox } from './core/player.js?v=mwqeq7k2';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqeq7k2';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqeq7k2';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqeq7k2';
+import { FxDirector } from './fxmap.js?v=mwqeq7k2';
+import { iconCanvas } from './icons.js?v=mwqeq7k2';
+import { bodyShade } from './shade.js?v=mwqeq7k2';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -250,7 +250,7 @@ export class Renderer {
     const d = this.dctx;
     d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, vw, H);
     const beacons = (w.props || []).filter(o => o.kind === 'beacon');
-    d.fillStyle = beacons.length ? (w.eclipse ? 'rgba(2,1,4,0.9)' : 'rgba(4,2,8,0.78)') : w.town ? 'rgba(4,2,8,0.18)' : 'rgba(4,2,8,0.5)'; d.fillRect(0, 0, vw, H);   // 그림자 보스방은 더 어둡다
+    d.fillStyle = beacons.length ? (w.eclipse ? 'rgba(2,1,4,0.9)' : 'rgba(4,2,8,0.78)') : w.town ? 'rgba(4,2,8,0.18)' : 'rgba(4,2,8,0.93)'; d.fillRect(0, 0, vw, H);   // 등불에서 멀면 거의 안 보임 (그림자 보스방은 더 어둡다)
     d.globalCompositeOperation = 'destination-out';
     for (const o of beacons) if (o.litT > 0) {                            // 켜진 등대: 둥근 빛 구멍
       const bx = o.x + ox, by = 248 + oy, r = 150 * Math.min(1, o.litT / 40), bg = d.createRadialGradient(bx, by, 10, bx, by, r);
@@ -259,8 +259,9 @@ export class Renderer {
     this.lampX = p.x + p.w / 2 + p.face * 30; this.lampY = p.y + p.h - 32; this.lampR = (110 + p.light * 0.9) * (this.death ? Math.max(0.12, 1 - Math.max(0, this.death - 70) / 90) : 1) * (p.dark ? 0.1 : p.state === 'relight' ? 0.1 + 0.9 * Math.min(1, p.stateT / CFG.snuff.relightF) : 1);   // 소등: 등불이 꺼짐   // 리라 손의 등불 = 이 세계의 광원 (죽으면 서서히 꺼짐)
     if (this.death) { this.lampX = p.x + p.w / 2 + p.face * 34; this.lampY = p.y + p.h - 6; }   // 떨어진 등불 자리
     const lx = this.lampX + ox, ly = this.lampY + oy, lr = this.lampR;
-    const lg = d.createRadialGradient(lx, ly, 10, lx, ly, lr); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
+    const lg = d.createRadialGradient(lx, ly, 10, lx, ly, lr); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(0.5, 'rgba(0,0,0,0.9)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
     d.fillStyle = lg; d.fillRect(0, 0, vw, H);
+    if (!w.town) this.groundBand(d, w, ox, oy, 0.72);                      // 땅(걷는 면)은 어둠 속에서도 보이게
     g.drawImage(this.dark, 0, 0);
     g.globalCompositeOperation = 'lighter';
     const wg = g.createRadialGradient(lx, ly, 2, lx, ly, lr * 0.7); wg.addColorStop(0, `rgba(${w.player.enchantT > 0 ? EL_RGB[w.player.element || null] : '255,170,70'},${w.player.enchantT > 0 ? 0.3 : 0.22})`); wg.addColorStop(1, 'rgba(255,170,70,0)');   // 두르면 등불빛도 속성 색
@@ -268,6 +269,7 @@ export class Renderer {
     g.globalCompositeOperation = 'source-over';
 
     g.save(); g.translate(ox, oy);
+    if (!w.town) this.drawGroundEdge(g, w, 0.16);                         // 멀리 있는 땅의 윤곽
     if (w.props) this.drawProps(g, w);                                    // 쉼터 오브젝트 (상인 등)
     if (w.level) this.drawLevel(g, w);                                    // 항아리·가시·분출구·발판·레버·철문·상자
     const hideChars = this.irisBusy() || (this.cine && this.cine.hideLira);
@@ -281,7 +283,7 @@ export class Renderer {
     g.globalAlpha = 1;
     const hasBeacon = (w.props || []).some(o => o.kind === 'beacon');
     const trapped = bellOf(w).st === 'down' && bellOf(w).trapped;           // 대종에 갇힌 보스는 종 안 (그리지 않음). 허수아비는 그림 + 맞으면 흔들림
-    if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; this.drawEnemy(g, w, e); g.globalAlpha = 1; }   // 어둠 속 그림자는 흐릿하게
+    if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; const fk = this.farK(w, e); if (fk >= 0.98) { this.drawEyes(g, w, e, 0.8); continue; } if (fk > 0) g.globalAlpha = 1 - fk; this.drawEnemy(g, w, e); g.globalAlpha = 1; if (fk > 0.3) this.drawEyes(g, w, e, fk * 0.8); }   // 어둠 속 그림자는 흐릿하게
     if (w.bossDeath && w.bossDeath.t < BOSS_DEATH_F) this.drawBossDeath(g, w);   // 쓰러지는 보스
     for (const e of w.enemies) if (e.elB > 0 && !e.dead && !e.boss) {        // 속성 게이지 (두른 검으로 쌓임): 머리 위 작은 막대
       const k = Math.min(1, e.elB / CFG.enchant.need), x = Math.round(e.x + e.w / 2 - 12), y = Math.round(e.y - 8);
@@ -774,9 +776,36 @@ export class Renderer {
     x.putImageData(d, 0, 0); this.elCache.set(key, c); return c;
   }
   // 소등 화면: 거의 완전한 어둠. 적은 눈빛(못 봄 = 흐린 금빛, 봄 = 붉음, 공격 중 = 크게 깜빡)만, 리라는 희미한 실루엣, 소리는 파문으로
+  // 땅 띠: 걷는 면 바로 아래 몇 줄을 어둠에서 덜어 냄 (어디가 땅·발판인지 항상 보이게)
+  groundBand(c, w, ox, oy, a) {
+    c.save(); c.globalCompositeOperation = 'destination-out';
+    for (const s of w.solids) { if (s.h < 6 && !s.oneWay) continue; const gr = c.createLinearGradient(0, s.y - 2 + oy, 0, s.y + 12 + oy); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = gr; c.fillRect(s.x + ox, s.y - 2 + oy, s.w, 14); }
+    c.restore();
+  }
+  // 등불에서 먼 적: 0 = 다 보임, 1 = 어둠에 묻힘 (눈빛만). 보스·마을·공격 중인 적은 늘 보임
+  farK(w, e) {
+    if (e.boss || w.town || e.dummy || w.player.dark || (w.props || []).some(o => o.kind === 'beacon')) return 0;
+    if (e.st === 'telegraph' || e.st === 'active') return 0;
+    const d = Math.hypot(e.x + e.w / 2 - this.lampX, e.y + e.h / 2 - this.lampY), r = this.lampR;
+    return Math.max(0, Math.min(1, (d - r * 0.8) / (r * 0.45)));
+  }
+  drawEyes(g, w, e, a) {
+    if (e.dead || e.spawnT > 0) return;
+    const x = Math.round(e.x + e.w / 2 + e.face * e.w * 0.22), y = Math.round(e.y + Math.min(e.h * 0.2, 22));
+    g.globalAlpha = a; g.fillStyle = e.unaware ? '#d8b060' : '#ff4f5e'; g.fillRect(x - 4, y, 2, 2); g.fillRect(x + 2, y, 2, 2); g.globalAlpha = 1;
+  }
+  drawGroundEdge(g, w, a) {                                               // 걷는 면 테두리 (은은한 달빛 선)
+    g.fillStyle = `rgba(200,206,232,${a})`;
+    for (const s of w.solids) { if (s.h < 6 && !s.oneWay) continue; g.fillRect(s.x, s.y, s.w, 1); }
+  }
   drawDarkness(g, w) {
     const p = w.player, k = p.dark ? 1 : Math.max(0, 1 - p.stateT / CFG.snuff.relightF);
-    g.fillStyle = `rgba(4,3,10,${0.86 * k})`; g.fillRect(-100, -300, w.width + 200, 900);
+    const band = w.solids.filter(s => s.h >= 6 || s.oneWay);             // 걷는 면 아래 띠는 덜 어둡게 → 땅이 보임
+    g.fillStyle = `rgba(4,3,10,${0.86 * k})`; g.beginPath(); g.rect(-100, -300, w.width + 200, 900);
+    for (const s of band) g.rect(s.x, s.y - 2, s.w, 16);
+    g.fill('evenodd');
+    for (const s of band) { const gr = g.createLinearGradient(0, s.y - 2, 0, s.y + 14); gr.addColorStop(0, `rgba(4,3,10,${0.15 * k})`); gr.addColorStop(1, `rgba(4,3,10,${0.86 * k})`); g.fillStyle = gr; g.fillRect(s.x, s.y - 2, s.w, 16); }
+    this.drawGroundEdge(g, w, 0.6 * k);
     if (this.lastFr && k > 0.3) { const fr = this.lastFr; g.save(); g.globalAlpha = 0.6 * k; g.translate(Math.round(p.x + p.w / 2), Math.round(p.y + p.h)); g.scale(p.face, 1); g.drawImage(this.tinted('#3a3f62', fr.img), -fr.ax, -fr.ay); g.restore(); }
     for (const e of w.enemies) {
       if (e.dead || e.spawnT > 0) continue;

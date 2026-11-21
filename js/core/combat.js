@@ -1,9 +1,9 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwq47wq7';
-import { hitLevel } from './level.js?v=mwq47wq7';
-import { CFG } from './config.js?v=mwq47wq7';
-import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwq47wq7';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwq47wq7';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqah9fo';
+import { hitLevel } from './level.js?v=mwqah9fo';
+import { CFG } from './config.js?v=mwqah9fo';
+import { ENEMY_DEFS, ELITE } from './enemies.js?v=mwqah9fo';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqah9fo';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -142,13 +142,14 @@ export function resolvePlayerAttacks(w) {
       if (!p.crit && cc) { w.seed = (w.seed * 1664525 + 1013904223) >>> 0; if (w.seed / 4294967296 < cc) p.crit = true; }   // 투지·질풍: 치명타 확률
       p.galeT = 0;
       const wasCrit = p.crit, mul = (1 + 0.1 * p.chainN) * (p.crit ? (p.mods.critMul || 2) : 1) * (p.mods.atkMul || 1)
-        * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1) * (p.powT > 0 ? 1 + (p.powK || 0) : 1);   // 마법 효과: 공격 강화   // 공명 철벽 반격·버팀
+        * (p.riposte ? 1.6 : 1) * (RES.grit && p.hp <= p.maxHp / 3 ? 1.4 : 1) * (p.powT > 0 ? 1 + (p.powK || 0) : 1) * (p.enchantT > 0 ? CFG.enchant.dmgMul : 1);   // 두른 검은 피해 +12%   // 마법 효과: 공격 강화   // 공명 철벽 반격·버팀
       p.riposte = false;
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
       const spin = p.state === 'flurry', FL = CFG.flurry, fk = spin ? Math.max(0, flurryHit(p)) : 0, last = spin && fk === FL.hits.length - 1;
       const base = spin ? FL.dmg[fk] : CFG.attack.dmg[p.combo], pz = spin ? FL.poise[fk] : PO.hit * (p.combo === 2 ? p.mods.str3Poise || 1 : 1);   // 힘 16: 3타 자세 2배
       const dealt = damageEnemy(w, e, Math.round(base * mul), pz * (p.mods.poiseMul || 1));
       if (wasCrit && p.mods.critLight) p.light = Math.min(CFG.light.max, p.light + p.mods.critLight);   // 투지 16
+      if (p.enchantT > 0 && !e.dead) elBuild(w, e, spin ? CFG.enchant.flurryBuild : CFG.enchant.build[p.combo]);   // 두른 불꽃: 속성 게이지
       if (p.combo === 2 && (p.mods.flame || RES.emberEdge)) e.burnT = 180;   // 화염 칼날 각인·공명 불꽃 칼날                       // 화염 칼날
       w.hitstop = Math.max(w.hitstop, spin ? FL.hitstop[fk] : CFG.attack.hitstop[p.combo]);
       e.kvx = p.face * (spin ? (last ? 7 : 1.2) : CFG.attack.push[p.combo]) * (e.boss ? 0.15 : 1);   // 연참: 앞 타는 붙잡아 두고 마지막에 날림
@@ -184,6 +185,23 @@ export function spellPerk(w, e, spell, killed) {
     case 'thorns': e.rootT = Math.max(e.rootT || 0, 150 * B); e.brittleT = Math.max(e.brittleT || 0, 150); break;   // 생명↑ 투지↓: 약한 공격 대신 취약
     case 'blast': if (killed && (p.blastHeal || 0) < 2 && p.hp < p.maxHp) { p.blastHeal = (p.blastHeal || 0) + 1; const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h, spell: true }); } break;   // 투지↑ 생명↓: 처치로 회복
   }
+}
+// 속성 게이지: 두른 검으로 벨 때마다 쌓이고, 가득 차면 속성 효과가 터진다 (보스는 훨씬 많이 필요)
+export function elBuild(w, e, amt) {
+  const p = w.player, E = CFG.enchant, el = p.element || null;
+  e.elB = (e.elB || 0) + amt; e.elK = el;
+  if (e.elB < (e.boss ? E.needBoss : E.need)) return;
+  e.elB = 0; const B = e.boss ? 0.4 : 1, cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+  switch (el) {
+    case 'str': e.burnT = Math.max(e.burnT || 0, 241); break;                                       // 화상: 초당 3 × 4초
+    case 'agi': e.staggerT = Math.max(e.staggerT || 0, Math.round(90 * B)); e.brittleT = Math.max(e.brittleT || 0, 180); e.frozenT = Math.round(90 * B); break;   // 빙결
+    case 'wil': addPoise(w, e, e.boss ? 0.3 : 0.7); break;                                          // 심판의 빛: 자세 붕괴
+    case 'lmp': p.light = Math.min(CFG.light.max, p.light + 30); e.slowT = Math.max(e.slowT || 0, 150); break;   // 혼 뽑기
+    case 'vit': if ((p.healBurst || 0) < 2 && p.hp < p.maxHp) { p.healBurst = (p.healBurst || 0) + 1; const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); } break;   // 흡수
+    case 'fury': for (const o of liveOf(w).filter(o => o !== e && Math.abs(o.x + o.w / 2 - cx) < 170).slice(0, 2)) { damageEnemy(w, o, 22, 0.15); o.staggerT = Math.max(o.staggerT || 0, 20); w.events.push({ type: 'zap', x0: cx, y0: cy, x1: o.x + o.w / 2, y1: o.y + o.h / 2 }); } e.staggerT = Math.max(e.staggerT || 0, 20); break;   // 방전
+    default: e.burnT = Math.max(e.burnT || 0, 121);                                                  // 등불 불꽃: 약한 화상
+  }
+  w.events.push({ type: 'elBurst', el, x: cx, y: cy, boss: !!e.boss, ent: e });
 }
 // 가까운 적 (앞쪽 우선). 없으면 null
 function nearestTarget(w, range) {

@@ -26,7 +26,9 @@ export const CFG = {
   flurry: { window: 45, hits: [12, 20, 28, 40], activeF: 4, totalF: 50, iEnd: 42, range: 56, dmg: [10, 10, 10, 24], poise: [0.08, 0.08, 0.08, 0.3], hitstop: [3, 3, 3, 10], lunge: 2.6 },   // 완벽 패링 직후 공격 = 반격 연참 (앞으로 파고들며 4연속 베기, 마지막 일격이 큼, 도는 동안 무적)
   light: { max: 100, perfect: 25, normal: 10, kill: 3 },
   // 등불 마법 (빛 게이지 소모, 1칸). homing = 가까운 적을 쫓아감. delay = pixelfx 이펙트의 착탄 시점(틱)에 맞춘 피해 지연. inv = 시전 중 무적
+  enchant: { cost: 30, dur: 900, dmgMul: 1.12, build: [22, 22, 36], flurryBuild: 14, need: 100, needBoss: 260 },   // 불꽃 두르기: 빛 30, 15초, 베기 피해 +12%, 타마다 속성 게이지
   skill: {   // 위력: 처음 값의 1.4배 (화려한 연출과 함께 상향)
+    enchant: { cost: 30, castF: 14, fireF: 7, dmg: 0 },   // 두르기 동작 (시전 자세)
     bolt:    { homing: true, cost: 20, castF: 14, fireF: 6, dmg: 28, speed: 7, poise: 0.12 },
     lance:   { homing: true, cost: 30, castF: 16, fireF: 6, dmg: 35, speed: 8, poise: 0.2 },
     pillar:  { cost: 40, castF: 18, fireF: 6, dmg: 63, range: 360, radius: 46, delay: 33, poise: 0.3 },

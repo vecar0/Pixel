@@ -2,10 +2,10 @@
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
-import { clipBeam } from './gimmick.js?v=mwq47wq7';
-import { CFG } from './config.js?v=mwq47wq7';
-import { moveAndCollide, overlap } from './player.js?v=mwq47wq7';
-import { BOSSES, bossPick, bossWant } from './boss.js?v=mwq47wq7';
+import { clipBeam } from './gimmick.js?v=mwqah9fo';
+import { CFG } from './config.js?v=mwqah9fo';
+import { moveAndCollide, overlap } from './player.js?v=mwqah9fo';
+import { BOSSES, bossPick, bossWant } from './boss.js?v=mwqah9fo';
 
 export const ENEMY_DEFS = {
   ghoul: {
@@ -124,7 +124,7 @@ export function updateEnemy(w, e) {
   const d = ENEMY_DEFS[e.kind], p = w.player;
   const dx = (p.x + p.w / 2) - (e.x + e.w / 2);
   e.stT++;
-  if (e.rootT > 0) e.rootT--; if (e.slowT > 0) e.slowT--; if (e.brittleT > 0) e.brittleT--;   // 마법 효과: 발 묶음 · 둔화 · 취약
+  if (e.frozenT > 0) e.frozenT--; if (e.rootT > 0) e.rootT--; if (e.slowT > 0) e.slowT--; if (e.brittleT > 0) e.brittleT--;   // 마법 효과: 발 묶음 · 둔화 · 취약
   if (e.staggerT > 0) { e.staggerT--; if (!d.fly) { e.vx = 0; physics(w, e); } return; }
 
   if (e.st === 'idle') {

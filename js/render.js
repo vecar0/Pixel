@@ -1,18 +1,25 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwq47wq7';
-import { CFG } from './core/config.js?v=mwq47wq7';
-import { attackBox } from './core/player.js?v=mwq47wq7';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwq47wq7';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwq47wq7';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwq47wq7';
-import { FxDirector } from './fxmap.js?v=mwq47wq7';
-import { iconCanvas } from './icons.js?v=mwq47wq7';
-import { bodyShade } from './shade.js?v=mwq47wq7';
+import { clipBeam } from './core/gimmick.js?v=mwqah9fo';
+import { CFG } from './core/config.js?v=mwqah9fo';
+import { attackBox } from './core/player.js?v=mwqah9fo';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F } from './core/enemies.js?v=mwqah9fo';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqah9fo';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqah9fo';
+import { FxDirector } from './fxmap.js?v=mwqah9fo';
+import { iconCanvas } from './icons.js?v=mwqah9fo';
+import { bodyShade } from './shade.js?v=mwqah9fo';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
 const SLASH = [['melee/sword-slash', 22, 0], ['melee/uppercut', 20, 0], ['melee/spear-sweep', 64, -26]];
 const STEEL = ['#14121c', '#2a2838', '#4a4860', '#7a7890', '#b0aec4', '#dcdae8', '#ffffff'];   // 은빛 칼 (색 과하지 않게)
+// 두른 불꽃 속성별 색 (속성 = 각성한 스탯): 칼 궤적·등불빛·게이지
+const EL_RGB = { null: '255,170,70', str: '255,120,50', agi: '122,192,240', wil: '255,214,120', lmp: '150,92,196', vit: '127,224,138', fury: '255,226,74' };
+const EL_SLASH = {
+  null: ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], str: ['#3a0804', '#7a1a08', '#c0400e', '#ff7a2a', '#ffc070', '#fff0c8', '#ffffff'],
+  agi: ['#081a2a', '#10345a', '#1e5a8c', '#3a8cc8', '#7ac0f0', '#c0e8ff', '#ffffff'], wil: ['#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'],
+  lmp: ['#020104', '#0a0414', '#180a2a', '#2c1048', '#48206e', '#74409e', '#b498d6'], vit: ['#0a1a0c', '#16361a', '#24582a', '#3a8a3a', '#6ac25a', '#b4ec8a', '#f0ffe0'],
+  fury: ['#1a1404', '#4a3a08', '#8a6e10', '#d0b020', '#ffe24a', '#fff6a8', '#ffffff'] };
 const AMBER7 = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'], SPARK4 = ['#fff6c8', '#ffd86b', '#ff9a2a', '#e8561d'];
 
 const C = {
@@ -88,7 +95,7 @@ export class Renderer {
     // 기본 공격: 동작마다 맞는 pixelfx 베기 하나만 (1타 내려베기 · 2타 올려베기 · 3타 가로 휘두르기). 타격 불꽃은 따로 안 띄움
     if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {
       const [id, dx, dy] = SLASH[p.combo] || SLASH[0];
-      this.pfx.spawn(id, p.x + p.w / 2 + p.face * dx, feet + dy, { flip: p.face < 0, palette: STEEL, light: 0.15, life: 30 });
+      this.pfx.spawn(id, p.x + p.w / 2 + p.face * dx, feet + dy, { flip: p.face < 0, palette: p.enchantT > 0 ? EL_SLASH[p.element || null] : STEEL, light: p.enchantT > 0 ? 0.35 : 0.15, life: 30 });   // 두른 검: 속성 색 궤적
     }
     this.dir.events(w); this.dir.tick(w);
     for (const ev of w.events) {
@@ -164,6 +171,11 @@ export class Renderer {
     for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
     this.parts = this.parts.filter(p => p.life > 0);
     const pl = w.player; if (pl.state === 'roll' && pl.stateT < CFG.roll.totalF && pl.stateT % 3 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 12 });   // 회피 잔상
+    for (const e of w.enemies) if (!e.dead) {                              // 화상(burnT): 몸에서 불꽃이 오름 · 빙결(frozenT): 서리가 날림
+      if (e.burnT > 0 && w.t % 3 === 0) this.parts.push({ x: e.x + Math.random() * e.w, y: e.y + e.h * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 0.3, vy: -0.8 - Math.random() * 0.6, life: 16, col: Math.random() < 0.5 ? '#ff7a2a' : '#ffd27a', s: 2 });
+      if (e.frozenT > 0 && w.t % 4 === 0) this.parts.push({ x: e.x + Math.random() * e.w, y: e.y + Math.random() * e.h, vx: 0, vy: 0.3, life: 18, col: '#dff4ff', s: 1 });
+    }
+    if (pl.enchantT > 0 && w.t % 2 === 0) { const c = EL_SLASH[pl.element || null]; this.parts.push({ x: pl.x + pl.w / 2 + pl.face * (14 + Math.random() * 18), y: pl.y + 26 + Math.random() * 22, vx: (Math.random() - 0.5) * 0.3, vy: -0.4 - Math.random() * 0.5, life: 16, col: c[4 + (Math.random() * 2 | 0)], s: 2 }); }   // 두른 검: 칼끝에서 속성 불티
     if (pl.state === 'execute' && pl.execMode === 'chain' && pl.stateT < CFG.execute.chainHitF && pl.stateT % 2 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 14, st: 'execute', stT: pl.stateT, mode: 'chain', amber: true });   // 연속 처형 돌진 잔상
     for (const g of this.ghosts) g.life--;
     this.ghosts = this.ghosts.filter(g => g.life > 0);
@@ -247,7 +259,7 @@ export class Renderer {
     d.fillStyle = lg; d.fillRect(0, 0, vw, H);
     g.drawImage(this.dark, 0, 0);
     g.globalCompositeOperation = 'lighter';
-    const wg = g.createRadialGradient(lx, ly, 2, lx, ly, lr * 0.7); wg.addColorStop(0, 'rgba(255,170,70,0.22)'); wg.addColorStop(1, 'rgba(255,170,70,0)');
+    const wg = g.createRadialGradient(lx, ly, 2, lx, ly, lr * 0.7); wg.addColorStop(0, `rgba(${w.player.enchantT > 0 ? EL_RGB[w.player.element || null] : '255,170,70'},${w.player.enchantT > 0 ? 0.3 : 0.22})`); wg.addColorStop(1, 'rgba(255,170,70,0)');   // 두르면 등불빛도 속성 색
     g.fillStyle = wg; g.fillRect(0, 0, vw, H);
     g.globalCompositeOperation = 'source-over';
 
@@ -267,6 +279,10 @@ export class Renderer {
     const trapped = bellOf(w).st === 'down' && bellOf(w).trapped;           // 대종에 갇힌 보스는 종 안 (그리지 않음). 허수아비는 그림 + 맞으면 흔들림
     if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; this.drawEnemy(g, w, e); g.globalAlpha = 1; }   // 어둠 속 그림자는 흐릿하게
     if (w.bossDeath && w.bossDeath.t < BOSS_DEATH_F) this.drawBossDeath(g, w);   // 쓰러지는 보스
+    for (const e of w.enemies) if (e.elB > 0 && !e.dead && !e.boss) {        // 속성 게이지 (두른 검으로 쌓임): 머리 위 작은 막대
+      const k = Math.min(1, e.elB / CFG.enchant.need), x = Math.round(e.x + e.w / 2 - 12), y = Math.round(e.y - 8);
+      g.fillStyle = 'rgba(8,6,14,.8)'; g.fillRect(x - 1, y - 1, 26, 5); g.fillStyle = `rgb(${EL_RGB[e.elK || null]})`; g.fillRect(x, y, Math.round(24 * k), 3);
+    }
     for (const e of w.enemies) if (e.barrier > 0 && !e.dead) this.drawBarrier(g, w, e);   // 강적 수호 방패
     if (w.props) this.drawGimmickFront(g, w);                             // 대종은 보스 위에 (가둠)
     this.drawWarnings(g, w);
@@ -854,6 +870,7 @@ export class Renderer {
     }
     g.drawImage(img, -f.ax, -f.ay);
     this.applyLight(g, f.img, f.ax, f.ay, e.x + e.w / 2, e.y + e.h / 2, e.face > 0);
+    if (e.frozenT > 0) { g.globalAlpha = 0.5; g.drawImage(this.tinted('#a8dcff', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }   // 빙결: 얼음빛
     if (e.hot) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.13 + 0.07 * Math.sin(w.t * 0.18); g.drawImage(this.tinted('#ff6a1a', f.img), -f.ax, -f.ay); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }   // 달아오른 갑옷
     else if (e.crackT > 0) { g.globalAlpha = 0.25; g.drawImage(this.tinted('#b8c4d0', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }   // 식어서 잿빛, 금 간 갑옷
     if (hitFlash) { g.globalAlpha = e.flash > 5 ? 0.55 : 0.3; g.drawImage(this.tinted('#ffffff', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }
@@ -1156,6 +1173,7 @@ export class Renderer {
       g.fillStyle = '#2e2537'; g.fillRect(bx, by + 8, bw, 3);
       g.fillStyle = boss.stunT > 0 ? ((w.t >> 2) & 1 ? '#fff' : '#ffe2a8') : '#e8c060'; g.fillRect(bx, by + 8, Math.round(bw * (boss.stunT > 0 ? 1 : boss.poise)), 3);
       if (boss.stunT > 0) { g.fillStyle = '#ffe2a8'; g.textAlign = 'right'; g.fillText('처형 가능', bx + bw, by - 12); g.textAlign = 'left'; }
+      if (boss.elB > 0) { g.fillStyle = `rgb(${EL_RGB[boss.elK || null]})`; g.fillRect(bx, by + 12, Math.round(bw * Math.min(1, boss.elB / CFG.enchant.needBoss)), 2); }   // 보스 속성 게이지
     } else this.bossShadow = 1;
     g.restore();
   }

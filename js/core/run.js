@@ -1,10 +1,10 @@
 // 한 판(런)의 진행: 서약 → 방 → 각인 → 문 선택 → … → 보스. 순수 로직 (DOM 없음)
-import { CFG } from './config.js?v=mwq47wq7';
-import { createWorld } from './world.js?v=mwq47wq7';
-import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwq47wq7';
-import { startStats, statMods, train } from './stats.js?v=mwq47wq7';
-import { OIL_SPELL, spellFor } from './spells.js?v=mwq47wq7';
-import { populateArena, parTime } from './level.js?v=mwq47wq7';
+import { CFG } from './config.js?v=mwqah9fo';
+import { createWorld } from './world.js?v=mwqah9fo';
+import { ELITE_MODS, ENEMY_DEFS } from './enemies.js?v=mwqah9fo';
+import { startStats, statMods, train } from './stats.js?v=mwqah9fo';
+import { OIL_SPELL, spellFor, elementSpell, awakenPick } from './spells.js?v=mwqah9fo';
+import { populateArena, parTime } from './level.js?v=mwqah9fo';
 
 // 결정적 난수 (런 상태에 저장)
 export function rand(r) { r.rng = (r.rng * 1664525 + 1013904223) >>> 0; return r.rng / 4294967296; }
@@ -60,7 +60,7 @@ export function newRun(seed = (Math.random() * 1e9) | 0, opts = {}) {
   const r = { seed, rng: seed >>> 0 || 1, region: 1, roomIdx: 0, length: 6, relics: [], oath: null,
     embers: 0, hp: null, flasks: null, room: 'combat', perfect: 0, executes: 0, kills: 0, t: 0, score: 0, scoreLog: {}, tutorial: !!opts.tutorial,
     dark: opts.dark || 0, pool: opts.pool || Object.keys(RELICS), oil: opts.oil || 'refined', daily: !!opts.daily,
-    stats: startStats(), baseSpell: OIL_SPELL[opts.oil || 'refined'] || 'bolt', lastUp: null, shortcut: !!opts.shortcut, noHitBoss: false, noFlaskRegion: false, regionFlasksUsed: 0, shards: 0, done: [] };
+    stats: startStats(), element: null, baseSpell: OIL_SPELL[opts.oil || 'refined'] || 'bolt', lastUp: null, shortcut: !!opts.shortcut, noHitBoss: false, noFlaskRegion: false, regionFlasksUsed: 0, shards: 0, done: [] };
   r.variants = REGIONS.map(() => null);
   for (const g of REGIONS) { const v = ENEMY_DEFS[g.boss].variants; r.variants[g.id - 1] = v[(rand(r) * v.length) | 0]; }
   r.challenge = CHALLENGES[(rand(r) * CHALLENGES.length) | 0].id;
@@ -100,7 +100,9 @@ export function chooseOath(r, id) {
 // 단련: up +1, 반대 스탯 -1 (스탯 찍기 화면에서 한 점씩)
 export function takeTrain(r, up) { train(r.stats, up); r.lastUp = up; }
 // 지금 빌드가 쓰는 마법
-export const runSpell = r => spellFor(r.stats, r.baseSpell, r.lastUp);
+export const runSpell = r => elementSpell(r.stats, r.element, r.baseSpell);   // 지금 '풀기' 마법
+// 단련 뒤: 아직 각성 전이고 14 이상 스탯이 생기면 그 속성으로 각성 (새로 각성했으면 속성 키를 돌려줌)
+export function awaken(r) { if (r.element) return null; const el = awakenPick(r.stats, r.lastUp); if (el) r.element = el; return el; }
 
 // 스탯 보정 적용 (각인 보정 뒤에 합침)
 export function applyStats(p, stats) {
@@ -214,7 +216,7 @@ export function buildRoomWorld(r) {
   const p = w.player;
   applyRelics(p, r.relics);
   applyStats(p, r.stats || startStats());
-  p.spells = [runSpell(r)];
+  p.spells = [runSpell(r)]; p.element = r.element || null;
   p.oil = r.oil;
   if (r.dark >= 5) p.maxFlasks = Math.max(1, p.maxFlasks - 1);   // 어둠 5+: 기름병 -1
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);

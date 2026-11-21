@@ -164,19 +164,28 @@ test('일반 적 그로기·처형: 완벽 패링으로 무너지고, 처형 모
   steps(w, CFG.execute.hitF + 2); ok(e.dead || !w.enemies.includes(e), 'killed');
   steps(w, CFG.execute.totalF); eq(w.player.state, 'idle');
 });
-const cast = (w, spell, light = 100) => { w.player.spells = [spell]; w.player.light = light; tick(w, I({ skill: true })); };
-test('마법 1칸: 불꽃 고리 빛 55 소모, 반경 안 적 피해, 시전 중 피해 없음', () => {
+const cast = (w, spell, light = 100) => { w.player.spells = [spell]; w.player.light = light; w.player.enchantT = 5; tick(w, I({ skill: true })); };   // 두른 상태에서 누르면 풀기 = 마법
+test('마법 풀기: 두른 상태에서 누르면 추가 빛 없이 마법, 두르기는 끝남 · 시전 중 피해 없음', () => {
   const w = W(); settle(w);
   const d = makeDummy(w, { hp: 100, hits: [w.t + 5] });
   cast(w, 'ring'); steps(w, 30);
-  eq(d.hp, 100 - CFG.skill.ring.dmg); eq(w.player.light, 45); eq(w.player.hp, 5);
+  eq(d.hp, 100 - CFG.skill.ring.dmg); eq(w.player.light, 100); eq(w.player.hp, 5); eq(w.player.enchantT, 0);
 });
-test('등불 탄: 빛 20, 날아가 맞힘 / 빛 부족하면 시전 안 됨', () => {
-  const w = W(); settle(w); w.player.face = 1;
-  const d = makeDummy(w, { hp: 100 }); d.x = w.player.x + 120;
-  cast(w, 'bolt', 25); steps(w, 40);
-  eq(d.hp, 100 - CFG.skill.bolt.dmg); eq(w.player.light, 5);
-  tick(w, I({ skill: true })); ok(w.player.state !== 'cast');
+test('불꽃 두르기: 빛 30 소모, 15초 동안 베기 피해 +12%·속성 게이지 / 빛 부족하면 못 두름', () => {
+  const w = W(); settle(w); w.player.face = 1; w.player.spells = ['bolt']; w.player.light = 40; w.player.element = 'str';
+  tick(w, I({ skill: true })); steps(w, 20);
+  eq(w.player.light, 10); ok(w.player.enchantT > CFG.enchant.dur - 30, '두름');
+  const d = makeDummy(w, { hp: 300 }); d.x = w.player.x + 30;
+  tick(w, I({ attack: true })); steps(w, 20); ok(d.elB > 0, '속성 게이지'); eq(d.hp, 300 - Math.round(CFG.attack.dmg[0] * CFG.enchant.dmgMul));
+  w.player.enchantT = 0; w.player.light = 10; tick(w, I({ skill: true })); ok(w.player.state !== 'cast', '빛 부족');
+});
+test('속성 게이지가 차면 터짐: 화염 = 화상, 얼음 = 빙결, 번개 = 옆 적 전격', () => {
+  for (const [el, chk] of [['str', d => d.burnT > 0], ['agi', d => d.frozenT > 0 || d.staggerT > 0], ['fury', (d, o) => o.hp < 300]]) {
+    const w = W(); settle(w); w.player.face = 1; w.player.element = el; w.player.enchantT = 600;
+    const d = makeDummy(w, { hp: 900 }); d.x = w.player.x + 30; const o = makeDummy(w, { hp: 300 }); o.x = w.player.x + 120;
+    for (let i = 0; i < 8; i++) { tick(w, I({ attack: true })); steps(w, 24); }
+    ok(chk(d, o), el);
+  }
 });
 test('얼음 창은 여러 적을 꿰뚫고, 흑염 창은 앞쪽 일직선만', () => {
   const w = W(); settle(w); w.player.face = 1;

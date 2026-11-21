@@ -44,6 +44,29 @@ export const SPELL_AT = [14, 17, 20];
 export const STAT_SPELL = { str: ['pillar', 'tornado', 'meteor'], agi: ['lance', 'spikes', 'stars'], wil: ['ward', 'smite', 'thunder'], lmp: ['ring', 'wisps', 'spear'], vit: ['heal', 'thorns', 'sanctum'], fury: ['chain', 'drain', 'blast'] };
 // 지금 빌드의 마법: 가장 높은 스탯(14 이상)이 정한다. 동점이면 마지막으로 올린 스탯, 그래도 같으면 표 순서
 for (const [k, ids] of Object.entries(STAT_SPELL)) for (const id of ids) SPELL_ELEMENT[id] = STAT_ELEMENT[k];
+// 등불 각성: 스탯이 처음 14에 닿으면 그 스탯의 속성으로 등불이 각성 (판 동안 고정, 휴식방에서만 다시 붙이기)
+// 마법의 중심은 '불꽃 두르기': 검에 속성 불꽃을 두르고 베기마다 속성 게이지를 쌓는다. 두른 불꽃을 '풀면' 그 속성 마법이 나간다
+export const ENCHANT = {
+  null: { name: '등불 불꽃', burst: '화상 (약)', desc: '게이지가 차면 약한 화상' },
+  str:  { name: '화염 두르기', burst: '화상', desc: '게이지가 차면 4초 동안 불탄다 (초당 피해)' },
+  agi:  { name: '냉기 두르기', burst: '빙결', desc: '게이지가 차면 얼어붙어 멈추고, 받는 피해 +25%' },
+  wil:  { name: '빛 두르기', burst: '심판의 빛', desc: '게이지가 차면 자세가 크게 무너진다' },
+  lmp:  { name: '귀화 두르기', burst: '혼 뽑기', desc: '게이지가 차면 빛 게이지 +30, 적은 둔해진다' },
+  vit:  { name: '생명 두르기', burst: '흡수', desc: '게이지가 차면 체력 1 회복 (방마다 2번)' },
+  fury: { name: '번개 두르기', burst: '방전', desc: '게이지가 차면 주변 적 둘에게 전격 + 경직' },
+};
+// 각성 속성을 고름: 14 이상 중 마지막으로 올린 스탯, 없으면 가장 높은 스탯
+export function awakenPick(stats, lastUp) {
+  const ids = Object.keys(STAT_SPELL).filter(k => stats[k] >= 14);
+  if (!ids.length) return null;
+  if (lastUp && ids.includes(lastUp)) return lastUp;
+  return ids.sort((a, b) => stats[b] - stats[a])[0];
+}
+// 풀기 마법: 각성 속성 스탯이 14·17·20이면 그 단계 마법, 아니면 기본(기름) 마법
+export function elementSpell(stats, el, base = 'bolt') {
+  if (!el || stats[el] < 14) return base;
+  return STAT_SPELL[el][stats[el] >= 20 ? 2 : stats[el] >= 17 ? 1 : 0];
+}
 export function spellFor(stats, base = 'bolt', lastUp = null) {
   const ids = Object.keys(STAT_SPELL), top = Math.max(...ids.map(k => stats[k]));
   if (top < 14) return base;

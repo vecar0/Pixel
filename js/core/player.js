@@ -1,6 +1,6 @@
 // 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
-import { CFG } from './config.js?v=mwq47wq7';
-import { statMods, startStats } from './stats.js?v=mwq47wq7';
+import { CFG } from './config.js?v=mwqah9fo';
+import { statMods, startStats } from './stats.js?v=mwqah9fo';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, FL = CFG.flurry;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
@@ -80,12 +80,13 @@ function start(w, p, action, inp) {
     case 'flask':
       if (p.flasks <= 0 || p.hp >= p.maxHp) return false;
       setState(p, 'flask'); return true;
-    case 'skill': {                                 // 등불 마법 (1칸): 빛을 소모해 시전
+    case 'skill': {                                 // 등불 마법: 두르기(빛 소모, 검에 속성 불꽃) → 두른 상태에서 다시 누르면 풀기(속성 마법, 추가 비용 없음)
       const spell = (p.spells || [])[0];
       if (!spell) return false;
-      const cost = Math.round(CFG.skill[spell].cost * (p.mods.costMul || 1));
+      if (p.enchantT > 0) { p.enchantT = 0; p.spell = spell; setState(p, 'cast'); w.events.push({ type: 'castStart', spell, release: true }); return true; }
+      const cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));
       if (p.light < cost) return false;
-      p.light -= cost; p.spell = spell; setState(p, 'cast'); w.events.push({ type: 'castStart', spell }); return true;
+      p.light -= cost; p.spell = 'enchant'; p.elB = 0; setState(p, 'cast'); w.events.push({ type: 'castStart', spell: 'enchant', el: p.element || null }); return true;
     }
   }
   return false;
@@ -99,6 +100,7 @@ export function updatePlayer(w, inp) {
   if (p.recoverWait > 0) p.recoverWait--;
   if (p.dropT > 0) p.dropT--;
   if (p.blueT > 0) p.blueT--;
+  if (p.enchantT > 0 && p.state !== 'cast' && --p.enchantT === 0) w.events.push({ type: 'enchantEnd' });   // 두른 불꽃이 꺼짐
   if (p.powT > 0) p.powT--; if (p.sharpT > 0) p.sharpT--; if (p.shieldT > 0) p.shieldT--;   // 마법 효과 타이머 (공격 강화 · 패링 판정 · 보호막)
   if (p.comboT > 0) p.comboT--;
   if (p.counterT > 0) p.counterT--;
@@ -134,7 +136,7 @@ export function updatePlayer(w, inp) {
   if (p.state === 'execute' && !p.chainNext && t >= (p.execMode === 'chain' ? CFG.execute.chainTotalF : CFG.execute.totalF)) { setState(p, 'idle'); p.execMode = null; }
   if (p.state === 'cast') {
     const S = CFG.skill[p.spell];
-    if (t === S.fireF) w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face });
+    if (t === S.fireF) { if (p.spell === 'enchant') { p.enchantT = CFG.enchant.dur; p.healBurst = 0; w.events.push({ type: 'enchant', el: p.element || null, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); } else w.events.push({ type: 'skill', spell: p.spell, x: p.x + p.w / 2, y: p.y + 24, face: p.face }); }
     if (t >= S.castF) setState(p, 'idle');
   }
 

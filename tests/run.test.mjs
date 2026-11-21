@@ -1,7 +1,7 @@
 // 런 구조 테스트: node tests/run.test.mjs
 import { test, ok, eq, run } from './lib.mjs';
 import { CFG } from '../js/core/config.js';
-import { takeTrain, applyStats, runSpell, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, nextStage, stageOf, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
+import { takeTrain, applyStats, runSpell, awaken, genArena, REGIONS, advanceRegion, regionOf, challengeDone, RELICS, OATHS, newRun, chooseOath, relicOffer, takeRelic, nextStage, stageOf, enterRoom, roomCleared, buildRoomWorld, applyRelics } from '../js/core/run.js';
 import { tick, EMPTY_INPUT } from '../js/core/world.js';
 import { spawnEnemy, ENEMY_DEFS } from '../js/core/enemies.js';
 import { resolveEnemyHit as resolveHit } from '../js/core/combat.js';
@@ -154,7 +154,7 @@ test('흑염의 순례자: 리라의 공격을 패링하고 반격 예고', () =
 });
 test('청유: 푸른 결계 후 5초간 늦은 패링도 완벽', () => {
   const w = createWorld({ room: 'test', solids: [{ x: -1000, y: 300, w: 4000, h: 40 }] }); steps(w, 30);
-  w.player.spells = ['ward']; w.player.light = 100; tick(w, I({ skill: true })); steps(w, 31);
+  w.player.spells = ['ward']; w.player.light = 100; w.player.enchantT = 5; tick(w, I({ skill: true })); steps(w, 31);   // 두른 상태 → 풀기
   ok(w.player.blueT > 0);
 });
 test('영구 진행: 조각으로 해금, 해금 각인이 풀에 들어감, 클리어 시 어둠 단계 해금', () => {
@@ -222,14 +222,14 @@ test('스탯 한 점의 효과: 힘 1점 = 피해 +6%, 생명 2점 = 최대 체�
   ok(Math.abs(mk({ str: 11 }).player.mods.atkMul - 1.06) < 1e-9); ok(Math.abs(mk({ str: 12 }).player.mods.atkMul - 1.12) < 1e-9);
   eq(mk({ wil: 12 }).player.mods.perfectExtra, 1); eq(mk({ wil: 6 }).player.mods.perfectExtra, -2);
 });
-test('스탯 빌드가 마법을 정한다: 14 이상 없으면 기름 마법, 가장 높은 스탯의 14/20 마법, 동점이면 마지막으로 올린 스탯', () => {
+test('등불 각성: 14 이상 없으면 기름 마법, 처음 14가 된 스탯으로 각성(고정), 그 스탯 14/17/20마다 풀기 마법', () => {
   const r = newRun(5, { oil: 'blue' }); eq(runSpell(r), 'ward');
   eq(runSpell(newRun(5)), 'bolt');
-  for (let i = 0; i < 3; i++) takeTrain(r, 'str'); eq(r.stats.str, 13); eq(runSpell(r), 'ward');   // 힘 13: 아직 기름 마법
-  takeTrain(r, 'str'); eq(runSpell(r), 'pillar');                                                // 힘 14 → 화염 기둥
-  r.stats.agi = 14; r.lastUp = 'agi'; eq(runSpell(r), 'lance');                                  // 동점 → 마지막으로 올린 민첩
+  for (let i = 0; i < 3; i++) takeTrain(r, 'str'); eq(r.stats.str, 13); eq(awaken(r), null); eq(runSpell(r), 'ward');   // 힘 13: 아직 기름 마법
+  takeTrain(r, 'str'); eq(awaken(r), 'str'); eq(runSpell(r), 'pillar');                          // 힘 14 → 화염 각성, 화염 기둥
+  r.stats.agi = 16; r.lastUp = 'agi'; eq(awaken(r), null); eq(runSpell(r), 'pillar');            // 이미 각성: 다른 스탯이 높아도 그대로 (휴식방에서만 변경)
   r.stats.str = 20; eq(runSpell(r), 'meteor');                                                   // 힘 20 → 운석
-  enterRoom(r, 'combat'); eq(buildRoomWorld(r).player.spells.join(), 'meteor');
+  enterRoom(r, 'combat'); const w = buildRoomWorld(r); eq(w.player.spells.join(), 'meteor'); eq(w.player.element, 'str');
 });
 test('스탯 구간 능력: 생명 14 기름병+1 회복, 6 이하 약점, 의지 20 모든 패링 완벽, 힘 14 3타 검기', () => {
   const mk = st => { const r = newRun(1); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
@@ -261,7 +261,7 @@ test('투지: 높으면 치명타(20이면 3배), 14 이상이면 처치 뒤 다
   const mk = st => { const r = newRun(1); Object.assign(r.stats, st); enterRoom(r, 'combat'); return buildRoomWorld(r); };
   const w = mk({ fury: 20, vit: 0 }); eq(w.player.mods.critMul, 3); ok(w.player.mods.critChance > 0.25); ok(w.player.mods.killCrit);
   eq(mk({}).player.mods.critChance, 0); eq(w.player.maxHp, 1);
-  eq(runSpell(Object.assign(newRun(1), { stats: { ...newRun(1).stats, fury: 14, vit: 6 } })), 'chain');
+  eq(runSpell(Object.assign(newRun(1), { stats: { ...newRun(1).stats, fury: 14, vit: 6 }, element: 'fury' })), 'chain');
 });
 
 test('공명: 다른 쌍 두 스탯이 14 이상이면 열림, 같은 쌍끼리는 불가', () => {
@@ -280,7 +280,7 @@ test('공명 효과: 철벽 반격·수호·따스한 등불', () => {
   const e = spawnEnemy(w2, 'ghoul', p2.x + p2.w + 2, p2.y); e.update = () => {}; e.maxHp = e.hp = 500; e.poiseMax = false;
   tick(w2, I({ attack: true })); steps(w2, CFG.attack.startupF + 2); eq(500 - e.hp, Math.round(10 * p2.mods.atkMul * 1.6)); ok(!p2.riposte);
   const w3 = mk({ lmp: 14, wil: 6, vit: 14, fury: 6 }), p3 = w3.player; p3.hp = 2;
-  for (let i = 0; i < 3; i++) { p3.light = 100; p3.state = 'idle'; tick(w3, I({ skill: true })); steps(w3, 40); }
+  for (let i = 0; i < 3; i++) { p3.light = 100; p3.state = 'idle'; p3.enchantT = 5; tick(w3, I({ skill: true })); steps(w3, 40); }
   eq(p3.hp, 3);
 });
 

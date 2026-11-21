@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwq47wq7';
-import { CFG } from './core/config.js?v=mwq47wq7';
-import { groundAt } from './core/world.js?v=mwq47wq7';
+import { preload } from './fx.js?v=mwqah9fo';
+import { CFG } from './core/config.js?v=mwqah9fo';
+import { groundAt } from './core/world.js?v=mwqah9fo';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -19,6 +19,7 @@ const VOLT = ['#1a1404', '#4a3a08', '#8a6e10', '#d0b020', '#ffe24a', '#fff6a8', 
 const HELL = ['#0c0204', '#2a0408', '#5a0a10', '#961618', '#d02a1e', '#ff5a30', '#ffb08a'];   // 함정·위험 불 (검붉음)
 const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', '#ffffff'];
 // 마법별 색 (마법진·모이는 빛). 함수라서 아래쪽 팔레트 상수를 써도 됨
+const elPal = el => ({ str: AMBER, agi: ICE, wil: GOLD, lmp: GHOST, vit: GREEN, fury: VOLT })[el] || AMBER;   // 두른 불꽃 속성 → 팔레트
 const palOf = sp => ({ bolt: AMBER, wisps: GHOST, pillar: AMBER, tornado: AMBER, meteor: AMBER, ring: GHOST, lance: ICE, spikes: ICE, stars: ICE, ward: GOLD, thunder: GOLD, chain: VOLT,
   smite: GOLD, spear: GHOST, blast: VOLT, heal: GREEN, sanctum: GREEN, thorns: GREEN, drain: VOLT })[sp] || AMBER;   // 스탯 속성별 색: 힘 화염 · 민첩 얼음 · 의지 빛 · 등불 귀화 · 생명 자연 · 투지 번개
 const HIT = ['#1a0e06', '#3a2410', '#6a4420', '#9a6a34', '#c4955a', '#e0bc88', '#f0dcb8'];   // 기본 타격: 흰빛 없는 톤
@@ -139,6 +140,18 @@ export class FxDirector {
           : ['#1a0e04', '#4a2a0c', '#8c5a14', '#d09a1e', '#ffc63a', '#ffe27a', '#fff6c8', '#ffffff'] }, 1);
         break;
       case 'bossFall': P('explosions/big-explosion', ev.x, ev.y + 40, { life: 150, light: 0.6 }, 3); P('holy/holy-pillar', ev.x, ev.y + 40, { light: 0.5, palette: GOLD }, 3); break;   // 보스 마지막 폭발 + 빛기둥
+      case 'enchant': { const hx = p.x + p.w / 2 + p.face * 20; P('holy/sunburst', hx, p.y + 34, { palette: elPal(ev.el), life: 40, light: 0.45 }, 3); P('impacts/hit-spark', hx, p.y + 40, { height: 26, flip: p.face < 0, palette: elPal(ev.el), life: 26, light: 0.4 }, 2); break; }   // 불꽃 두르기: 칼에 불이 붙음
+      case 'elBurst': {                                                   // 속성 게이지가 찼다: 속성마다 다른 상태 표시
+        const pal = elPal(ev.el);
+        if (ev.el === 'str' || !ev.el) P('impacts/hit-spark', ev.x, ev.y + 20, { height: 24, palette: AMBER, life: 30, light: 0.45 }, 2);   // 화상: 몸의 불꽃은 렌더러가 (burnT)
+        else if (ev.el === 'agi') P('ice/snowflake-burst', ev.x, ev.y + 10, { life: 40, light: 0.4 }, 2);   // 빙결: 얼음 색은 렌더러가 (frozenT)
+        else if (ev.el === 'wil') P('impacts/crit-hit', ev.x, ev.y + 20, { palette: pal, life: 40, light: 0.5 }, 3);
+        else if (ev.el === 'lmp') P('shadow/soul-drain', ev.x, ev.y + 30, { palette: pal, life: 60, light: 0.35 }, 2);
+        else if (ev.el === 'vit') P('nature/healing-bloom', p.x + p.w / 2, p.y + p.h, { palette: pal, life: 60, light: 0.3 }, 2);
+        else if (ev.el === 'fury') P('lightning/zap-hit', ev.x, ev.y, { palette: pal, life: 40, light: 0.5 }, 3);
+        break;
+      }
+      case 'zap': P('lightning/spark-arc', (ev.x0 + ev.x1) / 2, ev.y1 + 10, { flip: ev.x1 < ev.x0, palette: VOLT, life: 24, light: 0.4 }, 2); break;   // 방전: 옆 적으로 튐
       case 'execDash': P('melee/double-slash', (ev.x0 + ev.x1) / 2, ev.y - 30, { flip: ev.face < 0, palette: AMBER, life: 24, light: 0.35 }, 2); break;   // 연속 처형 돌진: 사라진 자리 + 가르는 궤적
       case 'execute': P('explosions/implosion', ev.x, ev.y + 20, { palette: AMBER, life: 60, light: 0.45 }, 3); break;   // 처형 한 번에 원은 하나만: 큰 고리 (작은 치명타 폭발은 뺌)
       case 'hurt': P('ui/heart-lost', p.x + p.w / 2, p.y - 8, {}, 3); break;   // 붉은 화면·파편은 렌더러가 그림
@@ -159,7 +172,7 @@ export class FxDirector {
       case 'heal': P('nature/healing-bloom', p.x + p.w / 2, feet, { life: 80, light: 0.3 }, 3); break;   // 발밑에서 피어오르는 회복 빛 (리라 실루엣을 덧그리는 이펙트는 쓰지 않음)
       case 'castStart': {                                                  // 시전: 손의 등불에서 짧게 불꽃이 튄다 (마법진·몸 빛 없음, 모든 마법 공통)
         const hx = p.x + p.w / 2 + p.face * 16, hy = p.y + 30;
-        P('impacts/hit-spark', hx, hy + 8, { height: 8, flip: p.face < 0, palette: palOf(ev.spell), life: 22, light: 0.35 }, 2);
+        P('impacts/hit-spark', hx, hy + 8, { height: 8, flip: p.face < 0, palette: ev.spell === 'enchant' ? elPal(ev.el) : palOf(ev.spell), life: 22, light: 0.35 }, 2);
         break;
       }
       case 'skill': {                                                      // 등불 마법: 마법마다 고유 이펙트 (착탄형은 표적 자리에)

@@ -1,11 +1,11 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
-import { CFG } from './config.js?v=mwq47wq7';
-import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwq47wq7';
-import { updateLevel, dropPickups } from './level.js?v=mwq47wq7';
-import { createPlayer, updatePlayer, overlap } from './player.js?v=mwq47wq7';
-import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwq47wq7';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk } from './combat.js?v=mwq47wq7';
-import { ACTIONS } from './player.js?v=mwq47wq7';
+import { CFG } from './config.js?v=mwqah9fo';
+import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwqah9fo';
+import { updateLevel, dropPickups } from './level.js?v=mwqah9fo';
+import { createPlayer, updatePlayer, overlap } from './player.js?v=mwqah9fo';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwqah9fo';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk } from './combat.js?v=mwqah9fo';
+import { ACTIONS } from './player.js?v=mwqah9fo';
 
 export const BOSS_DEATH_F = 160, BOSS_FALL_F = 96;   // 보스 사망 연출 길이 · 마지막 폭발 시점 (틱)
 // 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판

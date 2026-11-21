@@ -513,3 +513,4 @@ button.scard:disabled { opacity: .45; cursor: default; }
 .pick.t-void, .spellcard.t-void { --tone: #b070e0; }   /* 귀화 */
 .card.wide .picks.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }   /* 연습장: 보스 6명 3×2 */
 .card.wide .picks.grid3 .pick { min-height: 0; padding: 8px 8px; }
+#b-skill.lit { --c: #ffe08a; filter: drop-shadow(0 0 6px rgba(255,179,71,.8)); }   /* 두른 동안: 풀기 */

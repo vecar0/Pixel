@@ -87,6 +87,7 @@ export const TONE = {
   bone:  { a: '#6c6276', b: '#d9cfc0', c: '#3d3546', w: '#ffffff' },
   heal:  { a: '#2f6b3a', b: '#7fe08a', c: '#24412a', w: '#e8ffe8' },
   red:   { a: '#7a1f2a', b: '#ff4f5e', c: '#3a1820', w: '#ffd0d6' },
+  void:  { a: '#4a1a6a', b: '#b070e0', c: '#24103e', w: '#ecd8ff' },   // 귀화(등불 마법)
 };
 
 const cache = new Map();

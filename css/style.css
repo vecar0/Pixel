@@ -510,3 +510,4 @@ button.scard:disabled { opacity: .45; cursor: default; }
 
 .sc-perk { margin-top: 3px; color: #9fe08a; font-size: 10.5px; line-height: 1.4; }   /* 마법 효과 (스탯 보완·강화) */
 .sc-tags i.el { color: var(--tone, #ffd27a); border-color: currentColor; }   /* 마법 속성 */
+.pick.t-void, .spellcard.t-void { --tone: #b070e0; }   /* 귀화 */

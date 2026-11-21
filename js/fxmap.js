@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwpuscod';
-import { CFG } from './core/config.js?v=mwpuscod';
-import { groundAt } from './core/world.js?v=mwpuscod';
+import { preload } from './fx.js?v=mwpuy55r';
+import { CFG } from './core/config.js?v=mwpuy55r';
+import { groundAt } from './core/world.js?v=mwpuy55r';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -14,11 +14,12 @@ const LILAC = ['#1e1430', '#3c2a5c', '#6a4e96', '#9a7ccc', '#c8b0f0', '#ece2ff',
 const GREEN = ['#0a1a0c', '#16361a', '#24582a', '#3a8a3a', '#6ac25a', '#b4ec8a', '#f0ffe0'];
 const TEAL = ['#04161a', '#0a3438', '#11606a', '#1aa0a8', '#5ae0d8', '#b8fff4', '#ffffff'];   // 도깨비불: 푸른 귀화
 const SHADE = ['#06020c', '#14081e', '#2a1040', '#4a1a6a', '#7a2ea0', '#c070e0', '#f0d0ff'];   // 흑염: 검보라
+const GHOST = ['#020104', '#0a0414', '#180a2a', '#2c1048', '#48206e', '#74409e', '#b498d6'];   // 귀화(등불): 어두운 보랏빛 영혼불 — 얼음(푸른빛)과 겹치지 않게
 const VOLT = ['#1a1404', '#4a3a08', '#8a6e10', '#d0b020', '#ffe24a', '#fff6a8', '#ffffff'];   // 번개(투지): 노란 전격
 const CYAN = ['#0a1e2a', '#14405a', '#22708e', '#3aa6c0', '#7cd8e8', '#cef4fa', '#ffffff'];
 // 마법별 색 (마법진·모이는 빛). 함수라서 아래쪽 팔레트 상수를 써도 됨
-const palOf = sp => ({ bolt: AMBER, wisps: TEAL, pillar: AMBER, tornado: AMBER, meteor: AMBER, ring: TEAL, lance: ICE, spikes: ICE, stars: ICE, ward: GOLD, thunder: GOLD, chain: VOLT,
-  smite: GOLD, spear: TEAL, blast: VOLT, heal: GREEN, sanctum: GREEN, thorns: GREEN, drain: VOLT })[sp] || AMBER;   // 스탯 속성별 색: 힘 화염 · 민첩 얼음 · 의지 빛 · 등불 귀화 · 생명 자연 · 투지 번개
+const palOf = sp => ({ bolt: AMBER, wisps: GHOST, pillar: AMBER, tornado: AMBER, meteor: AMBER, ring: GHOST, lance: ICE, spikes: ICE, stars: ICE, ward: GOLD, thunder: GOLD, chain: VOLT,
+  smite: GOLD, spear: GHOST, blast: VOLT, heal: GREEN, sanctum: GREEN, thorns: GREEN, drain: VOLT })[sp] || AMBER;   // 스탯 속성별 색: 힘 화염 · 민첩 얼음 · 의지 빛 · 등불 귀화 · 생명 자연 · 투지 번개
 const HIT = ['#1a0e06', '#3a2410', '#6a4420', '#9a6a34', '#c4955a', '#e0bc88', '#f0dcb8'];   // 기본 타격: 흰빛 없는 톤
 const ICE = ['#081a2a', '#10345a', '#1e5a8c', '#3a8cc8', '#7ac0f0', '#c0e8ff', '#ffffff'];
 const BLOOD = ['#14040a', '#3a0a14', '#6a101c', '#a01824', '#d42a30', '#ff5a50', '#ff9a8a', '#ffe6de'];
@@ -60,7 +61,7 @@ const LAND = {
   spikes:  [[['ice/frost-nova', { light: 0.3 }]], 0.3],
   thorns:  [[['impacts/hit-spark', { palette: GREEN, height: 26, light: 0.3 }], ['nature/quake', { palette: DUST }]], 0.25],   // 덩굴이 땅을 뚫고 나온 자리
 };
-const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], wisp: ['fire/fireball', { palette: TEAL, light: 0.4 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], king: ['arcane/arcane-orb', { palette: CYAN, dy: 50 }], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
+const BOLT = { lance: ['ice/ice-lance', { light: 0.3 }], wisp: ['fire/fireball', { palette: GHOST, light: 0.35 }], lamp: ['fire/fireball', { palette: ['#3a1204', '#7a2a08', '#c0560e', '#ff9a2a', '#ffcf6a', '#fff0c8', '#ffffff'], light: 0.4 }], priest: ['water/water-orb', { radius: 7, dy: 52 }], saint: ['ice/ice-lance', {}], king: ['arcane/arcane-orb', { palette: CYAN, dy: 50 }], bellBoss: ['lightning/ball-lightning', { dy: 42 }], shadow: ['shadow/void-orb', { dy: 62 }] };
 
 export const ALL_IDS = [...new Set([
   ...Object.values(AMBIENT).flatMap(a => [...a.world.map(x => x[0]), ...a.screen, ...a.boss.map(x => x[0])]),
@@ -174,9 +175,9 @@ export class FxDirector {
         }
         else if (sp === 'thunder') M('holy/holy-pillar', ev.tx, gy, { life: 110, light: 0.5, palette: GOLD });   // 빛기둥
         else if (sp === 'smite') M('holy/smite', ev.tx, gy, { life: 120, light: 0.5 });
-        else if (sp === 'ring') { M('fire/fire-ring', ev.x, feet, { life: 80, light: 0.5, palette: TEAL }); M('explosions/plasma-explosion', ev.x, feet, { palette: TEAL, life: 60, light: 0.5 }); R.flash = Math.max(R.flash, 0.6); }   // 귀화 고리
+        else if (sp === 'ring') { M('fire/fire-ring', ev.x, feet, { life: 80, light: 0.5, palette: GHOST }); M('explosions/plasma-explosion', ev.x, feet, { palette: GHOST, life: 60, light: 0.5 }); R.flash = Math.max(R.flash, 0.6); }   // 귀화 고리
         else if (sp === 'ward') { M('holy/sunburst', ev.x, feet - 30, { palette: GOLD, life: 60, light: 0.45 }); R.flash = Math.max(R.flash, 0.35); M('holy/divine-shield', 0, 0, { follow: p, dy: p.h / 2 / R.mfx.k, life: 300, key: 'blue', light: 0.25, palette: GOLD }); }   // 빛의 결계
-        else if (sp === 'spear') { M('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: f, life: 50, light: 0.55, palette: TEAL }); M('fire/spirit-flame', hx, feet, { life: 45, light: 0.4 }); R.flash = Math.max(R.flash, 0.5); }   // 귀화 창: 손의 귀화가 한 줄로
+        else if (sp === 'spear') { M('arcane/arcane-beam', ev.x + ev.face * 6, feet, { flip: f, life: 50, light: 0.55, palette: GHOST }); M('fire/spirit-flame', hx, feet, { life: 45, light: 0.4, palette: GHOST }); R.flash = Math.max(R.flash, 0.5); }   // 귀화 창: 손의 귀화가 한 줄로
         else if (sp === 'chain') { R.flash = Math.max(R.flash, 0.4); M('lightning/spark-arc', hx + p.face * 10, feet - 30, { flip: f, life: 30, light: 0.45, palette: VOLT }); }   // 맞은 적마다 감전(zap-hit)
         else if (sp === 'drain') { R.flash = Math.max(R.flash, 0.3); if (ev.tx != null) M('lightning/lightning-strike', ev.tx, groundAt(w, ev.tx - 10, 20), { palette: VOLT, life: 60, light: 0.45 }); M('lightning/spark-arc', hx + p.face * 10, feet - 30, { flip: f, life: 30, light: 0.4, palette: VOLT }); }   // 흡전
         else if (sp === 'blast') M('lightning/lightning-strike', ev.tx, gy, { life: 120, light: 0.55, palette: VOLT });   // 뇌전 폭발: 벼락이 꽂힌 뒤 착탄에서 폭발

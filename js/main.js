@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick, groundAt } from './core/world.js?v=mwq3tcm0';
-import { Renderer } from './render.js?v=mwq3tcm0';
-import { Input } from './input.js?v=mwq3tcm0';
-import { Sfx } from './sfx.js?v=mwq3tcm0';
-import { stepLoop } from './loop.js?v=mwq3tcm0';
-import { spawnEnemy } from './core/enemies.js?v=mwq3tcm0';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwq3tcm0';
-import { ENEMY_DEFS } from './core/enemies.js?v=mwq3tcm0';
-import { icon, RELIC_TONE } from './icons.js?v=mwq3tcm0';
-import { installPixelUI, roundBtn } from './pixelui.js?v=mwq3tcm0';
-import { startTitleScene } from './titlescene.js?v=mwq3tcm0';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwq3x0e8';
+import { Renderer } from './render.js?v=mwq3x0e8';
+import { Input } from './input.js?v=mwq3x0e8';
+import { Sfx } from './sfx.js?v=mwq3x0e8';
+import { stepLoop } from './loop.js?v=mwq3x0e8';
+import { spawnEnemy } from './core/enemies.js?v=mwq3x0e8';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwq3x0e8';
+import { ENEMY_DEFS } from './core/enemies.js?v=mwq3x0e8';
+import { icon, RELIC_TONE } from './icons.js?v=mwq3x0e8';
+import { installPixelUI, roundBtn } from './pixelui.js?v=mwq3x0e8';
+import { startTitleScene } from './titlescene.js?v=mwq3x0e8';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwq3tcm0';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, spellFor } from './core/spells.js?v=mwq3tcm0';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwq3tcm0';
-import { takeTrain, runSpell } from './core/run.js?v=mwq3tcm0';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwq3tcm0';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwq3tcm0';
+import { CFG } from './core/config.js?v=mwq3x0e8';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, spellFor } from './core/spells.js?v=mwq3x0e8';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwq3x0e8';
+import { takeTrain, runSpell } from './core/run.js?v=mwq3x0e8';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwq3x0e8';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwq3x0e8';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -35,7 +35,7 @@ function syncTouch() {
   if (key === hudKey) return; hudKey = key;
   ['skill'].forEach((id, i) => {                               // 마법 버튼: 끼운 마법 그림, 비용만큼 차오르면 사용 가능
     const sp = (p.spells || [])[i], b = $('#b-' + id);
-    if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + `<small>${SPELLS[sp].name.replace('등불 ', '')}</small>` : '<small>빈 칸</small>'; }
+    if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + '<small>마법</small>' : '<small>마법</small>'; }   // 글씨는 늘 '마법' (그림이 지금 마법을 보여 줌)
     if (!sp) { b.style.setProperty('--fill', '0%'); b.classList.remove('ready'); return; }
     const cost = Math.round(CFG.skill[sp].cost * (p.mods.costMul || 1));
     const f = Math.min(1, p.light / cost);                                  // 빛이 비용만큼 차오르는 테두리 (원형 게이지)

@@ -1,22 +1,22 @@
 // 진입점: 화면 흐름(타이틀 → 아레나 → 보스), 고정 스텝 루프, 효과음 연결
-import { createWorld, tick, groundAt } from './core/world.js?v=mwqhzqo0';
-import { Renderer } from './render.js?v=mwqhzqo0';
-import { Input } from './input.js?v=mwqhzqo0';
-import { Sfx } from './sfx.js?v=mwqhzqo0';
-import { stepLoop } from './loop.js?v=mwqhzqo0';
-import { spawnEnemy } from './core/enemies.js?v=mwqhzqo0';
-import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqhzqo0';
-import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqhzqo0';
-import { icon, RELIC_TONE } from './icons.js?v=mwqhzqo0';
-import { installPixelUI, roundBtn, gaugeBtn } from './pixelui.js?v=mwqhzqo0';
-import { startTitleScene } from './titlescene.js?v=mwqhzqo0';
+import { createWorld, tick, groundAt } from './core/world.js?v=mwqjnnrn';
+import { Renderer } from './render.js?v=mwqjnnrn';
+import { Input } from './input.js?v=mwqjnnrn';
+import { Sfx } from './sfx.js?v=mwqjnnrn';
+import { stepLoop } from './loop.js?v=mwqjnnrn';
+import { spawnEnemy } from './core/enemies.js?v=mwqjnnrn';
+import { defaultSave, SAVE_KEY, UNLOCKS, OILS, DARK_RULES, DARK_MAX, buy, relicPool, oilsOwned, recordRun, dailySeed } from './core/meta.js?v=mwqjnnrn';
+import { ENEMY_DEFS, AFFINITY, nameOf } from './core/enemies.js?v=mwqjnnrn';
+import { icon, RELIC_TONE } from './icons.js?v=mwqjnnrn';
+import { installPixelUI, roundBtn, gaugeBtn } from './pixelui.js?v=mwqjnnrn';
+import { startTitleScene } from './titlescene.js?v=mwqjnnrn';
 installPixelUI();
-import { CFG } from './core/config.js?v=mwqhzqo0';
-import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqhzqo0';
-import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqhzqo0';
-import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqhzqo0';
-import { GIMMICK_HINT } from './core/gimmick.js?v=mwqhzqo0';
-import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqhzqo0';
+import { CFG } from './core/config.js?v=mwqjnnrn';
+import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT, ENCHANT, awakenPick, elementSpell } from './core/spells.js?v=mwqjnnrn';
+import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwqjnnrn';
+import { takeTrain, runSpell, awaken } from './core/run.js?v=mwqjnnrn';
+import { GIMMICK_HINT } from './core/gimmick.js?v=mwqjnnrn';
+import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwqjnnrn';
 
 const $ = s => document.querySelector(s);
 const ui = $('#ui'), touch = $('#touch');
@@ -273,16 +273,46 @@ function rewardScreen(after, draft = null, lastUp = null, total = 1) {   // 단�
 // ‹ 값 › 스테퍼 (셀렉트 박스 대신, 엄지로 누르기 쉽게)
 const chip = (id, label, sub, canPrev, canNext) => `<div class="chip"><button id="${id}-p" ${canPrev ? '' : 'disabled'} aria-label="이전">‹</button><div>${label}<small>${sub}</small></div><button id="${id}-n" ${canNext ? '' : 'disabled'} aria-label="다음">›</button></div>`;
 
+// 픽셀 제목: 작은 글씨(갈무리 굵게 11px)를 비트맵으로 찍어 한 줄씩 금빛→주황→잉걸 색, 1px 어두운 테두리·윗면 빛·아래 그림자 → CSS가 정수배로 키움
+function drawLogo(cv, text) {
+  if (!cv) return;
+  const go = () => {
+    const S = 12, GAP = 2, t = document.createElement('canvas'), tg = t.getContext('2d'); tg.font = `${S}px Galmuri11`;
+    const chars = [...text], cw = chars.map(c => Math.ceil(tg.measureText(c).width)), tw = cw.reduce((a, b) => a + b, 0) + GAP * (chars.length - 1) + 2, th = S + 3;
+    t.width = tw; t.height = th; tg.font = `${S}px Galmuri11`; tg.textBaseline = 'top'; tg.fillStyle = '#fff';
+    let cx = 1; chars.forEach((c, i) => { tg.fillText(c, cx, 1); cx += cw[i] + GAP; });             // 글자 사이 2px
+    const src = tg.getImageData(0, 0, tw, th).data, m0 = (x, y) => x >= 0 && y >= 0 && x < tw && y < th && src[(y * tw + x) * 4 + 3] > 110;
+    const K = 2, MW = tw * K, MH = th * K, M = (x, y) => m0(Math.floor(x / K), Math.floor(y / K)) && x >= 0 && y >= 0;   // 획을 2배로 (굵고 또렷하게)
+    let y0 = MH, y1 = 0; for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (M(x, y)) { y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    const P = 2, W = MW + P * 2, H = MH + P * 2 + 1; cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'), out = g.createImageData(W, H), put = (x, y, c) => { if (x < -P || y < -P || x >= MW + P || y >= MH + P + 1) return; const i = ((y + P) * W + x + P) * 4; out.data[i] = c[0]; out.data[i + 1] = c[1]; out.data[i + 2] = c[2]; out.data[i + 3] = 255; };
+    const RAMP = [[255, 240, 196], [255, 222, 140], [255, 196, 92], [255, 166, 60], [236, 128, 38], [200, 92, 24]];
+    const OUT = [38, 14, 6], SHADOW = [10, 5, 4];
+    for (let y = -P; y < MH + P; y++) for (let x = -P; x < MW + P; x++) if (!M(x, y) && (M(x - 1, y - 2) || M(x, y - 2))) put(x, y, SHADOW);   // 아래 그림자
+    for (let y = -1; y <= MH; y++) for (let x = -1; x <= MW; x++) if (!M(x, y) && (M(x - 1, y) || M(x + 1, y) || M(x, y - 1) || M(x, y + 1))) put(x, y, OUT);   // 1px 테두리
+    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (M(x, y)) {
+      const k = (y - y0) / Math.max(1, y1 - y0); let c = RAMP[Math.min(RAMP.length - 1, Math.floor(k * RAMP.length))];
+      if (!M(x, y - 1)) c = c.map(v => Math.min(255, v + 22));            // 획 윗면: 살짝 밝게
+      else if (!M(x, y + 1)) c = c.map((v, i) => Math.round(v * (i ? 0.72 : 0.85)));   // 획 아랫면: 살짝 어둡게 (도톰한 느낌)
+      put(x, y, c);
+    }
+    g.putImageData(out, 0, 0);
+    const want = Math.min(innerHeight * 0.2, innerWidth * 0.11), scale = Math.max(1, Math.floor(want / H));   // 정수배로만 키움 (픽셀 크기 고르게)
+    cv.style.height = H * scale + 'px'; cv.style.width = W * scale + 'px'; cv.classList.add('on');
+  };
+  (document.fonts && document.fonts.load ? document.fonts.load('12px Galmuri11').then(go, go) : Promise.resolve().then(go));
+}
 // 타이틀: 왼쪽은 등불을 든 리라 장면(캔버스), 오른쪽은 제목. 화면 어디를 눌러도 시작
 let stopTitle = null;
 function title() {
   mode = 'title'; touch.classList.add('hidden'); sfx.musicFor(0);
   screen(`<div class="titlescene" id="go"><canvas id="tcv" width="480" height="270"></canvas>
-    <div class="tlogo"><div class="tl-pre">꺼져 가는 지하 왕국에서</div><h1>등불지기</h1>
+    <div class="tlogo"><div class="tl-pre">꺼져 가는 지하 왕국에서</div><h1 aria-label="등불지기"><canvas id="tlogo-cv"></canvas></h1>
       <div class="tl-rule"><i></i><b></b><i></i></div><div class="tl-sub">마지막 등불을 든 순례자, 리라</div></div>
     <div class="tl-start"><span>화면을 눌러 시작</span></div>
     <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 점화 I · 소등 E · 기름병 Q · Enter 시작</div><div class="tl-ver">v${(window.__V || '').slice(-4)}</div></div>`);
   stopTitle && stopTitle(); stopTitle = startTitleScene($('#tcv'));
+  drawLogo($('#tlogo-cv'), '등불지기');
   bind('go', town);
 }
 // 등대 마을: 왼쪽은 리라와 기록, 오른쪽은 출발 · 조정 · 메뉴

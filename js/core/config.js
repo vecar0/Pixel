@@ -22,12 +22,12 @@ export const CFG = {
   },
   roll: { totalF: 22, dist: 128, iStart: 2, iEnd: 13, endLagF: 6 },
   poise: { perfect: 0.25, normal: 0.08, hit: 0.02, stunF: 180, mobStunF: 150, mobRes: 1.6, regenDelayF: 120, regenPerF: 0.002, executeFrac: 0.15 },   // mob*: 일반 적 그로기 (더 잘 무너지고 2.5초)
-  execute: { hitF: 22, totalF: 42, slow: 0.35, chainF: 300, chainLight: 20, chainRange: 340, chainGapF: 6, chainHitF: 14, chainTotalF: 34 },   // chainRange 안에 그로기 적이 또 있으면 이어서 연속 처형 (돌진 베기)   // chainF: 이 틱 안에 다음 처형 → 연속 처형 보너스
+  execute: { hitF: 22, totalF: 42, slow: 0.35, chainF: 300, chainLight: 10, chainRange: 340, chainGapF: 6, chainHitF: 14, chainTotalF: 34 },   // chainRange 안에 그로기 적이 또 있으면 이어서 연속 처형 (돌진 베기)   // chainF: 이 틱 안에 다음 처형 → 연속 처형 보너스
   flurry: { window: 45, hits: [12, 20, 28, 40], activeF: 4, totalF: 50, iEnd: 42, range: 56, dmg: [10, 10, 10, 24], poise: [0.08, 0.08, 0.08, 0.3], hitstop: [3, 3, 3, 10], lunge: 2.6 },   // 완벽 패링 직후 공격 = 반격 연참 (앞으로 파고들며 4연속 베기, 마지막 일격이 큼, 도는 동안 무적)
-  light: { max: 100, perfect: 25, normal: 10, kill: 3 },
+  light: { max: 100, perfect: 15, normal: 5, kill: 3 },
   // 등불 마법 (빛 게이지 소모, 1칸). homing = 가까운 적을 쫓아감. delay = pixelfx 이펙트의 착탄 시점(틱)에 맞춘 피해 지연. inv = 시전 중 무적
   // 소등: 등불을 끄면 어둠 (적이 리라를 놓침, 등 뒤 공격 = 암살, 빛이 고임). 다시 켤 때(relightF 동안 무방비) 섬광 — 점화한 상태면 속성 섬광
-  snuff: { maxF: 240, regen: 0.15, relightF: 22, cdF: 150, flashR: 120, flashStagger: 40, noiseRun: 150, noiseAtk: 210 },
+  snuff: { maxF: 240, regen: 0.06, relightF: 22, cdF: 150, flashR: 120, flashStagger: 40, noiseRun: 150, noiseAtk: 210 },
   enchant: { cost: 10, swingCost: 5, dmgMul: 1.12, build: [22, 22, 36], flurryBuild: 14, need: [130, 100, 85, 70], needBoss: 260 },   // need: 단계별 필요량 (0 각성 전 · 1 각성 14 · 2 17 · 3 20)   // 불꽃 점화: 빛 10 이상이면 점화(공짜), 휘두를 때마다 빛 5, 베기 피해 +12%, 타마다 속성 게이지
   skill: {   // 위력: 처음 값의 1.4배 (화려한 연출과 함께 상향)
     enchant: { cost: 30, castF: 40, fireF: 26, dmg: 0 },   // 점화 동작: 칼을 등불에 대고(0~13) 불이 번져(14~25) 타오르는 칼로 자세(26~40). fireF에 점화 완성   // 점화 동작 (시전 자세)

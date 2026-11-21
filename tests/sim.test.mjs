@@ -99,11 +99,11 @@ function parryAt(n, opt = {}) {
   return { w, d, res, stop, dl: w.player.light - l0, dhp: w.player.hp - hp0 };
 }
 test('perfect: 히트 직전 패링 → perfect, hp 그대로, 빛 +25, 히트스톱 8', () => {
-  const r = parryAt(2); eq(r.res, 'perfect'); eq(r.dhp, 0); eq(r.dl, 25); eq(r.stop, 8);
+  const r = parryAt(2); eq(r.res, 'perfect'); eq(r.dhp, 0); eq(r.dl, CFG.light.perfect); eq(r.stop, 8);
 });
 test('경계: 6틱째 perfect / 7틱째 normal(빛+10, 히트스톱3) / 13틱째 hit', () => {
   eq(parryAt(6).res, 'perfect');
-  const n = parryAt(7); eq(n.res, 'normal'); eq(n.dl, 10); eq(n.stop, 3);
+  const n = parryAt(7); eq(n.res, 'normal'); eq(n.dl, CFG.light.normal); eq(n.stop, 3);
   eq(parryAt(12).res, 'normal');
   const h = parryAt(13); eq(h.res, 'hit'); eq(h.dhp, -1);
 });
@@ -439,7 +439,7 @@ test('연속 처형: 5초 안에 두 번째 처형이면 빛 +20, 세 번째면 
     const d = makeDummy(w, { hp: 50, poise: true }); d.stunT = 120; d.poise = 1;
     tick(w, I({ attack: true })); steps(w, 90);
   }
-  eq(w.player.execChain, 3); ok(w.player.light >= 60, 'light ' + w.player.light); eq(w.player.hp, 4);
+  eq(w.player.execChain, 3); ok(w.player.light >= CFG.execute.chainLight * 3, 'light ' + w.player.light); eq(w.player.hp, 4);
 });
 test('연속 처형 모션: 그로기 적이 근처에 또 있으면 공격 한 번에 차례로 돌진해 모두 처형', () => {
   const w = W(); settle(w); w.player.face = 1;

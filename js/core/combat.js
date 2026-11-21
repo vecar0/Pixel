@@ -1,10 +1,10 @@
 // 판정: 리라 공격 → 적, 적 공격 → 리라(패링/피격), 자세 게이지, 등불 마법
-import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqhzqo0';
-import { hitLevel } from './level.js?v=mwqhzqo0';
-import { STAT_SPELL } from './spells.js?v=mwqhzqo0';
-import { CFG } from './config.js?v=mwqhzqo0';
-import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT, telegraphOf } from './enemies.js?v=mwqhzqo0';
-import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqhzqo0';
+import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwqjnnrn';
+import { hitLevel } from './level.js?v=mwqjnnrn';
+import { STAT_SPELL } from './spells.js?v=mwqjnnrn';
+import { CFG } from './config.js?v=mwqjnnrn';
+import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT, telegraphOf } from './enemies.js?v=mwqjnnrn';
+import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwqjnnrn';
 
 const PR = CFG.parry, PO = CFG.poise;
 
@@ -233,7 +233,7 @@ export function elBuild(w, e, amt) {
       break;                                       // 화상: 초당 3 × 4초
     case 'agi': e.staggerT = Math.max(e.staggerT || 0, Math.round(90 * B)); e.brittleT = Math.max(e.brittleT || 0, 180); e.frozenT = Math.round(90 * B); break;   // 빙결
     case 'wil': addPoise(w, e, (e.boss ? 0.3 : 0.7) * T); break;                                          // 심판의 빛: 자세 붕괴
-    case 'lmp': p.light = Math.min(CFG.light.max, p.light + Math.round(30 * T)); e.slowT = Math.max(e.slowT || 0, 150); if (!e.boss) e.blindT = Math.round(150 * T); break;   // 혼 뽑기: 빛을 빼앗고 눈을 멀게 (리라를 놓침 → 암살로)   // 혼 뽑기
+    case 'lmp': p.light = Math.min(CFG.light.max, p.light + Math.round(15 * T)); e.slowT = Math.max(e.slowT || 0, 150); if (!e.boss) e.blindT = Math.round(150 * T); break;   // 혼 뽑기: 빛을 빼앗고 눈을 멀게 (리라를 놓침 → 암살로)   // 혼 뽑기
     case 'vit': for (const o of liveOf(w)) if (Math.abs(o.x + o.w / 2 - (p.x + p.w / 2)) < 90) damageEnemy(w, o, Math.round(16 * T), 0.15);   // 가시 반격
       if ((p.healBurst || 0) < 2 && p.hp < p.maxHp) { p.healBurst = (p.healBurst || 0) + 1; const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); } break;   // 흡수
     case 'fury': p.crit = true; for (const o of liveOf(w).filter(o => o !== e && Math.abs(o.x + o.w / 2 - cx) < 170).slice(0, 2)) { damageEnemy(w, o, 22, 0.15); o.staggerT = Math.max(o.staggerT || 0, 20); w.events.push({ type: 'zap', x0: cx, y0: cy, x1: o.x + o.w / 2, y1: o.y + o.h / 2 }); } e.staggerT = Math.max(e.staggerT || 0, 20); break;   // 방전

@@ -527,3 +527,8 @@ button.scard:disabled { opacity: .45; cursor: default; }
 .picks .pick { box-sizing: border-box; }
 .picks .pick b, .picks .pick span { max-width: 100%; overflow-wrap: anywhere; word-break: keep-all; }
 .card:has(.picks), .card.wide { max-width: calc(100vw - 2 * max(16px, env(safe-area-inset-left), env(safe-area-inset-right))); }
+
+/* 픽셀 제목 (canvas): 정수배로 키워 픽셀이 또렷하게, 은은한 등불빛 */
+.tlogo h1 { text-shadow: none; line-height: 0; }
+#tlogo-cv { image-rendering: pixelated; filter: drop-shadow(0 0 14px rgba(255,150,60,.45)); opacity: 0; transition: opacity .25s; }
+#tlogo-cv.on { opacity: 1; }

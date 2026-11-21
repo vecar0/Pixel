@@ -1,7 +1,7 @@
 // 레벨 요소: 수집품(불씨·회복·빛 구슬) · 항아리 · 가시 · 불기둥 분출구 · 움직이는 발판 · 레버와 철문 · 보물 상자 · 방 목표 시간
 // 모두 데이터(w.level)로 들고 있고 tick마다 updateLevel. DOM 없음 → Node 테스트 가능
-import { CFG } from './config.js?v=mwqkabn6';
-import { overlap } from './player.js?v=mwqkabn6';
+import { CFG } from './config.js?v=mwql4jgh';
+import { overlap } from './player.js?v=mwql4jgh';
 
 export const LV = {
   pickup: { magnetR: 96, magnetF: 24, life: 1200, grav: 0.35 },
@@ -66,7 +66,7 @@ export function updateLevel(w, damageEnemy) {
     }
     if (q.t > 10 && overlap(q, p)) { q.got = true; w.events.push({ type: 'pickup', kind: q.kind, x: q.x + 4, y: q.y + 4 });
       if (q.kind === 'heal' && p.hp < p.maxHp) { const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: cx, y: p.y + p.h }); }
-      if (q.kind === 'light') p.light = Math.min(CFG.light.max, p.light + 35); }
+      if (q.kind === 'light') p.light = Math.min(CFG.light.max, p.light + 15); }
     if (q.t > P.life) q.got = true;
   }
   L.pickups = L.pickups.filter(q => !q.got);

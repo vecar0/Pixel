@@ -1,8 +1,8 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwqkabn6';
-import { CFG } from './core/config.js?v=mwqkabn6';
-import { groundAt } from './core/world.js?v=mwqkabn6';
+import { preload } from './fx.js?v=mwql4jgh';
+import { CFG } from './core/config.js?v=mwql4jgh';
+import { groundAt } from './core/world.js?v=mwql4jgh';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -230,7 +230,7 @@ export class FxDirector {
       case 'beaconLit': R.propfx.spawn('fire/brazier', ev.x, 280, { light: 0.55, key: 'beacon' + ev.x, iron: NO_IRON }); break;   // 등대 불: 등대 그림과 한 몸 (인물 뒤)
       case 'beaconOut': R.propfx.stopKey('beacon' + ev.x); break;
       case 'phase2': if (ev.kind === 'saint') { for (const dx of [-400, 0, 400]) this.spell('water/wave-crash', ev.x + dx, 300, { life: 80, light: 0.4 }); break; }   // 성녀: 물이 밀려든다 (물결만)
-        this.spell('shadow/black-hole', ev.x, ev.y + 40, { palette: ev.kind === 'king' ? CYAN : ev.kind === 'spider' ? LILAC : ev.kind === 'shadow' ? VIOLET : AMBER, life: 90, light: 0.5 }); break;   // 2막: 보스 색 소용돌이 하나
+        break;   // 2막: 블랙홀 이펙트 없음 (포효·배너·화면 연출만)
       case 'steam': this.spell('explosions/smoke-bomb', ev.x, 270, { palette: GREY, life: 70, light: 0.2 }); break;   // 증기 밸브: 연기 하나   // 증기 (사제 등장 물기둥과 구분)   // 증기 밸브
       case 'quench': this.spell('impacts/ricochet', ev.x, ev.y + 30, { palette: GREY, life: 50, light: 0.4 }); break;   // 식어서 갑옷에 금
       case 'heatUp': P('fire/fire-ring', ev.x, ev.y + 60, { life: 60, light: 0.5 }, 2); break;

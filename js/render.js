@@ -1,14 +1,14 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwqkabn6';
-import { CFG } from './core/config.js?v=mwqkabn6';
-import { attackBox } from './core/player.js?v=mwqkabn6';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwqkabn6';
-import { SPELLS } from './core/spells.js?v=mwqkabn6';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwqkabn6';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwqkabn6';
-import { FxDirector } from './fxmap.js?v=mwqkabn6';
-import { iconCanvas } from './icons.js?v=mwqkabn6';
-import { bodyShade } from './shade.js?v=mwqkabn6';
+import { clipBeam } from './core/gimmick.js?v=mwql4jgh';
+import { CFG } from './core/config.js?v=mwql4jgh';
+import { attackBox } from './core/player.js?v=mwql4jgh';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwql4jgh';
+import { SPELLS } from './core/spells.js?v=mwql4jgh';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwql4jgh';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwql4jgh';
+import { FxDirector } from './fxmap.js?v=mwql4jgh';
+import { iconCanvas } from './icons.js?v=mwql4jgh';
+import { bodyShade } from './shade.js?v=mwql4jgh';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -308,7 +308,7 @@ export class Renderer {
     if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; const fk = this.farK(w, e); if (fk > 0) g.globalAlpha = Math.max(0, 1 - fk); this.drawEnemy(g, w, e); g.globalAlpha = 1; if (fk > 0.3) this.drawEyes(g, w, e, Math.min(1, fk) * 0.85); }   // 어둠 속 그림자는 흐릿하게
     if (w.bossDeath && w.bossDeath.t < BOSS_DEATH_F) this.drawBossDeath(g, w);   // 쓰러지는 보스
     for (const e of w.enemies) if (e.elB > 0 && !e.dead && !e.boss) {        // 속성 게이지 (점화한 검으로 쌓임): 머리 위 작은 막대
-      const k = Math.min(1, e.elB / CFG.enchant.need[p.enchTier || 0]), x = Math.round(e.x + e.w / 2 - 12), y = Math.round(e.y - 8);
+      const k = Math.min(1, e.elB / CFG.enchant.hits), x = Math.round(e.x + e.w / 2 - 12), y = Math.round(e.y - 8);
       g.fillStyle = 'rgba(8,6,14,.8)'; g.fillRect(x - 1, y - 1, 26, 5); g.fillStyle = `rgb(${EL_RGB[e.elK || null]})`; g.fillRect(x, y, Math.round(24 * k), 3);
     }
     if (p.enchantT > 0 && p.element && !p.dark) for (const e of w.enemies) {   // 점화한 동안: 약점인 적 머리 위에 속성 색 ▲, 저항은 회색 ▼
@@ -1350,7 +1350,7 @@ export class Renderer {
       g.fillStyle = '#2e2537'; g.fillRect(bx, by + 8, bw, 3);
       g.fillStyle = boss.stunT > 0 ? ((w.t >> 2) & 1 ? '#fff' : '#ffe2a8') : '#e8c060'; g.fillRect(bx, by + 8, Math.round(bw * (boss.stunT > 0 ? 1 : boss.poise)), 3);
       if (boss.stunT > 0) { g.fillStyle = '#ffe2a8'; g.textAlign = 'right'; g.fillText('처형 가능', bx + bw, by - 12); g.textAlign = 'left'; }
-      if (boss.elB > 0) { g.fillStyle = `rgb(${EL_RGB[boss.elK || null]})`; g.fillRect(bx, by + 12, Math.round(bw * Math.min(1, boss.elB / CFG.enchant.needBoss)), 2); }   // 보스 속성 게이지
+      if (boss.elB > 0) { g.fillStyle = `rgb(${EL_RGB[boss.elK || null]})`; g.fillRect(bx, by + 12, Math.round(bw * Math.min(1, boss.elB / CFG.enchant.hitsBoss)), 2); }   // 보스 속성 게이지
     } else this.bossShadow = 1;
     g.restore();
   }

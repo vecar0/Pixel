@@ -191,16 +191,13 @@ test('두르기 단계: 17 개화는 터진 적에게 마법 각인 → 그 적�
   ok(got, '처형 끝에 회오리'); ok(!g.sigil);
   w.player.light = 100; w.player.state = 'idle'; tick(w, I({ skill: true })); ok(w.player.state !== 'cast', '이미 두른 상태면 다시 두르지 않음');
 });
-test('속성 게이지는 스탯 방식대로 쌓임: 화염=3타, 얼음=구르기로 흘림, 빛=패링, 귀화=등 뒤, 생명=맞기, 번개=연속 타격', () => {
-  const setup = el => { const w = W(); settle(w); const p = w.player; p.face = 1; p.element = el; p.enchantT = 900; p.hp = 9; p.maxHp = 9;
-    const d = makeDummy(w, { hp: 5000 }); d.x = p.x + 30; d.face = -1; return [w, p, d]; };
-  const hb = (w, d, parryable = true) => ({ src: {}, owner: d, x: w.player.x, y: w.player.y, w: w.player.w, h: w.player.h, dmg: 1, parryable, dir: -1 });
-  { const [w, p, d] = setup('str'); tick(w, I({ attack: true })); steps(w, 20); const a = d.elB; for (let k = 0; k < 2; k++) { tick(w, I({ attack: true })); steps(w, 20); } ok(d.elB - a >= 50, '화염 3타 ' + d.elB); }
-  { const [w, p, d] = setup('agi'); p.state = 'roll'; p.stateT = 2; resolveEnemyHit(w, hb(w, d)); ok(d.elB >= 50, '얼음 구르기 ' + d.elB); }
-  { const [w, p, d] = setup('wil'); p.state = 'parry'; p.stateT = 0; resolveEnemyHit(w, hb(w, d)); ok(d.elB >= 60, '빛 완벽 패링 ' + d.elB); }
-  { const [w, p, d] = setup('lmp'); d.face = 1; tick(w, I({ attack: true })); steps(w, 20); ok(d.elB >= 45, '귀화 등 뒤 ' + d.elB); }
-  { const [w, p, d] = setup('vit'); p.iframes = 0; p.state = 'idle'; resolveEnemyHit(w, hb(w, d, false)); ok(d.elB >= 55, '생명 맞기 ' + d.elB); }
-  { const [w, p, d] = setup('fury'); for (let k = 0; k < 3; k++) { tick(w, I({ attack: true })); steps(w, 20); } ok(d.elB >= 6 + 11 + 16, '번개 연속 ' + d.elB); }
+test('속성 효과: 점화한 칼로 3대 때리면 터짐 (보스는 5대)', () => {
+  const w = W(); settle(w); const p = w.player; p.face = 1; p.element = 'str'; p.enchantT = 1; p.light = 100;
+  const d = makeDummy(w, { hp: 999 }); d.x = p.x + 30;
+  let bursts = 0;
+  for (let i = 0; i < 3; i++) { tick(w, I({ attack: true })); for (let k = 0; k < 26; k++) { tick(w, I()); bursts += w.events.filter(e => e.type === 'elBurst').length; } }
+  eq(bursts, 1, '3대째에 한 번'); eq(d.elB, 0);
+  const b = spawnEnemy(w, 'ghoul', p.x + 400, p.y, {}); b.boss = true; b.spawnT = 0; for (let i = 0; i < 4; i++) elBuild(w, b, 1); eq(b.elB, 4); elBuild(w, b, 1); eq(b.elB, 0, '보스는 5대째');
 });
 test('얼음 창은 여러 적을 꿰뚫고, 흑염 창은 앞쪽 일직선만', () => {
   const w = W(); settle(w); w.player.face = 1;
@@ -650,12 +647,10 @@ test('소등 중 두른 상태: 불꽃이 멈추고, 다시 켜는 섬광이 속
   tick(w, I({ snuff: true })); const e0 = p.enchantT; steps(w, 30); eq(p.enchantT, e0);
   tick(w, I({ snuff: true })); steps(w, CFG.snuff.relightF + 2); ok(e.burnT > 0, '화염 폭발');
 });
-test('속성 상성: 약점이면 게이지 1.6배, 저항이면 절반', () => {
-  const w = W(); settle(w); const p = w.player; p.enchTier = 1;
+test('속성 상성: 약점/저항 판정 (피해 배율에 쓰임)', () => {
+  const w = W(); settle(w); const p = w.player;
   const g = spawnEnemy(w, 'ghoul', p.x + 200, p.y, {}); g.spawnT = 0;
   eq(affinity(g, 'wil'), 1); eq(affinity(g, 'agi'), -1); eq(affinity(g, 'vit'), 0);
-  p.element = 'wil'; elBuild(w, g, 10); eq(g.elB, 16);
-  g.elB = 0; p.element = 'agi'; elBuild(w, g, 10); eq(g.elB, 5);
 });
 test('빛·어둠 반응: 나방은 어둠에서 못 보고, 구울은 멀리 듣고, 갑각수호자는 잘 못 들음', () => {
   const w = W(); settle(w); const p = w.player; p.dark = true; p.noiseT = 10; p.noiseR = 100;

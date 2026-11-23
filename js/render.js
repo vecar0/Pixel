@@ -346,11 +346,15 @@ export class Renderer {
     this.drawSmear(g, w);
     if (this.flames && this.flames.length) {                               // 칼 불길: 흰 심지 → 밝은 불 → 속성 색 → 잉걸 → 연기. 어릴수록 크고 밝게 (덧칠로 빛남)
       g.globalCompositeOperation = 'lighter';
-      for (const q of this.flames) { const k = 1 - q.life / q.max; if (k > 0.6) continue; const s2 = k < 0.25 ? 4 : 3; g.globalAlpha = 0.18 * (1 - k); g.fillStyle = q.P[4]; g.fillRect(Math.round(q.x) - s2, Math.round(q.y) - s2, s2 * 2, s2 * 2); }
+      for (const q of this.flames) { const k = 1 - q.life / q.max; if (k > 0.6) continue; const s2 = k < 0.25 ? 4 : 3; g.globalAlpha = 0.12 * (1 - k); g.fillStyle = q.P[4]; g.fillRect(Math.round(q.x) - s2, Math.round(q.y) - s2, s2 * 2, s2 * 2); }
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       for (const q of this.flames) { const k = 1 - q.life / q.max, c = k < 0.12 ? q.P[6] : k < 0.3 ? q.P[5] : k < 0.5 ? q.P[4] : k < 0.68 ? q.P[3] : k < 0.85 ? q.P[2] : '#3a3440', sz = k < 0.3 ? 2 : 1;
         g.globalAlpha = k < 0.85 ? 1 : 0.5 * (1 - k) / 0.15 + 0.2; g.fillStyle = c; g.fillRect(Math.round(q.x), Math.round(q.y), sz, sz + (k < 0.5 ? 1 : 0)); }
       g.globalAlpha = 1;
+    }
+    const BT = this._bladeTop; if (BT && !hideChars && BT.t === w.t) {     // 칼을 불길 위에: 어두운 테두리 + 칼날 (모양 구분)
+      const o = this.bladeOutline(BT.fr, BT.el), bo = this.bladeOnly(BT.fr, BT.base);
+      g.save(); g.translate(BT.cx, BT.feet); g.scale(BT.sx * BT.f, BT.sy); if (o) g.drawImage(o, -BT.fr.ax, -BT.fr.ay); if (bo) g.drawImage(bo, -BT.fr.ax, -BT.fr.ay); g.restore();
     }
     if (this.lampFlash) {                                                  // 섬광: 등불에서 짧게 번쩍 (빛 + 짧은 빛살 8줄, 점화한 상태면 속성 색)
       const F = this.lampFlash, k = F.t / 18, x = this.lampX, y = this.lampY, P = EL_SLASH[F.el === undefined ? null : F.el] || EL_SLASH[null];
@@ -950,8 +954,7 @@ export class Renderer {
     this.bladeCache = this.bladeCache || new Map(); const key = fr.src + '|' + el;
     let c = this.bladeCache.get(key); if (c) return c;
     c = document.createElement('canvas'); c.width = fr.img.naturalWidth; c.height = fr.img.naturalHeight; const x = c.getContext('2d'), P = EL_SLASH[el];
-    x.fillStyle = P[3]; x.globalAlpha = 0.55; for (const [y, xs] of B.r2) for (const px of xs) x.fillRect(px, y, 1, 1);
-    x.fillStyle = P[5]; x.globalAlpha = 1; for (const [y, xs] of B.r1) for (const px of xs) x.fillRect(px, y, 1, 1);
+    x.fillStyle = '#140804'; x.globalAlpha = 1; for (const [y, xs] of B.r1) for (const px of xs) x.fillRect(px, y, 1, 1);   // 칼 둘레 1px 어두운 테두리 → 불길 속에서도 칼 모양이 또렷
     this.bladeCache.set(key, c); return c;
   }
   // 떨어지는 잔해: 무덤종 = 돌덩이(굴러 떨어지는 바위 조각), 용광로 = 쇳물 방울, 왕 = 죽은 별, 성녀 = 물방울 (수정은 fx)
@@ -1147,7 +1150,8 @@ export class Renderer {
         g.globalAlpha = 1;
       }
     }   // 손에 든 등불: 앞쪽 림, 등쪽 그림자 (속성 색으로 다시 칠한 그림 기준 — 원본을 덧칠하면 색이 되돌아감)
-    if (p.enchantT > 0 && p.state !== 'ghost') { const o = this.bladeOutline(fr, p.element || null); if (o) { g.globalAlpha = 0.8 + 0.2 * Math.sin(w.t * 0.3); g.drawImage(o, -fr.ax, -fr.ay); g.globalAlpha = 1; } }   // 점화한 칼: 속성 색 테두리
+    if (p === w.player && p.enchantT > 0 && p.state !== 'ghost') this._bladeTop = { base, fr, cx, feet, f, sx, sy, el: p.element || null, t: w.t };   // 점화한 칼은 불길 위에 다시 그려 모양이 보이게 (drawBladeTop)
+    else if (p === w.player) this._bladeTop = null;
     g.restore();
     this.drawParryArc(g, p, cx, feet, f);
   }

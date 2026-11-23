@@ -1,8 +1,9 @@
 // 게임 상황 → pixelfx 이펙트 연결표. 렌더러가 매 틱 events()·tick()을 부른다
 // (pixelfx 244종 중 이 게임 분위기에 맞는 것을 상황마다 골라 씀. 총기·SF 계열은 제외)
-import { preload } from './fx.js?v=mwql4jgh';
-import { CFG } from './core/config.js?v=mwql4jgh';
-import { groundAt } from './core/world.js?v=mwql4jgh';
+import { preload } from './fx.js?v=mwtb8vwu';
+import { CFG } from './core/config.js?v=mwtb8vwu';
+import { groundAt } from './core/world.js?v=mwtb8vwu';
+import { baseOf } from './core/enemies.js?v=mwtb8vwu';
 
 // 팔레트 (어둠 → 밝음)
 const AMBER = ['#4a1a0c', '#8c3414', '#d0661e', '#ffa63a', '#ffd27a', '#fff0c8', '#ffffff'];
@@ -164,7 +165,7 @@ export class FxDirector {
       case 'spawn':
         break;                                                              // 등장: 렌더러의 '땅에서 솟아오르기'와 발밑 흙먼지만 (종류별 큰 이펙트 없음)
       case 'enemyStrike': {                                               // 적 공격 궤적: 판정 범위를 보여 주는 정보라 유지, 빛은 약하게
-        const s = STRIKE[ev.kind]; if (s && ev.reach > 0) P(s[0], ev.x, ev.y, { flip: ev.face < 0, palette: s[1], life: 40, light: 0.25 }, 2);   // 근접 공격만 (탄·충격파·낙하는 그 자체 이펙트가 있어 겹치지 않게)
+        const s = STRIKE[ev.kind] || STRIKE[baseOf(ev.kind)]; if (s && ev.reach > 0) P(s[0], ev.x, ev.y, { flip: ev.face < 0, palette: s[1], life: 40, light: 0.25 }, 2);   // 근접 공격만 (탄·충격파·낙하는 그 자체 이펙트가 있어 겹치지 않게)
         break;
       }
       case 'slam': P('nature/quake', ev.x || (w.enemies.find(e => e.boss)?.x ?? p.x), 300, { palette: DUST, life: 90, light: 0.3 }, 2); break;

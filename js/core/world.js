@@ -1,11 +1,11 @@
 // 월드 생성과 한 틱 진행. DOM 없음 → Node에서 그대로 테스트
-import { CFG } from './config.js?v=mwql4jgh';
-import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwql4jgh';
-import { updateLevel, dropPickups } from './level.js?v=mwql4jgh';
-import { createPlayer, updatePlayer, overlap } from './player.js?v=mwql4jgh';
-import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwql4jgh';
-import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk, relightFlash } from './combat.js?v=mwql4jgh';
-import { ACTIONS } from './player.js?v=mwql4jgh';
+import { CFG } from './config.js?v=mwtb8vwu';
+import { gimmickProps, updateGimmick, breakVeil, GIMMICK } from './gimmick.js?v=mwtb8vwu';
+import { updateLevel, dropPickups } from './level.js?v=mwtb8vwu';
+import { createPlayer, updatePlayer, overlap } from './player.js?v=mwtb8vwu';
+import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwtb8vwu';
+import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk, relightFlash } from './combat.js?v=mwtb8vwu';
+import { ACTIONS } from './player.js?v=mwtb8vwu';
 
 export const BOSS_DEATH_F = 160, BOSS_FALL_F = 96;   // 보스 사망 연출 길이 · 마지막 폭발 시점 (틱)
 // 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판
@@ -115,7 +115,7 @@ function updateWaves(w) {
     // 리라 바로 옆(200px 안)에는 생기지 않게: 반대쪽으로 밀어 낸다
     if (Math.abs(x - px) < 200) x = px + (x >= px ? 220 : -220 - ENEMY_DEFS[kind].w);
     if (x < 40 || x > w.width - 40 - ENEMY_DEFS[kind].w) x = px < w.width / 2 ? Math.min(w.width - 60 - ENEMY_DEFS[kind].w, px + 240) : Math.max(40, px - 240 - ENEMY_DEFS[kind].w);
-    const e = spawnEnemy(w, kind, x, kind === 'moth' ? 160 : groundAt(w, x, ENEMY_DEFS[kind].w) - ENEMY_DEFS[kind].h - 2, { hpMul: w.hpMul, emerge: true });
+    const e = spawnEnemy(w, kind, x, ENEMY_DEFS[kind].fly ? 160 : groundAt(w, x, ENEMY_DEFS[kind].w) - ENEMY_DEFS[kind].h - 2, { hpMul: w.hpMul, emerge: true });
     if (mod === 'elite') makeElite(e, emod || 'iron');
   }
 }

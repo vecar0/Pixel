@@ -1,14 +1,14 @@
 // 렌더러: world를 읽기만 한다. 리라 임시 실루엣 + 적 상자 + pixelfx 이펙트 + 화면 연출
-import { clipBeam } from './core/gimmick.js?v=mwql4jgh';
-import { CFG } from './core/config.js?v=mwql4jgh';
-import { attackBox } from './core/player.js?v=mwql4jgh';
-import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf } from './core/enemies.js?v=mwql4jgh';
-import { SPELLS } from './core/spells.js?v=mwql4jgh';
-import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwql4jgh';
-import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwql4jgh';
-import { FxDirector } from './fxmap.js?v=mwql4jgh';
-import { iconCanvas } from './icons.js?v=mwql4jgh';
-import { bodyShade } from './shade.js?v=mwql4jgh';
+import { clipBeam } from './core/gimmick.js?v=mwtb8vwu';
+import { CFG } from './core/config.js?v=mwtb8vwu';
+import { attackBox } from './core/player.js?v=mwtb8vwu';
+import { ENEMY_DEFS, telegraphOf, recoverOf, EMERGE_F, affinity, DARK_REACT, nameOf, baseOf } from './core/enemies.js?v=mwtb8vwu';
+import { SPELLS } from './core/spells.js?v=mwtb8vwu';
+import { nearProp, groundAt, BOSS_DEATH_F, BOSS_FALL_F } from './core/world.js?v=mwtb8vwu';
+import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwtb8vwu';
+import { FxDirector } from './fxmap.js?v=mwtb8vwu';
+import { iconCanvas } from './icons.js?v=mwtb8vwu';
+import { bodyShade } from './shade.js?v=mwtb8vwu';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -134,9 +134,15 @@ export class Renderer {
       else if (ev.type === 'affinity') this.texts.push({ x: ev.x, y: ev.y - 34, t: 0, s: ev.aff > 0 ? '약점!' : '저항', life: 60, col: ev.aff > 0 ? EL_SLASH[ev.el][5] : '#8a8494' });   // 속성 상성
       else if (ev.type === 'alarm') { this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '경보!', life: 60, col: '#ff4f5e' }); (this.ripples = this.ripples || []).push({ x: ev.x, y: ev.y + 30, r: 6, t: 0, c: '255,79,94', max: ev.r }); }
       else if (ev.type === 'sigil') { this.texts.push({ x: ev.x, y: ev.y - 40, t: 0, s: '각인!', life: 50, col: EL_SLASH[ev.el][5] }); if (!this.sigilHint) { this.sigilHint = 1; this.say(`마법 각인 — 이 적을 처형하면 「${SPELLS[ev.spell] ? SPELLS[ev.spell].name : '마법'}」이 터진다`, 220); } }
+      else if (ev.type === 'attackHit' && !ev.spell) {                     // 칼이 닿은 자리: 불티가 앞으로 튐 (점화 중이면 속성 불길)
+        const pl = w.player, lit = pl.enchantT > 0, P = EL_SLASH[pl.element || null], n = (ev.combo === 2 ? 12 : 7) + (ev.crit ? 6 : 0);
+        for (let i = 0; i < n; i++) { const a = (Math.random() - 0.5) * 1.6, sp = 1.2 + Math.random() * 2.4, life = 10 + Math.random() * 10;
+          if (lit) (this.flames = this.flames || []).push({ x: ev.x, y: ev.y, vx: Math.cos(a) * sp * (ev.face || 1), vy: Math.sin(a) * sp - 0.6, life, max: life, ph: Math.random() * 6, P });
+          else this.parts.push({ x: ev.x, y: ev.y, vx: Math.cos(a) * sp * (ev.face || 1), vy: Math.sin(a) * sp - 0.5, g: 0.12, life: life * 0.8, col: SPARK4[(Math.random() * 3) | 0], s: Math.random() < 0.3 ? 2 : 1 }); }
+      }
       else if (ev.type === 'execShock') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '무너짐!', life: 45, col: '#ffd27a' });   // 처형의 충격으로 흔들리던 적이 무너짐 → 연속 처형
       else if (ev.type === 'enrage') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '버팀!', life: 45, col: '#ff8a5a' });   // 연타당한 적이 버티고 반격
-      else if (ev.type === 'enemyStrike' && ev.kind === 'moth') { const e = w.enemies.find(o => o.kind === 'moth' && o.st === 'active' && Math.abs(o.x + o.w / 2 - ev.x) < 40); if (e) e.dustT = 24; }   // 나방 돌진: 날개 가루가 흩날림 (아래 parts)
+      else if (ev.type === 'enemyStrike' && baseOf(ev.kind) === 'moth') { const e = w.enemies.find(o => baseOf(o.kind) === 'moth' && o.st === 'active' && Math.abs(o.x + o.w / 2 - ev.x) < 40); if (e) e.dustT = 24; }   // 나방 돌진: 날개 가루가 흩날림 (아래 parts)
       else if (ev.type === 'dazzle') this.texts.push({ x: ev.x, y: ev.y - 24, t: 0, s: '눈부심', life: 50, col: '#ffe9a0' });
       else if (ev.type === 'assassinate') { this.texts.push({ x: ev.x, y: ev.y - 20, t: 0, s: ev.elite ? '급습!' : '암살!', life: 50 }); this.flash = Math.max(this.flash, 0.3); }
       else if (ev.type === 'flash') { this.flash = Math.max(this.flash, 0.3); this.zoom = Math.max(this.zoom || 0, 0.15); this.lampFlash = { t: 0, el: ev.el }; }   // 다시 켬: 등불에서 작은 섬광
@@ -181,15 +187,18 @@ export class Renderer {
     this.bgfx.update(1 / CFG.TICK); this.propfx.update(1 / CFG.TICK);
     this.weather.update(1 / CFG.TICK); this.trans.update(1 / CFG.TICK);
     if (this.irisMode) { this.irisClock += IRIS_SPEED / CFG.TICK; if (this.irisMode === 'open' && this.irisClock >= 2.2) this.irisMode = null; }
-    for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.92; p.life--; }
+    for (const p of this.parts) { p.x += p.vx; p.y += p.vy; p.vy += p.g || 0; p.vx *= 0.92; p.life--; }
     this.parts = this.parts.filter(p => p.life > 0);
+    if (this.flames) { for (const q of this.flames) { q.ph += 0.5; q.x += q.vx + Math.sin(q.ph) * 0.3; q.y += q.vy; q.vy -= 0.035; q.vx *= 0.94; q.life--; } this.flames = this.flames.filter(q => q.life > 0); if (this.flames.length > 260) this.flames.splice(0, this.flames.length - 260); }
     const pl = w.player; if (pl.state === 'roll' && pl.stateT < CFG.roll.totalF && pl.stateT % 3 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 12 });   // 회피 잔상
     for (const e of w.enemies) if (!e.dead) {                              // 화상(burnT): 몸에서 불꽃이 오름 · 빙결(frozenT): 서리가 날림
       if (e.burnT > 0 && w.t % 3 === 0) this.parts.push({ x: e.x + Math.random() * e.w, y: e.y + e.h * (0.3 + Math.random() * 0.6), vx: (Math.random() - 0.5) * 0.3, vy: -0.8 - Math.random() * 0.6, life: 16, col: Math.random() < 0.5 ? '#ff7a2a' : '#ffd27a', s: 2 });
       if (e.frozenT > 0 && w.t % 4 === 0) this.parts.push({ x: e.x + Math.random() * e.w, y: e.y + Math.random() * e.h, vx: 0, vy: 0.3, life: 18, col: '#dff4ff', s: 1 });
     }
-    if (pl.enchantT > 0 && this.lastFr && this.blade) { const D = this.blade[this.lastFr.src], M = D && D.m && D.m.length ? D.m : D && D.o; if (M && M.length) { const c = EL_SLASH[pl.element || null], f = pl.face, fr = this.lastFr;   // 점화한 칼: 날 전체에서 속성 불꽃이 타오름
-      for (let k = 0; k < 3; k++) { const row = M[(Math.random() * M.length) | 0], px = row[1][(Math.random() * row[1].length) | 0]; this.parts.push({ x: pl.x + pl.w / 2 + f * (px - fr.ax), y: pl.y + pl.h + (row[0] - fr.ay), vx: (Math.random() - 0.5) * 0.3, vy: -0.6 - Math.random() * 0.9, life: 10 + Math.random() * 8, col: c[3 + ((Math.random() * 4) | 0)], s: Math.random() < 0.3 ? 2 : 1 }); } } }
+    if (pl.enchantT > 0 && this.lastFr && this.blade) { const D = this.blade[this.lastFr.src], M = D && D.m && D.m.length ? D.m : D && D.o; if (M && M.length) {   // 점화한 칼: 날 전체에서 불길이 타오름
+      const fr = this.lastFr, f = pl.face, swing = pl.state === 'attack' || pl.state === 'flurry', n = swing ? 9 : 5, P = EL_SLASH[pl.element || null];
+      for (let k = 0; k < n; k++) { const row = M[(Math.random() * M.length) | 0], px = row[1][(Math.random() * row[1].length) | 0], life = 12 + Math.random() * 14;
+        (this.flames = this.flames || []).push({ x: pl.x + pl.w / 2 + f * (px - fr.ax) + (Math.random() - 0.5) * 2, y: pl.y + pl.h + (row[0] - fr.ay), vx: (Math.random() - 0.5) * 0.35 - (swing ? f * 0.6 : 0), vy: -0.4 - Math.random() * 0.7, life, max: life, ph: Math.random() * 6.28, P }); } } }
     if (pl.state === 'execute' && pl.execMode === 'chain' && pl.stateT < CFG.execute.chainHitF && pl.stateT % 2 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 14, st: 'execute', stT: pl.stateT, mode: 'chain', amber: true });   // 연속 처형 돌진 잔상
     for (const g of this.ghosts) g.life--;
     this.ghosts = this.ghosts.filter(g => g.life > 0);
@@ -334,6 +343,15 @@ export class Renderer {
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);
     if (!hideChars) this.drawLira(g, w, p);
     this._liraDone = true;
+    this.drawSmear(g, w);
+    if (this.flames && this.flames.length) {                               // 칼 불길: 흰 심지 → 밝은 불 → 속성 색 → 잉걸 → 연기. 어릴수록 크고 밝게 (덧칠로 빛남)
+      g.globalCompositeOperation = 'lighter';
+      for (const q of this.flames) { const k = 1 - q.life / q.max; if (k > 0.6) continue; const s2 = k < 0.25 ? 4 : 3; g.globalAlpha = 0.18 * (1 - k); g.fillStyle = q.P[4]; g.fillRect(Math.round(q.x) - s2, Math.round(q.y) - s2, s2 * 2, s2 * 2); }
+      g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      for (const q of this.flames) { const k = 1 - q.life / q.max, c = k < 0.12 ? q.P[6] : k < 0.3 ? q.P[5] : k < 0.5 ? q.P[4] : k < 0.68 ? q.P[3] : k < 0.85 ? q.P[2] : '#3a3440', sz = k < 0.3 ? 2 : 1;
+        g.globalAlpha = k < 0.85 ? 1 : 0.5 * (1 - k) / 0.15 + 0.2; g.fillStyle = c; g.fillRect(Math.round(q.x), Math.round(q.y), sz, sz + (k < 0.5 ? 1 : 0)); }
+      g.globalAlpha = 1;
+    }
     if (this.lampFlash) {                                                  // 섬광: 등불에서 짧게 번쩍 (빛 + 짧은 빛살 8줄, 점화한 상태면 속성 색)
       const F = this.lampFlash, k = F.t / 18, x = this.lampX, y = this.lampY, P = EL_SLASH[F.el === undefined ? null : F.el] || EL_SLASH[null];
       const rgb = F.el === undefined ? '255,214,140' : EL_RGB[F.el || null], R = 10 + 30 * Math.min(1, k * 2);
@@ -859,7 +877,7 @@ export class Renderer {
   drawEyes(g, w, e, a) {
     if (e.dead || e.spawnT > 0) return;
     const [x, y] = this.eyePos(w, e), atk = e.st === 'telegraph' || e.st === 'active', E = e._eye && w.t - e._eye[2] <= 1 ? e._eye : null;
-    const px = E && E[5][2], col = px ? '#' + px[(px.length / 2) | 0][2] : (EYE_COL[e.kind] || '#d8c8a8');
+    const px = E && E[5][2], col = px ? '#' + px[(px.length / 2) | 0][2] : (EYE_COL[baseOf(e.kind)] || '#d8c8a8');
     const rgb = [1, 3, 5].map(i => parseInt(col.slice(i, i + 2), 16)).join(','), r = e.boss ? 12 : 8;
     if (!e.unaware || atk) { const gl = g.createRadialGradient(x, y, 0, x, y, r); gl.addColorStop(0, atk ? `rgba(255,79,94,${0.5 * a})` : `rgba(${rgb},${0.35 * a})`); gl.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gl; g.fillRect(x - r, y - r, r * 2, r * 2); }
     g.globalAlpha = a * (atk ? ((w.t >> 2) & 1 ? 1 : 0.55) : e.unaware ? 0.6 : 1);
@@ -901,6 +919,30 @@ export class Renderer {
     c = document.createElement('canvas'); c.width = fr.img.naturalWidth; c.height = fr.img.naturalHeight; const x = c.getContext('2d');
     x.beginPath(); for (const [y, xs] of [...(B.m || []), ...(fr.src.includes('enchant') ? B.o || [] : [])]) for (const px of xs) x.rect(px, y, 1, 1); x.clip(); x.drawImage(base, 0, 0);
     this.boCache.set(base, c); return c;
+  }
+  // 휘두르기 잔상: 베는 동안 매 프레임 칼날 픽셀(세계 좌표)을 기억했다가, 이전 몇 프레임의 칼날과 칼끝 사이를 옅은 호로 이어 그림
+  captureSmear(w, p, fr, cx, feet, f, sx, sy) {
+    const swing = p.state === 'attack' || p.state === 'flurry' || (p.state === 'execute' && p.stateT < 26);
+    this.smear = (this.smear || []).filter(s => w.t - s.t < 5);
+    if (!swing) return;
+    const B = this.blade && this.blade[fr.src]; if (!B || !B.m || !B.m.length) return;
+    if (this.smear.length && this.smear[this.smear.length - 1].src === fr.src && this.smear[this.smear.length - 1].x === cx) return;   // 같은 그림이면 한 번만
+    const pts = []; for (const [y, xs] of B.m) for (let i = 0; i < xs.length; i += 2) pts.push([cx + f * sx * (xs[i] - fr.ax), feet + sy * (y - fr.ay)]);
+    if (pts.length < 4) return;
+    const hx = cx + f * 6, hy = feet - 42; let tip = pts[0], base = pts[0], dmax = -1, dmin = 1e9;   // 손잡이 쪽(몸 가까이)과 칼끝(가장 먼 곳)
+    for (const q of pts) { const d = Math.hypot(q[0] - hx, q[1] - hy); if (d > dmax) { dmax = d; tip = q; } if (d < dmin) { dmin = d; base = q; } }
+    this.smear.push({ t: w.t, src: fr.src, x: cx, pts, tip, base, el: p.enchantT > 0 ? (p.element || null) : undefined });
+  }
+  drawSmear(g, w) {
+    const S = (this.smear || []).filter(s => w.t - s.t < 5); if (S.length < 2) return;
+    for (let i = 1; i < S.length; i++) {
+      const a = S[i - 1], b = S[i], age = w.t - a.t, k = 1 - age / 5, P = a.el !== undefined ? EL_SLASH[a.el] : null;
+      g.fillStyle = P ? P[4] : '#fff3d6'; g.globalAlpha = 0.28 * k;
+      g.beginPath(); g.moveTo(a.base[0], a.base[1]); g.lineTo(a.tip[0], a.tip[1]); g.lineTo(b.tip[0], b.tip[1]); g.lineTo(b.base[0], b.base[1]); g.closePath(); g.fill();   // 칼이 지나간 면
+      g.strokeStyle = P ? P[6] : '#ffffff'; g.globalAlpha = 0.75 * k; g.lineWidth = 2; g.beginPath(); g.moveTo(a.tip[0], a.tip[1]); g.lineTo(b.tip[0], b.tip[1]); g.stroke();   // 칼끝 궤적
+      g.fillStyle = P ? P[5] : '#ffe9b8'; g.globalAlpha = 0.35 * k; for (const q of a.pts) g.fillRect(Math.round(q[0]), Math.round(q[1]), 1, 1);   // 칼 잔상
+    }
+    g.globalAlpha = 1; g.lineWidth = 1;
   }
   // 칼날 테두리 그림 (프레임·속성마다 한 번 만들어 재사용): 안쪽 1px = 밝은 속성 색, 바깥 1px = 반투명
   bladeOutline(fr, el) {
@@ -973,20 +1015,20 @@ export class Renderer {
   }
   // 적 그림 (Higgsfield → 픽셀 격자). 원본은 왼쪽을 봄
   enemyFrame(w, e, d) {
-    const EA = this.enemyAnims && this.enemyAnims[e.kind];
+    const K = baseOf(e.kind), EA = this.enemyAnims && this.enemyAnims[K];   // 변종은 원래 적의 그림을 빌림
     if (EA && EA.walk && EA.attack) {                       // 8프레임 애니메이션: 걷기는 이동 거리에 맞춰, 공격은 예고→판정→후딜에 맞춰
       const a = e.atk && d.attacks[e.atk], span = (lo, hi, k) => Math.min(hi, lo + Math.floor(Math.max(0, k) * (hi - lo + 1)));
       let list = EA.walk, i;
       if (e.st === 'telegraph' && a) { list = EA.attack; i = span(0, 3, e.stT / telegraphOf(e, a)); }
       else if (e.st === 'active' && a) { list = EA.attack; i = span(4, 5, e.stT / Math.max(1, (a.hits || 1) > 1 ? a.gapF : a.activeF)); }
       else if (e.st === 'recover' && a) { list = EA.attack; i = span(6, 7, e.stT / recoverOf(a)); }
-      else if (e.kind === 'moth') i = ((w.t / 4) | 0) % 8;
+      else if (K === 'moth') i = ((w.t / 4) | 0) % 8;
       else i = Math.abs(e.vx) > 0.1 ? Math.floor(Math.abs(e.x) * (e.boss ? 0.06 : 0.11)) % 8 : 0;
       const f = list[i]; if (f && f.img.complete && f.img.naturalWidth) { f.anim = true; return f; }
     }
-    const S = this.enemySprites; if (!S || !S[e.kind]) return null;
-    const F = S[e.kind]; let n;
-    if (e.kind === 'moth') n = e.st === 'active' ? 'down' : e.st === 'telegraph' ? 'up' : (w.t >> 2) & 1 ? 'up' : 'down';
+    const S = this.enemySprites; if (!S || !S[K]) return null;
+    const F = S[K]; let n;
+    if (K === 'moth') n = e.st === 'active' ? 'down' : e.st === 'telegraph' ? 'up' : (w.t >> 2) & 1 ? 'up' : 'down';
     else if (e.st === 'telegraph') n = F.wind ? 'wind' : 'idle';
     else if (e.st === 'active' || (e.st === 'recover' && e.stT < 12)) n = F.slash ? 'slash' : 'strike';
     else n = 'idle';
@@ -1001,12 +1043,12 @@ export class Renderer {
     let over = null;                                       // 예고 깜빡임: 통째로 바꾸지 않고 반투명 덧칠 (눈부심 방지)
     if (e.st === 'telegraph' && a && ((w.t >> (telegraphOf(e, a) - e.stT < 10 ? 1 : 2)) & 1)) over = a.parryable ? '#ffffff' : '#ff4f5e';
     else if (e.staggerT > 0 && (w.t >> 2) & 1) img = this.tinted('#9aa0ad', img);
-    const cx = Math.round(e.x + e.w / 2), base = e.kind === 'moth' ? Math.round(e.y + e.h / 2) : Math.round(e.y + e.h);
+    const cx = Math.round(e.x + e.w / 2), base = d && d.fly ? Math.round(e.y + e.h / 2) : Math.round(e.y + e.h);
     const big = e.boss ? 0.5 : 1;                          // 큰 몸은 덜 흔들리고 묵직하게
     let ox = 0, oy = 0, rot = 0, sy = 1;
     if (f.anim) {                                          // 애니메이션이 동작을 담고 있으니 예고 막판 떨림만
       if (e.st === 'telegraph' && a && e.stT / telegraphOf(e, a) > 0.65) ox = (w.t & 2 ? 1 : -1);
-    } else if (e.kind === 'moth') oy = Math.sin(w.t * 0.25 + e.x * 0.05) * 2;
+    } else if (d && d.fly) oy = Math.sin(w.t * 0.25 + e.x * 0.05) * 2;
     else if (e.st === 'idle' && Math.abs(e.vx) > 0.1) {                    // 걷기: 발걸음마다 들썩 + 좌우로 기우뚱
       const ph = e.x * (e.boss ? 0.07 : 0.16);
       oy = -Math.abs(Math.sin(ph)) * (e.boss ? 3 : 2.5); rot = Math.sin(ph) * 0.05 * big;
@@ -1026,6 +1068,7 @@ export class Renderer {
       g.globalAlpha = a; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) g.drawImage(t, -f.ax + dx, -f.ay + dy); g.globalAlpha = 1;
     }
     g.drawImage(img, -f.ax, -f.ay);
+    if (d && d.tint && !hitFlash) { g.globalCompositeOperation = 'color'; g.globalAlpha = 0.75; g.drawImage(this.tinted(d.tint, f.img), -f.ax, -f.ay); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }   // 변종: 원래 그림을 다른 색으로
     const EY = this.eyes && this.eyes[f.src];                               // 이 프레임의 실제 눈 위치 → 세계 좌표로 기억 (어둠 속 눈빛)
     if (EY) { const M = M0.inverse().multiply(g.getTransform()), q = M.transformPoint(new DOMPoint(EY[0] - f.ax, EY[1] - f.ay)); e._eye = [q.x, q.y, w.t, M, f, EY]; }
     this.applyLight(g, f.img, f.ax, f.ay, e.x + e.w / 2, e.y + e.h / 2, e.face > 0);
@@ -1082,6 +1125,7 @@ export class Renderer {
   drawAnim(g, w, p, fr, cx, feet, f) {
     if (p === w.player) this.lastFr = fr;                                  // 칼날 불꽃 위치용 (지금 프레임)
     const sq = this.squash, sy = 1 - sq * 0.15, sx = 1 + sq * 0.12;
+    if (p === w.player) this.captureSmear(w, p, fr, cx, feet, f, sx, sy);
     const lit = p.enchantT > 0 || (p.state === 'cast' && p.spell === 'enchant'), off = p.dark || (p.state === 'relight' && p.stateT < CFG.snuff.relightF - 4);
     const base = p.element || lit || off ? this.elFrame(fr, p.element || null, lit && !off, off) : fr.img;   // 등불 = 속성 색, 두르면 칼도, 소등이면 등불이 꺼짐   // 등불 = 속성 색, 두르면 칼도
     const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50', fr.img) : base;

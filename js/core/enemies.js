@@ -2,10 +2,10 @@
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
-import { clipBeam } from './gimmick.js?v=mwql4jgh';
-import { CFG } from './config.js?v=mwql4jgh';
-import { moveAndCollide, overlap } from './player.js?v=mwql4jgh';
-import { BOSSES, bossPick, bossWant } from './boss.js?v=mwql4jgh';
+import { clipBeam } from './gimmick.js?v=mwtb8vwu';
+import { CFG } from './config.js?v=mwtb8vwu';
+import { moveAndCollide, overlap } from './player.js?v=mwtb8vwu';
+import { BOSSES, bossPick, bossWant } from './boss.js?v=mwtb8vwu';
 
 export const ENEMY_DEFS = {
   // 소울류 조정: 적 하나하나가 위협 (체력↑ · 공격 2~3종 · 늦게 내려치는 공격 · 콤보) / flinch: 맞으면 움찔(예고 초반 끊김), 연타당하면 버티고 반격
@@ -52,6 +52,17 @@ export const ENEMY_DEFS = {
   },
   ...BOSSES,
 };
+// 변종 (그림은 원래 적, 색만 다시 칠하고 성질이 다름): sprite = 그림을 빌릴 적, tint = 덧칠 색
+const V = (base, o) => ({ ...ENEMY_DEFS[base], sprite: base, ...o, attacks: { ...ENEMY_DEFS[base].attacks, ...(o.attacks || {}) } });
+Object.assign(ENEMY_DEFS, {
+  ghoulRot: V('ghoul', { tint: '#8fd060', hp: 45, speed: 1.4, cooldown: [24, 56] }),                                        // 썩은 구울: 빠르고 쉴 틈 없이 몰아침
+  priestDrowned: V('priest', { tint: '#4fc0d8', hp: 50, attacks: { bolts: { ...ENEMY_DEFS.priest.attacks.bolts, hits: 5, gapF: 16 } } }),   // 익사한 순례자: 물탄 5발
+  mothCrystal: V('moth', { tint: '#c890ff', oneHit: false, hp: 22, attacks: { dash: { ...ENEMY_DEFS.moth.attacks.dash, dashSpeed: 8 } } }),   // 수정 나방: 두 대 맞아야, 더 빠른 돌진
+  shadeAssassin: V('assassin', { tint: '#6a4ab8', hp: 75, attacks: { frenzy: { ...ENEMY_DEFS.assassin.attacks.frenzy, hits: 4 } } }),   // 그늘 암살자: 더 단단하고 4연속
+  emberGuard: V('shellguard', { tint: '#ff7a3a', hp: 130, attacks: { crush: { ...ENEMY_DEFS.shellguard.attacks.crush, wave: { w: 18, h: 14, speed: 3.4, life: 70 } } } }),   // 잿불 수호자: 내려찍으면 불길이 바닥을 탐
+  starSpear: V('spearman', { tint: '#9ad8ff', hp: 90, speed: 1.05, attacks: { thrust: { ...ENEMY_DEFS.spearman.attacks.thrust, reach: 74, delay: 18 } } }),   // 별빛 창병: 더 길고 빠른 찌르기
+});
+export const baseOf = k => (ENEMY_DEFS[k] && ENEMY_DEFS[k].sprite) || k;   // 그림·이펙트를 빌릴 원래 적
 
 // 속성 상성: 점화한 속성이 약점이면 게이지 1.6배·피해 +20%, 저항이면 게이지 절반·피해 -15%
 //   화염(str) 빛(wil) 얼음(agi) 귀화(lmp) 생명(vit) 번개(fury)
@@ -68,8 +79,10 @@ export const AFFINITY = {
   shadow: { weak: ['wil'], resist: ['lmp'] },
   forge: { weak: ['agi'], resist: ['str'] },              // 용광로: 식히면 갈라짐
   king: { weak: ['str'], resist: ['agi'] },               // 꺼진 태양의 왕: 다시 붙는 불에 약함
+  ghoulRot: { weak: ['str', 'wil'], resist: ['vit'] }, priestDrowned: { weak: ['fury'], resist: ['agi', 'wil'] }, mothCrystal: { weak: ['fury'], resist: ['agi'] },
+  shadeAssassin: { weak: ['wil'], resist: ['lmp'] }, emberGuard: { weak: ['agi'], resist: ['str'] }, starSpear: { weak: ['lmp'], resist: ['wil'] },
 };
-export const ENEMY_NAME = { ghoul: '구울', moth: '나방', spearman: '창병', priest: '순례자', shellguard: '갑각수호자', assassin: '암살자' };
+export const ENEMY_NAME = { ghoul: '구울', moth: '나방', spearman: '창병', priest: '순례자', shellguard: '갑각수호자', assassin: '암살자', ghoulRot: '썩은 구울', priestDrowned: '익사한 순례자', mothCrystal: '수정 나방', shadeAssassin: '그늘 암살자', emberGuard: '잿불 수호자', starSpear: '별빛 창병' };
 export const nameOf = k => ENEMY_NAME[k] || (ENEMY_DEFS[k] && ENEMY_DEFS[k].name) || k;
 export function affinity(e, el) {                          // 1 약점 · -1 저항 · 0 보통
   const A = el && AFFINITY[e.kind]; if (!A) return 0;
@@ -85,6 +98,12 @@ export const DARK_REACT = {
   spearman: { name: '경계병', desc: '어둠 속에서 리라를 찾아내면 주변에 경보', alarm: 220 },
   assassin: { name: '어둠눈', desc: '어둠도 보지만 다시 켜는 섬광에 눈이 멂', flashBlind: 180 },
   priest: { name: '물빛 구슬', desc: '어둠 속에서도 가까이 오면 보임' },
+  ghoulRot: { name: '썩은 코', desc: '소리를 아주 멀리서 듣고 쉬지 않고 달려듦', hear: 1.8 },
+  priestDrowned: { name: '물빛 구슬', desc: '어둠 속에서도 가까이 오면 보임 · 물탄 5발' },
+  mothCrystal: { name: '빛을 쫓음', desc: '밝으면 빠르게 달려들고 두 대 맞아야 떨어짐', hear: 0, litSpeed: 1.4 },
+  shadeAssassin: { name: '어둠눈', desc: '어둠도 보지만 섬광에 눈이 멂 · 4연속 베기', flashBlind: 150 },
+  emberGuard: { name: '둔한 귀', desc: '내려찍으면 불길이 바닥을 타고 퍼짐', hear: 0.6 },
+  starSpear: { name: '경계병', desc: '어둠 속에서 찾아내면 주변에 경보 · 긴 찌르기', alarm: 260 },
 };
 
 // 엘리트 수식어 (판마다 무작위)
@@ -165,7 +184,7 @@ export function seesPlayer(w, e) {
   if (!p.dark) return true;
   if (e.boss || d.darkSight) return true;
   const dist = Math.abs(p.x + p.w / 2 - (e.x + e.w / 2)) + Math.abs(p.y - e.y) * 0.5;
-  if (e.kind === 'priest' && dist < 110) return true;                    // 사제의 물빛 구슬
+  if (baseOf(e.kind) === 'priest' && dist < 110) return true;                    // 사제의 물빛 구슬
   const R = DARK_REACT[e.kind], hear = R && R.hear !== undefined ? R.hear : 1;   // 귀가 밝은 적·어두운 적 (나방은 소리를 못 들음)
   return p.noiseT > 0 && dist < (p.noiseR || 0) * hear;
 }
@@ -265,7 +284,7 @@ function spawnBolt(w, e, a) {
   const tx = p.x + p.w / 2, dx = tx - sx, ty0 = p.y + p.h * 0.62 - b.h / 2;
   const ty = sy + Math.max(-0.35, Math.min(0.35, (ty0 - sy) / (Math.abs(dx) || 1))) * Math.abs(dx), l = Math.hypot(dx, ty - sy) || 1;
   w.projectiles.push({ x: sx, y: sy, w: b.w, h: b.h, vx: (tx - sx) / l * b.speed, vy: (ty - sy) / l * b.speed,
-    dmg: a.dmg, parryable: a.parryable, owner: 'enemy', life: 160, src: e, bolt: e.kind });
+    dmg: a.dmg, parryable: a.parryable, owner: 'enemy', life: 160, src: e, bolt: baseOf(e.kind) });
   w.events.push({ type: 'bolt', x: sx, y: sy });
 }
 

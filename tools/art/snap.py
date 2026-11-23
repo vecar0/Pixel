@@ -17,7 +17,13 @@ def grid(a):
       i=np.round(np.arange(ph,len(gx)-1,s)).astype(int); v=gx[i].mean()
       if best is None or v>best[0]: best=(v,s,ph)
   return best[1],best[2]
-s,ph=grid(fr[0]); print('grid',s,ph)
+# 칸 크기: 캐릭터 키를 원본 몸 키(BODY_H)에 맞춤 → 모든 동작의 캐릭터 크기가 같음
+BODY_H=float(os.environ.get('BODY_H',78))
+def hh(a):
+  m=np.abs(a-bg).sum(2)>(45 if bg.sum()>300 else 16); r=np.where(m.any(1))[0]; return (r[-1]-r[0]+1) if len(r) else 0
+hs=sorted(hh(a) for a in fr); href=hs[int(len(hs)*0.75)] if len(hs)>1 else hs[0]
+s=float(os.environ['CELL']) if os.environ.get('CELL') else href/BODY_H; ph=0.0
+print('cell',round(s,3),'src body h',href)
 # 몸 높이 맞춤: 원본 몸 높이 / 이 GIF 몸 높이
 def hgt(m): r=np.where(m.any(1))[0]; return r[-1]-r[0]+1
 res=[]
@@ -27,15 +33,16 @@ for a in fr:
     for i in range(nx):
       x0=ph+i*s; y0=ph+j*s; c=a[int(y0+s*0.3):int(y0+s*0.7)+1,int(x0+s*0.3):int(x0+s*0.7)+1].reshape(-1,3); o[j,i]=np.median(c,axis=0)
   from scipy.ndimage import label
-  cand=np.abs(o-bg).sum(2)<=45                          # 배경과 비슷한 칸
+  TH=45 if bg.sum()>300 else 16                          # 어두운 배경이면 옷(검정)과 섞이지 않게 좁게
+  cand=np.abs(o-bg).sum(2)<=TH                          # 배경과 비슷한 칸
   lab,_=label(cand); edge_ids=set(np.unique(np.concatenate([lab[0],lab[-1],lab[:,0],lab[:,-1]])))-{0}
   m=~np.isin(lab,list(edge_ids))                        # 가장자리와 이어진 것만 배경 (얼굴 피부는 남김)
-  near=np.abs(o-bg).sum(2)<=24; l2,n2=label(near)          # 갇힌 배경 (낫 곡선 안쪽 등): 배경색과 거의 같은 덩어리
+  near=np.abs(o-bg).sum(2)<=min(24,TH); l2,n2=label(near)          # 갇힌 배경 (낫 곡선 안쪽 등): 배경색과 거의 같은 덩어리
   for k in range(1,n2+1):
     if (l2==k).sum()>=3: m[l2==k]=False
   for _ in range(2):                                   # 가장자리 배경 번짐(밝은 회색) 벗겨내기
     e=m&~(np.roll(m,1,0)&np.roll(m,-1,0)&np.roll(m,1,1)&np.roll(m,-1,1))
-    m&=~(e&(np.abs(o-bg).sum(2)<110))
+    m&=~(e&(np.abs(o-bg).sum(2)<(110 if TH>20 else 28)))
   d=((o[:,:,None,:]-PAL[None,None])**2).sum(3); q=PAL[d.argmin(2)]
   rgba=np.zeros((ny,nx,4),np.uint8); rgba[...,:3]=q; rgba[...,3]=m*255
   res.append(rgba)

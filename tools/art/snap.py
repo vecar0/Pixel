@@ -12,7 +12,7 @@ bg=np.median(np.concatenate([fr[0][0],fr[0][-1],fr[0][:,0],fr[0][:,-1]]),axis=0)
 def grid(a):
   gx=np.abs(np.diff(a,axis=1)).sum(2).sum(0)
   best=None
-  for s in np.arange(2.5,6,0.02):
+  for s in np.arange(float(os.environ.get('SMIN',2.5)),float(os.environ.get('SMAX',6)),0.02):
     for ph in np.arange(0,s,0.25):
       i=np.round(np.arange(ph,len(gx)-1,s)).astype(int); v=gx[i].mean()
       if best is None or v>best[0]: best=(v,s,ph)

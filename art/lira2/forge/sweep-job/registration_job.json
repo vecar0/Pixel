@@ -1,0 +1,127 @@
+{
+  "schema": "video2dsprite.registration_job.v1",
+  "tool": {
+    "name": "prepare_i2v_input",
+    "version": "0.6.0"
+  },
+  "action": "attack",
+  "actionKind": "oneshot",
+  "returnsToRest": true,
+  "master": {
+    "path": "master.png",
+    "sha256": "945941a6276f183b99933efa64b6af3cf5ed227222f3310360b2c2841f28ad8f",
+    "size": [
+      111,
+      111
+    ],
+    "anchor": [
+      55.5,
+      106.0
+    ],
+    "sourceName": "master-final.png"
+  },
+  "sourceSize": [
+    111,
+    111
+  ],
+  "sourceAnchor": [
+    55.5,
+    106.0
+  ],
+  "anchorMode": "explicit",
+  "referenceCanvas": [
+    1280,
+    720
+  ],
+  "referenceScale": 4,
+  "referenceOffset": [
+    418,
+    196
+  ],
+  "referenceRoot": [
+    640.0,
+    620.0
+  ],
+  "pixelArt": true,
+  "placementResampler": "nearest",
+  "keyColor": "magenta",
+  "keyChoice": {
+    "requested": "magenta",
+    "status": "ok",
+    "candidates": [
+      {
+        "key": "magenta",
+        "overlapShare": 0.0,
+        "rejected": false
+      }
+    ],
+    "rule": "reject a key when more than 0.5% of subject pixels have key dominance >= 40; first acceptable candidate wins"
+  },
+  "workRegion": [
+    322,
+    116,
+    958,
+    664
+  ],
+  "workRegionClipped": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "margin": 20.0,
+  "padding": [
+    24,
+    20,
+    24,
+    6
+  ],
+  "durationS": 3.0,
+  "calmSpanS": 0.4,
+  "timeline": [
+    {
+      "startS": 0.0,
+      "endS": 0.4,
+      "text": "hold exactly the supplied reference pose, nothing moves yet"
+    },
+    {
+      "startS": 0.4,
+      "endS": 0.8,
+      "text": "obvious anticipation: wind up away from the target"
+    },
+    {
+      "startS": 0.8,
+      "endS": 1.0,
+      "text": "ONE sharp strike toward the facing direction"
+    },
+    {
+      "startS": 1.0,
+      "endS": 1.7,
+      "text": "recoil and fully return to the neutral stance"
+    },
+    {
+      "startS": 1.7,
+      "endS": 3.0,
+      "text": "hold the exact original neutral stance"
+    }
+  ],
+  "prompt": {
+    "path": "prompt.txt",
+    "sha256": "0212b781914dc3c9c32c6951665ac1ad58f9f76db8a8f8ec78de8c7a7ccbea73"
+  },
+  "lint": [],
+  "warnings": [],
+  "input": {
+    "path": "input.png",
+    "sha256": "4b61489bd8465b19c5ddf0daaa51eb1dfcb7723d7a91de0fbf054325ef39c0ea",
+    "size": [
+      1280,
+      720
+    ]
+  },
+  "reviewGuide": {
+    "path": "review-guide.png",
+    "sha256": "a5c55428e48688c04608eb8f4fb9a846293c24c9cd40c18ed9b42b968382fa53",
+    "note": "review aid only; never send it to the provider"
+  }
+}

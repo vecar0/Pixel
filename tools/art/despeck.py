@@ -13,6 +13,8 @@ def clean(a, min_blob):
         sizes = ndimage.sum(al, lab, range(1, n + 1))
         keep = np.zeros(n + 1, bool); keep[1:] = sizes >= min_blob
         al &= keep[lab]
+    if os.environ.get('BLOBS_ONLY'):
+        out = a.copy(); out[..., 3] = np.where(al, 255, 0); return out
     # 2) peel bright, low-saturation pixels on the outline (repeat: thin streaks)
     rgb = a[..., :3].astype(int)
     bright = (rgb.min(-1) > 150) & (rgb.max(-1) - rgb.min(-1) < 60)

@@ -142,6 +142,55 @@ def run(a):
         pick = dm.argmin(0)
         ys, xs = np.nonzero(lone)
         a[ys, xs, :3] = nbr[pick[ys, xs], ys, xs]
+    # (5) silhouette: spurs out, notches in, odd outline pixels toned to the outline
+    H, W = a.shape[:2]
+    offs = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
+    def stack(arr):
+        P = np.pad(arr, ((1, 1), (1, 1)) + ((0, 0),) * (arr.ndim - 2))
+        return np.stack([P[1+dy:1+dy+H, 1+dx:1+dx+W] for dy, dx in offs])
+    for _ in range(2):
+        al = a[..., 3] > 0
+        nal = stack(al); cnt = nal.sum(0)
+        # spur: <=2 neighbours that touch each other (a bump, not a 1px line)
+        spur = al & (cnt <= 1)
+        two = al & (cnt == 2)
+        if two.any():
+            idx = np.argsort(~nal, axis=0)[:2]           # positions of the two neighbours
+            o = np.array(offs)
+            p1 = o[idx[0]]; p2 = o[idx[1]]
+            adj = np.abs(p1 - p2).max(-1) <= 1
+            spur |= two & adj
+        spur &= ~face
+        a[spur, 3] = 0
+        # notch: empty pixel enclosed by >=6 body neighbours
+        al = a[..., 3] > 0
+        nal = stack(al); cnt = nal.sum(0)
+        notch = ~al & (cnt >= 6)
+        if notch.any():
+            nbr = stack(a[..., :3].astype(int))
+            med = np.median(np.where(nal[..., None], nbr, np.nan), axis=0)
+            dm = np.abs(nbr - np.nan_to_num(med)[None]).sum(-1) + (~nal) * 9999
+            pick = dm.argmin(0)
+            ys, xs = np.nonzero(notch)
+            a[ys, xs, :3] = nbr[pick[ys, xs], ys, xs]; a[ys, xs, 3] = 255
+    # outline pixels much lighter than every other outline neighbour -> darkest neighbour
+    al = a[..., 3] > 0
+    rgb = a[..., :3].astype(int)
+    pad = np.pad(al, 1)
+    edge = al & ~(pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:])
+    L = 0.3*rgb[..., 0]+0.59*rgb[..., 1]+0.11*rgb[..., 2]
+    nL = stack(L); ne = stack(edge); nal = stack(al)
+    fire = (rgb[..., 0] > 150) & (rgb[..., 0] - rgb[..., 2] > 70)
+    simedge = (ne & (np.abs(nL - L[None]) < 40)).sum(0)
+    minL = np.nanmin(np.where(nal, nL, np.nan), axis=0)
+    sat = rgb.max(-1) - rgb.min(-1)
+    grey_fringe = edge & (sat < 40) & (L > 35) & (L < 165) & (L > minL + 25)
+    odd = edge & ~face & ~fire & (((simedge == 0) & (L > minL + 40)) | grey_fringe)
+    if odd.any():
+        nbr = stack(rgb)
+        darkest = np.where(nal, nL, 9999).argmin(0)
+        ys, xs = np.nonzero(odd)
+        a[ys, xs, :3] = nbr[darkest[ys, xs], ys, xs]
     return a
 
 src, dst = sys.argv[1:3]

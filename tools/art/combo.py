@@ -53,12 +53,43 @@ for n, it in enumerate(items):
         i = idxs[-1]; last = dict(d=d, i=i, meta=meta[i], off=off)
         continue
     kind, cnt = it[0], it[1]
-    nxt = items[n + 1]; nd, ni, nmeta, noff = nxt[1], nxt[2][0], nxt[3][nxt[2][0]], nxt[4]
+    if kind == 'circle':
+        # ["circle", dir, [frame idxs], extra_turns, end_angle_deg]: scythe sweeps a full circle around her
+        _, cd, cidx, turns, end_deg = it
+        cmeta, coff = load(cd); coff = coff + np.array([IMP[0], 0])
+        gA = np.array(last['meta']['grip']) + last['off']; tA = last['meta']['th']
+        tB = math.radians(end_deg); dd = (tB - tA) % (2 * math.pi) + 2 * math.pi * turns
+        pf, pt = gA, tA; nfr = len(cidx)
+        for j, ci in enumerate(cidx):
+            t = (j + 1) / nfr; te = 1 - (1 - t) ** 2          # fast start, eases into the top
+            body = layer(arr(cd + '/body_%03d.png' % ci), coff)
+            hands = layer(arr(cd + '/hands_%03d.png' % ci)[..., :1].repeat(4, -1), coff)[..., 0] > 0
+            g = np.array(cmeta[ci]['grip']) + coff
+            th = tA + dd * te; res = body.copy()
+            acc = np.zeros((CH, CW), float)
+            for i in range(36):
+                u = i / 35; p = blade_pts(pf + (g - pf) * u, pt + (th - pt) * u)
+                xi = np.clip(np.round(p[:, 0]).astype(int), 0, CW - 1); yi = np.clip(np.round(p[:, 1]).astype(int), 0, CH - 1)
+                acc[yi, xi] = np.maximum(acc[yi, xi], .2 + .8 * u)
+            acc = ndimage.grey_closing(acc, size=(4, 4)); sm = (acc > 0) & (res[..., 3] == 0)
+            idx = np.where(acc > .8, 2, np.where(acc > .5, 1, 0)); res[sm, :3] = GREY[idx[sm]]; res[sm, 3] = 255
+            sc = place(g, g, th, CH, CW, Sa=(S_NOBLADE if j < nfr - 1 else S)); m_ = sc[..., 3] > 0; res[m_] = sc[m_]
+            res[hands] = body[hands]
+            frames.append((res, 45 if j < nfr - 1 else 90)); pf, pt = g, th
+        last = dict(d=cd, i=cidx[-1], meta=dict(cmeta[cidx[-1]], th=th), off=coff)
+        continue
+    nxt = items[n + 1]
+    if nxt[0] == 'circle':
+        cm_, co_ = load(nxt[1]); nd, ni, nmeta, noff = nxt[1], nxt[2][0], cm_[nxt[2][0]], co_
+    else: nd, ni, nmeta, noff = nxt[1], nxt[2][0], nxt[3][nxt[2][0]], nxt[4]
     noff = noff + np.array([IMP[0], 0])
     gA = np.array(last['meta']['grip']) + last['off']; gB = np.array(nmeta['grip']) + noff
     tA = last['meta']['th']; tB = nmeta['th']
     d = (tB - tA + math.pi) % (2 * math.pi) - math.pi
     spins = {'twirl': 2 * math.pi, 'toss': 4 * math.pi, 'bridge': 0}[kind]
+    if kind == 'twirl' and len(it) > 2: spins = 2 * math.pi * it[2]
+    height = 38
+    if kind == 'toss' and len(it) > 2: height = it[2]; spins = 2 * math.pi * (it[3] if len(it) > 3 else 2)
     bodyA = layer(arr(last['d'] + '/body_%03d.png' % last['i']), last['off'])
     handA = layer(arr(last['d'] + '/hands_%03d.png' % last['i'])[..., :1].repeat(4, -1), last['off'])[..., 0] > 0
     bodyB = layer(arr(nd + '/body_%03d.png' % ni), noff)
@@ -67,7 +98,7 @@ for n, it in enumerate(items):
     for j in range(1, cnt + 1):
         t = j / (cnt + 1); te = t * t * (3 - 2 * t)
         fm = gA + (gB - gA) * te; th = tA + (d + spins) * t
-        if kind == 'toss': fm = fm + np.array([0, -38 * math.sin(math.pi * t)])
+        if kind == 'toss': fm = fm + np.array([0, -height * math.sin(math.pi * t)])
         body, hands = (bodyA, handA) if t < .5 else (bodyB, handB)
         res = body.copy()
         if kind != 'bridge': smear(res, pf, pt, fm, th, GREY)

@@ -100,6 +100,8 @@ for n, it in enumerate(items):
     for j in range(1, cnt + 1):
         t = j / (cnt + 1); te = t * t * (3 - 2 * t)
         fm = gA + (gB - gA) * te; th = tA + (d + spins) * t
+        if kind == 'bridge':      # stay in the hands of the body that is shown
+            fm = gA if t < .5 else gB; th = (tA + d * .25) if t < .5 else (tA + d * .75)
         if kind == 'toss': fm = fm + np.array([0, -height * math.sin(math.pi * t)])
         body, hands = (bodyA, handA) if t < .5 else (bodyB, handB)
         res = body.copy()

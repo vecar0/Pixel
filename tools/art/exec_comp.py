@@ -33,7 +33,14 @@ for k, a in enumerate(fr[:len(PLAN)]):
     c = sorted(fists(o, m), key=lambda t: -t[2])[:2]
     th = math.radians(ang); spark = None
     if mode == 'hand':
-        if len(c) == 2 and np.linalg.norm(c[0][0] - c[1][0]) >= 4: fm = (c[0][0] + c[1][0]) / 2 + PAD
+        if len(c) == 2 and np.linalg.norm(c[0][0] - c[1][0]) >= 6:
+            fm = (c[0][0] + c[1][0]) / 2 + PAD; best = None
+            for up, lo in ((c[0], c[1]), (c[1], c[0])):
+                tf = math.atan2(*(lo[0] - up[0])[::-1]) - GA
+                tf = th + ((tf - th + math.pi) % (2 * math.pi) - math.pi)
+                if best is None or abs(tf - th) < abs(best - th): best = tf
+            lim = math.radians(8); th = best + max(-lim, min(lim, th - best))
+        elif len(c) == 2 and np.linalg.norm(c[0][0] - c[1][0]) >= 4: fm = (c[0][0] + c[1][0]) / 2 + PAD
         elif c: fm = c[0][0] + PAD
         else:   # relaxed: any small skin blob nearest the previous hand
             rb = o[..., 0] - o[..., 2]; L = .3 * o[..., 0] + .59 * o[..., 1] + .11 * o[..., 2]

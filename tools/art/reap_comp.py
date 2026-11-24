@@ -118,14 +118,18 @@ for k, a in enumerate(fr):
         thrower = [t for t in c if t is not keep]
         c = [keep] + thrower; c_one = True
     else: c_one = False
-    if len(c) == 2 and not c_one and np.linalg.norm(c[0][0] - c[1][0]) >= 6:
+    two_fists = len(c) == 2 and not c_one and np.linalg.norm(c[0][0] - c[1][0]) >= 6
+    if two_fists:
         best = None
         for up, lo in ((c[0], c[1]), (c[1], c[0])):
             th = math.atan2(*(lo[0] - up[0])[::-1]) - GA
             d = abs((th - hint + math.pi) % (2 * math.pi) - math.pi)
             if best is None or d < best[0]: best = (d, th, up[0] + PAD, lo[0] + PAD)
         _, th, fu, fl = best
-        if best[0] > math.radians(70) or os.environ.get('FIXED'): th = hint      # fist line disagrees badly with the move: trust the hint
+        ovr0 = math.radians(float(os.environ['OVR'].split(',')[k])) if os.environ.get('OVR') else 0.0
+        dd = (hint + ovr0 - th + math.pi) % (2 * math.pi) - math.pi
+        lim = math.radians(float(os.environ.get('CLAMP', '8')))
+        th = th + max(-lim, min(lim, dd))          # follow the real fist line; the plan may only nudge it
         fm = (fu + fl) / 2
     elif c:
         th = hint; fm = c[0][0] + PAD
@@ -142,9 +146,9 @@ for k, a in enumerate(fr):
             bl = blade_pts(f_, t_)[:, 1].mean()
             if best is None or bl < best[0]: best = (bl, t_, ys_.max())
         th = best[1]; fm = feet + np.array([14, 0]) + np.array([0, feet[1] - best[2]])
-    if os.environ.get('OVR'): th += math.radians(float(os.environ['OVR'].split(',')[k]))
+    if os.environ.get('OVR') and not two_fists: th += math.radians(float(os.environ['OVR'].split(',')[k]))
     if ROLE[k] != 'd':
-        for dt in [0] + [d * sg for d in range(5, 95, 5) for sg in (1, -1)]:
+        for dt in [0] + [d * sg for d in range(2, (10 if two_fists else 95), 2 if two_fists else 5) for sg in (1, -1)]:
             t2 = th + math.radians(dt)
             if blade_pts(fm, t2)[:, 1].max() <= feet[1] + 2: th = t2; break
     sl = SLIDE[k] if SLIDE else 0.0

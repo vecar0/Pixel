@@ -19,8 +19,12 @@ if os.environ.get('LANTERN'):
     LAN = np.array(Image.open(lp)).astype(int); LAN_AT = np.array(json.load(open(lj))['attach'], float)
 fr = [np.asarray(f.convert('RGB')).astype(float) for f in ImageSequence.Iterator(Image.open(gif))]
 H, W, _ = fr[0].shape
-bg = np.median(np.concatenate([fr[0][0], fr[0][-1], fr[0][:, 0], fr[0][:, -1]]), axis=0)
-def mask(a): return np.abs(a - bg).sum(2) > 40
+def mask(a):
+    bgc = np.median(np.concatenate([a[0], a[-1], a[:, 0], a[:, -1]]), axis=0)
+    near = np.abs(a - bgc).sum(2) < 18
+    lab, n = ndimage.label(near)
+    edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
+    return ~np.isin(lab, list(edge))
 hs = [(lambda rr: rr[-1] - rr[0] + 1)(np.nonzero(mask(a).sum(1) >= 3)[0]) for a in fr]
 cell = np.percentile(hs, 75) / BODY_H
 def pix(a):
@@ -46,9 +50,11 @@ def fists(o, m):
     hx = np.nonzero(m[top:top + int(bh * .25)].any(0))[0].mean()
     face_c = [t for t in c if top + bh * .14 < t[0][1] < top + bh * .4]
     if face_c:
-        face = min(face_c, key=lambda t: abs(t[0][0] - hx) - t[2] * .05); c = [t for t in c if t is not face]
+        near = [t for t in face_c if abs(t[0][0] - hx) < bh * .18] or face_c
+        face = max(near, key=lambda t: t[2]); c = [t for t in c if t is not face]
     # thighs: wide skin between skirt and stockings, near the body's middle column, lower half
     midx = np.median(np.nonzero(m[top + int(bh * .5):top + int(bh * .7)])[1]) if bh > 0 else 0
+    c = [t for t in c if t[2] >= 8]
     c = [t for t in c if not (top + bh * .55 < t[0][1] < top + bh * .8 and abs(t[0][0] - midx) < bh * .12)]
     return c
 def place(F_up, F_lo, th, H_, W_, Sa=S, lantern=True):
@@ -70,7 +76,7 @@ def blade_pts(fm, th):
     ys, xs = np.nonzero(BLADE); c, s = math.cos(th), math.sin(th)
     dx, dy = xs - GM[0], ys - GM[1]
     return np.stack([fm[0] + c * dx - s * dy, fm[1] + s * dx + c * dy], 1)
-PAD = 70; frames = []; prev_th = None; prev_fm = None
+PAD = 70; hold_ref = None; frames = []; prev_th = None; prev_fm = None
 for k, a in enumerate(fr):
     if ROLE[k] == 'x': continue
     o, m = pix(a); ny, nx = m.shape
@@ -78,7 +84,13 @@ for k, a in enumerate(fr):
     cv[PAD:PAD + ny, PAD:PAD + nx, :3] = o.round(); cv[PAD:PAD + ny, PAD:PAD + nx, 3] = m * 255
     c = sorted(fists(o, m), key=lambda t: -t[2])[:2]
     hint = math.radians(HINT[k])
-    if len(c) == 2 and np.linalg.norm(c[0][0] - c[1][0]) >= 6:
+    if os.environ.get('ONEFIST') and c:
+        if 'hold_ref' not in dir() or hold_ref is None: hold_ref = min(c, key=lambda t: t[0][1])[0]
+        keep = min(c, key=lambda t: np.linalg.norm(t[0] - hold_ref)); hold_ref = keep[0]
+        thrower = [t for t in c if t is not keep]
+        c = [keep] + thrower; c_one = True
+    else: c_one = False
+    if len(c) == 2 and not c_one and np.linalg.norm(c[0][0] - c[1][0]) >= 6:
         best = None
         for up, lo in ((c[0], c[1]), (c[1], c[0])):
             th = math.atan2(*(lo[0] - up[0])[::-1]) - GA
@@ -102,6 +114,10 @@ for k, a in enumerate(fr):
             bl = blade_pts(f_, t_)[:, 1].mean()
             if best is None or bl < best[0]: best = (bl, t_, ys_.max())
         th = best[1]; fm = feet + np.array([14, 0]) + np.array([0, feet[1] - best[2]])
+    if ROLE[k] != 'd':
+        for dt in [0] + [d * sg for d in range(5, 95, 5) for sg in (1, -1)]:
+            t2 = th + math.radians(dt)
+            if blade_pts(fm, t2)[:, 1].max() <= feet[1] + 2: th = t2; break
     sc = place(fm, fm, th, *cv.shape[:2], lantern=(tp < 0) and ROLE[k] != 'd')
     res = cv.copy()
     if tp >= 0 and LAN is not None:

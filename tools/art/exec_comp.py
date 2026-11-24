@@ -22,7 +22,7 @@ PLAN = [
 ]
 if os.environ.get('PLAN'): PLAN = [tuple(x) for x in json.loads(open(os.environ['PLAN']).read())]
 _ys, _xs = np.nonzero(S[..., 3] > 0); SC_CM = np.array([_xs.mean(), _ys.mean()])   # balance point of the scythe
-frames = []; prev_th = prev_fm = None; last_hand = None
+frames = []; prev_th = prev_fm = None; last_hand = None; spin_i = 0
 for k, a in enumerate(fr[:len(PLAN)]):
     mode, ang, ms, layer, smear = PLAN[k][:5]; extra = PLAN[k][5:]
     o, m = pix(a); ny, nx = m.shape
@@ -72,8 +72,23 @@ for k, a in enumerate(fr[:len(PLAN)]):
         for dt in [0] + [d * sg for d in range(5, 120, 5) for sg in (1, -1)]:
             t2 = th + math.radians(dt)
             if blade_pts(fm, t2)[:, 1].max() <= feet_y + 2: th = t2; break
-    sc_ = place(fm, fm, th, *cv.shape[:2])
+    fast = mode in ('baton', 'fly', 'spin') and prev_th is not None and abs(th - prev_th) >= math.radians(60)
+    if fast: spin_i += 1
+    smear_only = fast and spin_i % 2 == 0
+    sc_ = place(fm, fm, th, *cv.shape[:2], Sa=(S_NOBLADE if smear_only else S))
     res = cv.copy()
+    if smear_only:   # whirl frame: the blade becomes one swept disc-arc
+        acc = np.zeros(cv.shape[:2], float); dth = th - prev_th
+        for i in range(40):
+            t = .1 + .9 * i / 39; f_ = prev_fm + (fm - prev_fm) * t; p = blade_all_pts(f_, prev_th + dth * t)
+            dd_ = np.linalg.norm(p - f_, axis=1); p = p[dd_ > np.percentile(dd_, 70)]
+            xi = np.clip(np.round(p[:, 0]).astype(int), 0, cv.shape[1] - 1); yi = np.clip(np.round(p[:, 1]).astype(int), 0, cv.shape[0] - 1)
+            acc[yi, xi] = np.maximum(acc[yi, xi], t)
+        acc = ndimage.grey_closing(acc, size=(3, 3)); smk2 = acc > 0
+        pal2 = np.array([[95, 95, 110], [165, 165, 180], [235, 235, 248]]) if smear != 'red' else np.array([[90, 10, 24], [190, 30, 40], [255, 120, 110]])
+        idx2 = np.where(acc > .8, 2, np.where(acc > .5, 1, 0)); put2 = smk2 & (res[..., 3] == 0)
+        res[put2, :3] = pal2[idx2[put2]]; res[put2, 3] = 255
+        smear = ''
     if smear and prev_th is not None:
         acc = np.zeros(cv.shape[:2], float); dth = th - prev_th
         for i in range(48):

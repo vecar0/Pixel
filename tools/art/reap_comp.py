@@ -57,13 +57,31 @@ def fists(o, m):
     c = [t for t in c if t[2] >= 8]
     c = [t for t in c if not (top + bh * .55 < t[0][1] < top + bh * .8 and abs(t[0][0] - midx) < bh * .12)]
     return c
+def _scale2x(a):
+    H_, W_ = a.shape[:2]; P = np.pad(a, ((1, 1), (1, 1), (0, 0)), mode='edge')
+    B = P[:-2, 1:-1]; D = P[1:-1, :-2]; E = a; F = P[1:-1, 2:]; Hh = P[2:, 1:-1]
+    eq = lambda x, y: (x == y).all(-1)
+    c = ~eq(B, Hh) & ~eq(D, F)
+    E0 = np.where((c & eq(D, B))[..., None], D, E); E1 = np.where((c & eq(B, F))[..., None], F, E)
+    E2 = np.where((c & eq(D, Hh))[..., None], D, E); E3 = np.where((c & eq(Hh, F))[..., None], F, E)
+    o = np.zeros((H_ * 2, W_ * 2, a.shape[2]), a.dtype)
+    o[0::2, 0::2] = E0; o[0::2, 1::2] = E1; o[1::2, 0::2] = E2; o[1::2, 1::2] = E3
+    return o
+_UP = {}
+def _up8(Sa):
+    k = id(Sa)
+    if k not in _UP: _UP[k] = _scale2x(_scale2x(_scale2x(Sa)))
+    return _UP[k]
 def place(F_up, F_lo, th, H_, W_, Sa=S, lantern=True, slide=0.0):
     fm = (F_up + F_lo) / 2
     ax_ = (G1 - G2) / np.linalg.norm(G1 - G2); cs_, sn_ = math.cos(th), math.sin(th)
     fm = fm + slide * np.array([cs_ * ax_[0] - sn_ * ax_[1], sn_ * ax_[0] + cs_ * ax_[1]]); out = np.zeros((H_, W_, 4), int); c, s = math.cos(th), math.sin(th)
     yy, xx = np.mgrid[:H_, :W_]; dx, dy = xx - fm[0], yy - fm[1]
-    sx = np.round(c * dx + s * dy + GM[0]).astype(int); sy = np.round(-s * dx + c * dy + GM[1]).astype(int)
-    ok = (sx >= 0) & (sx < Sa.shape[1]) & (sy >= 0) & (sy < Sa.shape[0]); out[ok] = Sa[sy[ok], sx[ok]]
+    # RotSprite-style: sample the 8x scale2x-upscaled sprite (keeps lines and curves clean)
+    U = _up8(Sa)
+    sxf = c * dx + s * dy + GM[0] + .5; syf = -s * dx + c * dy + GM[1] + .5
+    ux = np.floor(sxf * 8).astype(int); uy = np.floor(syf * 8).astype(int)
+    ok = (ux >= 0) & (ux < U.shape[1]) & (uy >= 0) & (uy < U.shape[0]); out[ok] = U[uy[ok], ux[ok]]
     if LAN is not None and lantern:
         ax, ay = LAN_AT - GM; px = fm[0] + c * ax - s * ay; py = fm[1] + s * ax + c * ay
         ly, lx = np.nonzero(LAN[..., 3] > 0)

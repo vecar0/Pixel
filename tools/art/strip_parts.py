@@ -81,6 +81,25 @@ def run(a):
         t = (l[zone] - 150) / 105.0
         g = (38 + t * 42).astype(int)
         a[zone, 0] = g; a[zone, 1] = g; a[zone, 2] = (g + 6).clip(0, 255)
+    # (3) stray light flecks: small bright clusters (not face, not the long blade edge)
+    al = a[..., 3] > 0
+    rgb = a[..., :3].astype(int); l = 0.3*rgb[..., 0]+0.59*rgb[..., 1]+0.11*rgb[..., 2]
+    br = al & ~face & (l > 120) & ((rgb.max(-1) - rgb.min(-1)) < 60)
+    lb, nb_ = ndimage.label(br, structure=K8)
+    if nb_:
+        sz = ndimage.sum(br, lb, range(1, nb_ + 1))
+        rb3 = rgb[..., 0] - rgb[..., 2]
+        smid = al & (rb3 > 40) & (rb3 < 100) & (l > 120) & (l < 190)
+        touch = ndimage.binary_dilation(smid, structure=K8)
+        hit = ndimage.maximum(touch, lb, range(1, nb_ + 1))
+        cream = ndimage.mean((l > 200).astype(float), lb, range(1, nb_ + 1))
+        sm = np.zeros(nb_ + 1, bool)
+        sm[1:] = (sz <= 5) | ((sz <= 14) & (np.asarray(hit) == 0)) | ((sz <= 20) & (np.asarray(cream) >= 0.7))
+        fleck = sm[lb] & br
+        dark = al & ~br
+        if fleck.any() and dark.any():
+            _, (iy, ix) = ndimage.distance_transform_edt(~dark, return_indices=True)
+            a[fleck, :3] = a[iy[fleck], ix[fleck], :3]
     return a
 
 src, dst = sys.argv[1:3]

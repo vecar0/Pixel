@@ -28,7 +28,7 @@ def run(a):
     lab, n = ndimage.label(ndimage.binary_dilation(org, structure=K8, iterations=3), structure=K8)
     lab = lab * org
     kill = np.zeros_like(al)
-    if n >= 1:
+    if n >= 1 and not os.environ.get('NO_LANTERN'):
         sz = ndimage.sum(org, lab, range(1, n + 1))
         ys, xs = np.nonzero(al); fy = ys.max(); fx = xs[ys >= fy - 3].mean()
         main = 1 + int(np.argmax(sz))       # the blade-tip lantern + its flame
@@ -84,7 +84,7 @@ def run(a):
     wh = al & ~face & (l > 150) & (((sat < 45) & (rb < 25)) | ((rb < 45) & ~nearskin))
     thick = ndimage.binary_opening(wh, structure=np.ones((2, 2), bool))
     zone = ndimage.binary_dilation(thick, structure=K8, iterations=3) & wh
-    if zone.any():
+    if zone.any() and not os.environ.get('NO_LINING'):
         # map 150..255 -> dark cape greys, keeping relative shading
         t = (l[zone] - 150) / 105.0
         g = (38 + t * 42).astype(int)

@@ -1,0 +1,306 @@
+{
+ "schema": "video2dsprite.pixel_motion.v1",
+ "tool": {
+  "name": "pixel_motion",
+  "version": "0.6.0"
+ },
+ "name": "lira-kickslash",
+ "frames": {
+  "path": "kick-frames",
+  "sha256": "d2e812f92f55fafa51ae1dab6137c7537834cf2b1725cda78b619e737b5cec49"
+ },
+ "picked": {
+  "mode": "named"
+ },
+ "videoFrames": [
+  8,
+  10,
+  12,
+  14,
+  16,
+  18,
+  20,
+  22,
+  24,
+  26,
+  28,
+  30,
+  32,
+  34,
+  36,
+  38,
+  40,
+  42,
+  44,
+  46,
+  48,
+  50,
+  52,
+  54,
+  56,
+  58
+ ],
+ "flipped": false,
+ "trimmedTo": [
+  48,
+  7,
+  312,
+  208
+ ],
+ "headRows": null,
+ "headBox": null,
+ "line": null,
+ "closedOutline": false,
+ "clean": [
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 2,
+   "edgeCellsMadeLine": 0,
+   "cells": 5426,
+   "videoFrame": 8
+  },
+  {
+   "islandCellsRemoved": 2,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 5423,
+   "videoFrame": 10
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 2,
+   "edgeCellsMadeLine": 0,
+   "cells": 5521,
+   "videoFrame": 12
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 4,
+   "edgeCellsMadeLine": 0,
+   "cells": 5599,
+   "videoFrame": 14
+  },
+  {
+   "islandCellsRemoved": 3,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 5164,
+   "videoFrame": 16
+  },
+  {
+   "islandCellsRemoved": 3,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 4915,
+   "videoFrame": 18
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 5141,
+   "videoFrame": 20
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 5051,
+   "videoFrame": 22
+  },
+  {
+   "islandCellsRemoved": 3,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 4973,
+   "videoFrame": 24
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 4796,
+   "videoFrame": 26
+  },
+  {
+   "islandCellsRemoved": 2,
+   "holesFilled": 2,
+   "edgeCellsMadeLine": 0,
+   "cells": 5279,
+   "videoFrame": 28
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 5550,
+   "videoFrame": 30
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 5583,
+   "videoFrame": 32
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 5302,
+   "videoFrame": 34
+  },
+  {
+   "islandCellsRemoved": 3,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 5048,
+   "videoFrame": 36
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 4913,
+   "videoFrame": 38
+  },
+  {
+   "islandCellsRemoved": 1,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 5247,
+   "videoFrame": 40
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 5147,
+   "videoFrame": 42
+  },
+  {
+   "islandCellsRemoved": 9,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 5282,
+   "videoFrame": 44
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 4851,
+   "videoFrame": 46
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 0,
+   "edgeCellsMadeLine": 0,
+   "cells": 5349,
+   "videoFrame": 48
+  },
+  {
+   "islandCellsRemoved": 1,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 5601,
+   "videoFrame": 50
+  },
+  {
+   "islandCellsRemoved": 1,
+   "holesFilled": 2,
+   "edgeCellsMadeLine": 0,
+   "cells": 5834,
+   "videoFrame": 52
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 5736,
+   "videoFrame": 54
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 5688,
+   "videoFrame": 56
+  },
+  {
+   "islandCellsRemoved": 0,
+   "holesFilled": 1,
+   "edgeCellsMadeLine": 0,
+   "cells": 5646,
+   "videoFrame": 58
+  }
+ ],
+ "durationsMs": [
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50,
+  50
+ ],
+ "totalMs": 1300,
+ "loopPolicy": "oneshot",
+ "events": [],
+ "frameSize": [
+  264,
+  201
+ ],
+ "anchor": [
+  132.5,
+  193.0
+ ],
+ "strip": "strip.png",
+ "differenceToNext": [
+  5977,
+  4654,
+  4213,
+  6951,
+  7082,
+  6564,
+  6248,
+  6216,
+  6249,
+  6130,
+  6645,
+  6692,
+  6681,
+  6978,
+  6262,
+  5872,
+  6766,
+  6082,
+  6263,
+  6376,
+  6944,
+  6702,
+  6602,
+  6445,
+  6546,
+  6910
+ ]
+}

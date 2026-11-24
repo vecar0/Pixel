@@ -9,7 +9,10 @@ H, W, _ = a.shape
 def score(s, ph, g):
     i = np.round(np.arange(ph, len(g) - 1, s)).astype(int); return g[i].mean()
 gx = np.abs(np.diff(a, axis=1)).sum(2).sum(0); gy = np.abs(np.diff(a, axis=0)).sum(2).sum(1)
-if len(sys.argv) > 3:
+import os
+if os.environ.get('PH'):
+    s = float(sys.argv[3]); phx, phy = map(float, os.environ['PH'].split(','))
+elif len(sys.argv) > 3:
     s = float(sys.argv[3]); phx = max(((score(s, p, gx), p) for p in np.arange(0, s, .25)))[1]
     phy = max(((score(s, p, gy), p) for p in np.arange(0, s, .25)))[1]
 else:
@@ -48,7 +51,9 @@ for _ in range(3):
     if not halo.any(): break
     al &= ~halo
 ys, xs = np.nonzero(al)
-o = o[ys.min():ys.max() + 1, xs.min():xs.max() + 1]; al = al[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+if not os.environ.get('NOCROP'):
+    o = o[ys.min():ys.max() + 1, xs.min():xs.max() + 1]; al = al[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+print('phase', phx, phy, 'crop', ys.min(), xs.min())
 out = np.zeros(o.shape[:2] + (4,), np.uint8); out[..., :3] = o.round().clip(0, 255); out[..., 3] = al * 255
 # palette: 32 colours, no dither (clean flat shading)
 rgb = out[..., :3].astype(int); satm = (rgb.max(-1) - rgb.min(-1)) > 45

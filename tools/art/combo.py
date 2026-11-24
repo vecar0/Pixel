@@ -112,12 +112,13 @@ for n, it in enumerate(items):
 os.makedirs(OUT, exist_ok=True)
 for f in glob.glob(OUT + '/*.png'): os.remove(f)
 for i, (im, ms) in enumerate(frames): Image.fromarray(im.astype(np.uint8)).save(OUT + '/frame_%03d.png' % i)
-json.dump([ms for _, ms in frames], open(OUT + '/timing.json', 'w'))
+json.dump([int(ms * float(os.environ.get('TSCALE', '1'))) for _, ms in frames], open(OUT + '/timing.json', 'w'))
 bg = np.array([40, 38, 52, 255])
 pics = []
 for im, ms in frames:
     c = np.where(im[..., 3:4] > 0, im, bg).astype(np.uint8)
     pics.append(Image.fromarray(c).convert('RGB').resize((CW * 3, CH * 3), Image.NEAREST))
-durs = [ms for _, ms in frames]; durs[-1] = 700
+TS = float(os.environ.get('TSCALE', '1'))
+durs = [int(ms * TS) for _, ms in frames]; durs[-1] = 700
 pics[0].save(OUT + '/preview.gif', save_all=True, append_images=pics[1:], duration=durs, loop=0)
 print('frames', len(frames))

@@ -165,32 +165,27 @@ for k, a in enumerate(fr):
         ty = np.round(ly - LAN_AT[1] + lp[1]).astype(int); tx = np.round(lx - LAN_AT[0] + lp[0]).astype(int)
         ok3 = (ty >= 0) & (ty < res.shape[0]) & (tx >= 0) & (tx < res.shape[1]); res[ty[ok3], tx[ok3]] = LAN[ly[ok3], lx[ok3]]
     # smear: area swept by the blade since the previous frame (swing frames only)
-    if ROLE[k] == 'S' and prev_th is not None:      # one big crescent replaces the blade
-        acc = np.zeros(cv.shape[:2], float); dth = (th - prev_th + math.pi) % (2 * math.pi) - math.pi
-        for i in range(40):
-            t = .15 + .85 * i / 39; p = blade_all_pts(prev_fm + (fm - prev_fm) * t, prev_th + dth * t, prev_sl + (sl - prev_sl) * t)
+    # long round arc: from where the swing started (end of anticipation) to now; fades on follow-through
+    if ROLE[k] in ('a', 'r'): arc0 = (fm.copy(), th, sl)
+    if ROLE[k] in ('S', 's', 'f') and 'arc0' in dir():
+        f0, t0, s0 = arc0; dth = (th - t0 + math.pi) % (2 * math.pi) - math.pi
+        if ROLE[k] == 'f':   # the follow-through keeps only the tail of the arc, fading
+            f0, t0, s0 = prev_fm, prev_th, prev_sl; dth = (th - t0 + math.pi) % (2 * math.pi) - math.pi
+        acc = np.zeros(cv.shape[:2], float); steps = max(24, int(abs(math.degrees(dth)) / 2))
+        for i in range(steps + 1):
+            t = i / steps; f_ = f0 + (fm - f0) * t; p = blade_all_pts(f_, t0 + dth * t, s0 + (sl - s0) * t)
+            dd_ = np.linalg.norm(p - f_, axis=1)
+            keep = dd_ > np.percentile(dd_, 100 * (.55 - .45 * t))   # older part = thinner (tip only), newer = full blade
+            p = p[keep]
             xi = np.clip(np.round(p[:, 0]).astype(int), 0, cv.shape[1] - 1); yi = np.clip(np.round(p[:, 1]).astype(int), 0, cv.shape[0] - 1)
             acc[yi, xi] = np.maximum(acc[yi, xi], t)
-        acc = ndimage.grey_closing(acc, size=(3, 3)); sm = acc > 0
-        band = np.where(acc > .8, 250, np.where(acc > .5, 200, 135))
-        col = np.stack([band, band, band + 10], -1).clip(0, 255)
-        res[sm, :3] = col[sm]; res[sm, 3] = 255
-    if ROLE[k] in ('s', 'f') and prev_th is not None:
-        steps = 36; acc = np.zeros(cv.shape[:2], float)
-        dth = (th - prev_th + math.pi) % (2 * math.pi) - math.pi
-        for i in range(steps):
-            t = i / steps; p = blade_pts(prev_fm + (fm - prev_fm) * t, prev_th + dth * t)
-            xi = np.clip(np.round(p[:, 0]).astype(int), 0, cv.shape[1] - 1); yi = np.clip(np.round(p[:, 1]).astype(int), 0, cv.shape[0] - 1)
-            if t < .3: continue                      # trail only the last part of the arc
-            acc[yi, xi] = np.maximum(acc[yi, xi], t)
-        acc = ndimage.grey_closing(acc, size=(3, 3))
+        acc = ndimage.grey_closing(acc, size=(5, 5)); acc = ndimage.grey_opening(acc, size=(2, 2))
         sm = acc > 0
-        # 3-step banded gradient: dark grey tail -> light -> white near the blade
-        band = np.where(acc > .75, 245, np.where(acc > .5, 190, 120))
-        col = np.stack([band, band, band + 12], -1).clip(0, 255)
-        if ROLE[k] == 'f': col = col * .8
+        PAL = np.array([[90, 10, 24], [200, 36, 48], [255, 150, 140]]) if os.environ.get('SMEAR') == 'red' else np.array([[120, 122, 140], [200, 202, 218], [255, 255, 255]])
+        if ROLE[k] == 'f': PAL = (PAL * .75).astype(int)
+        idx = np.where(acc > .78, 2, np.where(acc > .45, 1, 0))
         put = sm & (res[..., 3] == 0)
-        res[put, :3] = col[put]; res[put, 3] = 255
+        res[put, :3] = PAL[idx[put]]; res[put, 3] = 255
     smk = sc[..., 3] > 0
     if ROLE[k] == 'd' or os.environ.get('BEHIND'): smk &= cv[..., 3] == 0
     res[smk] = sc[smk]

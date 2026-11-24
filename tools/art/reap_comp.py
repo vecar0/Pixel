@@ -152,7 +152,7 @@ for k, a in enumerate(fr):
         put = sm & (res[..., 3] == 0)
         res[put, :3] = col[put]; res[put, 3] = 255
     smk = sc[..., 3] > 0
-    if ROLE[k] == 'd': smk &= res[..., 3] == 0
+    if ROLE[k] == 'd' or os.environ.get('BEHIND'): smk &= cv[..., 3] == 0
     res[smk] = sc[smk]
     for t in (c if ROLE[k] != 'd' else []):
         ff = np.zeros(cv.shape[:2], bool); ff[PAD:PAD + ny, PAD:PAD + nx] = ndimage.binary_dilation(t[1], K8)

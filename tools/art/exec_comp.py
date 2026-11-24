@@ -95,12 +95,18 @@ for k, a in enumerate(fr[:len(PLAN)]):
                 x = int(round(spark[0] + r_ * math.cos(math.radians(ang8 + 22)))); y = int(round(spark[1] + r_ * math.sin(math.radians(ang8 + 22))))
                 if 0 <= x < res.shape[1] and 0 <= y < res.shape[0]:
                     res[y, x] = (255, 90, 110, 255) if r_ < 5 else (170, 70, 220, 255)
-    frames.append({'img': res, 'ms': ms, 'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(bot)], 'mode': mode})
+    hm = np.zeros(cv.shape[:2], bool)
+    if mode == 'hand':
+        for t in c: hm[PAD:PAD + ny, PAD:PAD + nx] |= ndimage.binary_dilation(t[1], K8)
+    hm &= cv[..., 3] > 0
+    frames.append({'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'ms': ms, 'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(bot)], 'mode': mode})
     prev_th, prev_fm = th, fm
 os.makedirs(out, exist_ok=True)
 meta = []
 for i, f in enumerate(frames):
     Image.fromarray(f['img'].astype(np.uint8)).save(os.path.join(out, 'frame_%03d.png' % i))
-    meta.append({k: v for k, v in f.items() if k != 'img'})
+    Image.fromarray(f['body'].astype(np.uint8)).save(os.path.join(out, 'body_%03d.png' % i))
+    Image.fromarray((f['hands'] * 255).astype(np.uint8)).save(os.path.join(out, 'hands_%03d.png' % i))
+    meta.append({k: v for k, v in f.items() if k not in ('img', 'body', 'hands')})
 json.dump({'frames': meta}, open(os.path.join(out, 'meta.json'), 'w'), indent=1)
 print('frames', len(frames))

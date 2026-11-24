@@ -158,7 +158,12 @@ for k, a in enumerate(fr):
         ff = np.zeros(cv.shape[:2], bool); ff[PAD:PAD + ny, PAD:PAD + nx] = ndimage.binary_dilation(t[1], K8)
         ff &= cv[..., 3] > 0; res[ff] = cv[ff]
     yb, xb = np.nonzero(m)
-    frames.append({'img': res, 'role': ROLE[k], 'angle': math.degrees(th), 'fists': len(c),
+    hm = np.zeros(cv.shape[:2], bool)
+    for t in (c if ROLE[k] != 'd' else []):
+        hm[PAD:PAD + ny, PAD:PAD + nx] |= ndimage.binary_dilation(t[1], K8)
+    hm &= cv[..., 3] > 0
+    frames.append({'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th,
+                   'role': ROLE[k], 'angle': math.degrees(th), 'fists': len(c),
                    'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(yb.max()) + PAD]})
     prev_th, prev_fm = th, fm
 os.makedirs(out, exist_ok=True)
@@ -166,6 +171,8 @@ DUR = {'r': 120, 'a': 220, 's': 50, 'f': 280, 'h': 120, 'l': 140, 'n': 80, 'j': 
 meta = []
 for i, f in enumerate(frames):
     Image.fromarray(f['img'].astype(np.uint8)).save(os.path.join(out, 'frame_%03d.png' % i))
-    meta.append({k: v for k, v in f.items() if k != 'img'} | {'ms': DUR[f['role']]})
+    Image.fromarray(f['body'].astype(np.uint8)).save(os.path.join(out, 'body_%03d.png' % i))
+    Image.fromarray((f['hands'] * 255).astype(np.uint8)).save(os.path.join(out, 'hands_%03d.png' % i))
+    meta.append({k: v for k, v in f.items() if k not in ('img', 'body', 'hands')} | {'ms': DUR[f['role']]})
 json.dump({'cell': cell, 'frames': meta}, open(os.path.join(out, 'meta.json'), 'w'), indent=1)
 print('cell', round(cell, 2), [(m['role'], round(m['angle']), m['fists']) for m in meta])

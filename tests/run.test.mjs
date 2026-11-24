@@ -236,7 +236,7 @@ test('스탯 구간 능력: 생명 14 기름병+1 회복, 6 이하 약점, 의�
   ok(mk({ wil: 20 }).player.mods.allPerfect); ok(!mk({ wil: 19 }).player.mods.allPerfect);
   const w = mk({ str: 14 }); w.enemies.length = 0; w.waves = []; steps(w, 20);
   const p = w.player; p.combo = 1; p.comboT = 10; tick(w, I({ attack: true }));
-  steps(w, CFG.attack.startupF + 1); ok(w.projectiles.some(b => b.owner === 'player' && b.echo), 'wave');
+  steps(w, CFG.attack.startupChainF + 1); ok(w.projectiles.some(b => b.owner === 'player' && b.echo), 'wave');
 });
 
 test('쉼터(상점·휴식): 적 없음, 오브젝트 앞 공격 = 상호작용(휘두르지 않음), 오른쪽 출구에 닿으면 나감', () => {

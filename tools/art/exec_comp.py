@@ -67,7 +67,7 @@ for k, a in enumerate(fr[:len(PLAN)]):
         fm = np.array([cxb + extra[0], top + extra[1]])
     elif mode == 'baton':    # one fist at the scythe's balance point, spinning
         f0 = (c[0][0] + PAD) if c else (last_hand if last_hand is not None else np.array([cxb + 15, top + bh * .4]))
-        cs_, sn_ = math.cos(th), math.sin(th); v = G2 + (G2 - G1) * .6 - GM   # pivot near the shaft end = big circle
+        cs_, sn_ = math.cos(th), math.sin(th); v = (G2 + (G2 - G1) * .6 - GM) * K   # pivot near the shaft end = big circle
         fm = f0 - np.array([cs_ * v[0] - sn_ * v[1], sn_ * v[0] + cs_ * v[1]]); last_hand = f0
     else:  # spin: rising in front of / above her
         n = ['spin'] and sum(1 for p in PLAN[:k] if p[0] == 'spin')
@@ -146,9 +146,10 @@ for k, a in enumerate(fr[:len(PLAN)]):
     if mode == 'baton':
         ph = spin_i * math.pi / 2
         dy_ = -int(round(2.5 * abs(math.sin(ph)))); dx_ = int(round(2 * math.sin(ph / 2)))
-        res = np.roll(np.roll(res, dy_, 0), dx_, 1); cv = np.roll(np.roll(cv, dy_, 0), dx_, 1); hm = np.roll(np.roll(hm, dy_, 0), dx_, 1)
+        res = np.roll(np.roll(res, dy_, 0), dx_, 1); cv = np.roll(np.roll(cv, dy_, 0), dx_, 1); hm = np.roll(np.roll(hm, dy_, 0), dx_, 1); sc_ = np.roll(np.roll(sc_, dy_, 0), dx_, 1)
         fm = fm + np.array([dx_, dy_])
-    frames.append({'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'ms': ms, 'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(bot)], 'mode': mode})
+    bm_, fl_ = masks(fm, th, *res.shape[:2], res=res, sc=sc_)
+    frames.append({'mask': (bm_, fl_), 'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'ms': ms, 'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(bot)], 'mode': mode})
     prev_th, prev_fm = th, fm
 os.makedirs(out, exist_ok=True)
 meta = []
@@ -156,6 +157,8 @@ for i, f in enumerate(frames):
     Image.fromarray(f['img'].astype(np.uint8)).save(os.path.join(out, 'frame_%03d.png' % i))
     Image.fromarray(f['body'].astype(np.uint8)).save(os.path.join(out, 'body_%03d.png' % i))
     Image.fromarray((f['hands'] * 255).astype(np.uint8)).save(os.path.join(out, 'hands_%03d.png' % i))
-    meta.append({k: v for k, v in f.items() if k not in ('img', 'body', 'hands')})
+    mk_ = np.zeros(f['hands'].shape + (3,), np.uint8); mk_[..., 0] = f['mask'][0] * 255; mk_[..., 1] = f['mask'][1] * 255
+    Image.fromarray(mk_).save(os.path.join(out, 'mask_%03d.png' % i))
+    meta.append({k: v for k, v in f.items() if k not in ('img', 'body', 'hands', 'mask')})
 json.dump({'frames': meta}, open(os.path.join(out, 'meta.json'), 'w'), indent=1)
 print('frames', len(frames))

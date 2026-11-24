@@ -10,6 +10,7 @@ body_p, sc_p, grip_s, gif, out, hints, roles = sys.argv[1:8]
 HINT = [float(x) for x in hints.split(',')]; ROLE = roles.split(',')
 K8 = np.ones((3, 3), bool)
 B = np.array(Image.open(body_p)).astype(int); r = np.nonzero(B[..., 3].any(1))[0]; BODY_H = r[-1] - r[0] + 1
+K = float(os.environ.get('SCALE', '1')); BODY_H = BODY_H * K
 S = np.array(Image.open(sc_p)).astype(int)
 g = json.loads(grip_s); G1 = np.array(g['upper'], float); G2 = np.array(g['lower'], float)
 GA = math.atan2(*(G2 - G1)[::-1]); GM = (G1 + G2) / 2
@@ -75,18 +76,22 @@ def _up8(Sa):
 def place(F_up, F_lo, th, H_, W_, Sa=S, lantern=True, slide=0.0):
     fm = (F_up + F_lo) / 2
     ax_ = (G1 - G2) / np.linalg.norm(G1 - G2); cs_, sn_ = math.cos(th), math.sin(th)
-    fm = fm + slide * np.array([cs_ * ax_[0] - sn_ * ax_[1], sn_ * ax_[0] + cs_ * ax_[1]]); out = np.zeros((H_, W_, 4), int); c, s = math.cos(th), math.sin(th)
+    fm = fm + slide * K * np.array([cs_ * ax_[0] - sn_ * ax_[1], sn_ * ax_[0] + cs_ * ax_[1]]); out = np.zeros((H_, W_, 4), int); c, s = math.cos(th), math.sin(th)
     yy, xx = np.mgrid[:H_, :W_]; dx, dy = xx - fm[0], yy - fm[1]
     # RotSprite-style: sample the 8x scale2x-upscaled sprite (keeps lines and curves clean)
     U = _up8(Sa)
-    sxf = c * dx + s * dy + GM[0] + .5; syf = -s * dx + c * dy + GM[1] + .5
+    sxf = (c * dx + s * dy) / K + GM[0] + .5; syf = (-s * dx + c * dy) / K + GM[1] + .5
     ux = np.floor(sxf * 8).astype(int); uy = np.floor(syf * 8).astype(int)
     ok = (ux >= 0) & (ux < U.shape[1]) & (uy >= 0) & (uy < U.shape[0]); out[ok] = U[uy[ok], ux[ok]]
     if LAN is not None and lantern:
-        ax, ay = LAN_AT - GM; px = fm[0] + c * ax - s * ay; py = fm[1] + s * ax + c * ay
-        ly, lx = np.nonzero(LAN[..., 3] > 0)
-        ty = np.round(ly - LAN_AT[1] + py).astype(int); tx = np.round(lx - LAN_AT[0] + px).astype(int)
-        ok2 = (ty >= 0) & (ty < H_) & (tx >= 0) & (tx < W_); out[ty[ok2], tx[ok2]] = LAN[ly[ok2], lx[ok2]]
+        ax, ay = (LAN_AT - GM) * K; px = fm[0] + c * ax - s * ay; py = fm[1] + s * ax + c * ay
+        LU = _up8(LAN); hh, ww = int(LAN.shape[0] * K) + 2, int(LAN.shape[1] * K) + 2
+        for j in range(hh):
+            for i in range(ww):
+                uy_, ux_ = int((j + .5) / K * 8), int((i + .5) / K * 8)
+                if uy_ >= LU.shape[0] or ux_ >= LU.shape[1] or LU[uy_, ux_, 3] == 0: continue
+                ty_, tx_ = int(round(j - LAN_AT[1] * K + py)), int(round(i - LAN_AT[0] * K + px))
+                if 0 <= ty_ < H_ and 0 <= tx_ < W_: out[ty_, tx_] = LU[uy_, ux_]
     return out
 # blade mask in sprite space: the bright/blade part = rows above the grip, far from the pole line
 yy, xx = np.mgrid[:S.shape[0], :S.shape[1]]
@@ -97,12 +102,22 @@ S_NOBLADE = S.copy(); S_NOBLADE[BLADE_ALL] = 0
 def blade_all_pts(fm, th, slide=0.0):
     ax_ = (G1 - G2) / np.linalg.norm(G1 - G2); c, s = math.cos(th), math.sin(th)
     fm = fm + slide * np.array([c * ax_[0] - s * ax_[1], s * ax_[0] + c * ax_[1]])
-    ys, xs = np.nonzero(BLADE_ALL); dx, dy = xs - GM[0], ys - GM[1]
+    ys, xs = np.nonzero(BLADE_ALL); dx, dy = (xs - GM[0]) * K, (ys - GM[1]) * K
     return np.stack([fm[0] + c * dx - s * dy, fm[1] + s * dx + c * dy], 1)
 def blade_pts(fm, th):
     ys, xs = np.nonzero(BLADE); c, s = math.cos(th), math.sin(th)
-    dx, dy = xs - GM[0], ys - GM[1]
+    dx, dy = (xs - GM[0]) * K, (ys - GM[1]) * K
     return np.stack([fm[0] + c * dx - s * dy, fm[1] + s * dx + c * dy], 1)
+S_BLADEONLY = np.zeros_like(S); S_BLADEONLY[BLADE_ALL] = S[BLADE_ALL]
+def masks(fm, th, H_, W_, slide=0.0, res=None, sc=None, lantern=True):
+    bm = place(fm, fm, th, H_, W_, Sa=S_BLADEONLY, lantern=False, slide=slide)[..., 3] > 0
+    if res is not None and sc is not None: bm &= (res == sc).all(-1)
+    fl = np.zeros((H_, W_), bool)
+    if LAN is not None and lantern:
+        ln = place(fm, fm, th, H_, W_, Sa=np.zeros_like(S), lantern=True, slide=slide)
+        fl = (ln[..., 3] > 0) & (ln[..., 0] > 200) & (ln[..., 0] - ln[..., 2] > 80)
+        if res is not None: fl &= (res[..., :3] == ln[..., :3]).all(-1)
+    return bm, fl
 SLIDE = [float(x) for x in os.environ['SLIDE'].split(',')] if os.environ.get('SLIDE') else None
 PAD = 70; hold_ref = None; frames = []; prev_sl = 0.0; prev_th = None; prev_fm = None
 for k, a in enumerate(fr):
@@ -158,7 +173,7 @@ for k, a in enumerate(fr):
         # lantern thrown: starts at the rear (non-scythe) hand, flies forward; chain from the pole end
         hand = (c[-1][0] + PAD) if len(c) else fm
         lp = hand + np.array([60 * tp, -6 * math.sin(tp * math.pi)])
-        cpos = fm + np.array([math.cos(th) * (G2 - GM)[0] - math.sin(th) * (G2 - GM)[1], math.sin(th) * (G2 - GM)[0] + math.cos(th) * (G2 - GM)[1]]) * 2.2
+        cpos = fm + np.array([math.cos(th) * (G2 - GM)[0] - math.sin(th) * (G2 - GM)[1], math.sin(th) * (G2 - GM)[0] + math.cos(th) * (G2 - GM)[1]]) * 2.2 * K
         n = int(np.linalg.norm(lp - cpos)) + 2
         for i in range(n):
             q = cpos + (lp - cpos) * i / n; q[1] += 3 * math.sin(math.pi * i / n) * (1 - tp)
@@ -201,7 +216,8 @@ for k, a in enumerate(fr):
     for t in (c if ROLE[k] != 'd' else []):
         hm[PAD:PAD + ny, PAD:PAD + nx] |= ndimage.binary_dilation(t[1], K8)
     hm &= cv[..., 3] > 0
-    frames.append({'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'slide': sl,
+    bm_, fl_ = masks(fm, th, *res.shape[:2], slide=sl, res=res, sc=sc, lantern=(tp < 0) and ROLE[k] != 'd')
+    frames.append({'mask': (bm_, fl_), 'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'slide': sl,
                    'role': ROLE[k], 'angle': math.degrees(th), 'fists': len(c),
                    'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(yb.max()) + PAD]})
     prev_th, prev_fm, prev_sl = th, fm, sl
@@ -212,6 +228,8 @@ for i, f in enumerate(frames):
     Image.fromarray(f['img'].astype(np.uint8)).save(os.path.join(out, 'frame_%03d.png' % i))
     Image.fromarray(f['body'].astype(np.uint8)).save(os.path.join(out, 'body_%03d.png' % i))
     Image.fromarray((f['hands'] * 255).astype(np.uint8)).save(os.path.join(out, 'hands_%03d.png' % i))
-    meta.append({k: v for k, v in f.items() if k not in ('img', 'body', 'hands')} | {'ms': DUR[f['role']]})
+    mk_ = np.zeros(f['hands'].shape + (3,), np.uint8); mk_[..., 0] = f['mask'][0] * 255; mk_[..., 1] = f['mask'][1] * 255
+    Image.fromarray(mk_).save(os.path.join(out, 'mask_%03d.png' % i))
+    meta.append({k: v for k, v in f.items() if k not in ('img', 'body', 'hands', 'mask')} | {'ms': DUR[f['role']]})
 json.dump({'cell': cell, 'frames': meta}, open(os.path.join(out, 'meta.json'), 'w'), indent=1)
 print('cell', round(cell, 2), [(m['role'], round(m['angle']), m['fists']) for m in meta])

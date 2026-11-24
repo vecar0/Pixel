@@ -118,7 +118,7 @@ export function damageEnemy(w, e, dmg, poiseFrac = 0, raw = false) {
 export function resolvePlayerAttacks(w) {
   const p = w.player, box = attackBox(p);
   if (!box) return;
-  if (p.state === 'flurry' ? CFG.flurry.hits.includes(p.stateT) : p.stateT === CFG.attack.startupF) { hitGimmick(w, box); hitLevel(w, box); }   // 보스 기믹·항아리·레버·상자 (휘두를 때 한 번)              // 보스방 기믹 오브젝트 (휘두를 때 한 번)
+  if (p.state === 'flurry' ? CFG.flurry.hits.includes(p.stateT) : p.stateT === (p.startF ?? CFG.attack.startupF)) { hitGimmick(w, box); hitLevel(w, box); }   // 보스 기믹·항아리·레버·상자 (휘두를 때 한 번)              // 보스방 기믹 오브젝트 (휘두를 때 한 번)
   for (const e of w.enemies) {
     if (e.dead || e.spawnT > 0 || e.hitBy === p.swing || !overlap(box, e)) continue;
     e.hitBy = p.swing;

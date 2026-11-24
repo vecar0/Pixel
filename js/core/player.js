@@ -37,7 +37,7 @@ export function attackBox(p) {
     return { x: p.face > 0 ? p.x + p.w - 6 : p.x - rg + 6, y: p.y + 2, w: rg, h: p.h - 4 };
   }
   if (p.state !== 'attack') return null;
-  if (p.stateT < A.startupF || p.stateT >= A.startupF + A.activeF) return null;
+  if (p.stateT < (p.startF ?? A.startupF) || p.stateT >= (p.startF ?? A.startupF) + A.activeF) return null;
   const rg = Math.round(A.range * (p.mods.rangeMul || 1)), x = p.face > 0 ? p.x + p.w : p.x - rg;   // 힘 18: 공격 범위
   return { x, y: p.y + 4, w: rg, h: p.h - 8 };
 }
@@ -47,7 +47,7 @@ function canAct(p, action) {
   const t = p.stateT;
   switch (p.state) {
     case 'idle': case 'run': case 'jump': return true;
-    case 'attack': return t >= A.startupF + A.activeF;            // 후딜만 캔슬 가능
+    case 'attack': return t >= (p.startF ?? A.startupF) + A.activeF;            // 후딜만 캔슬 가능
     case 'parry': return p.parryOk && p.recoverWait <= 0;        // 성공 후 4틱 뒤 (히트스톱 포함)
     default: return false;                                        // roll·hurt·flask·cast·dead
   }
@@ -70,7 +70,9 @@ function start(w, p, action, inp) {
       if (!p.onGround && p.airAttacked) return false;
       const chain = (p.state === 'attack') || p.comboT > 0;
       p.combo = chain ? (p.combo + 1) % 3 : 0;
-      if (!p.onGround) { p.airAttacked = true; p.combo = 0; }
+      p.follow = false; p.startF = p.combo > 0 ? CFG.attack.startupChainF : CFG.attack.startupF;   // 이어 베기: 낫을 한 바퀴 돌려 바꿔 잡고 벤다
+      if (p.followT > 0 && p.onGround) { p.follow = true; p.combo = 2; p.followT = 0; p.startF = CFG.attack.startupFollowF; }   // 처형 직후: 낫을 바꿔 잡고 몸 뒤로 원을 그리며 올려베기
+      if (!p.onGround) { p.airAttacked = true; p.combo = 0; p.follow = false; p.startF = CFG.attack.startupF; }
       p.swing++; useSwing(p); setState(p, 'attack'); return true;
     }
     case 'parry': setState(p, 'parry'); p.parryOk = false; p.recoverWait = 0; return true;
@@ -118,6 +120,7 @@ export function updatePlayer(w, inp) {
   if (p.dark && ((p.state === 'roll' && p.stateT === 1) || (p.state === 'jump' && p.stateT === 1))) { p.noiseT = 12; p.noiseR = SN.noiseRun * (p.mods.quietMul || 1); }   // 어둠 속: 걸음은 조용(살금살금), 구르기·점프는 소리
   if (p.powT > 0) p.powT--; if (p.sharpT > 0) p.sharpT--; if (p.shieldT > 0) p.shieldT--;   // 마법 효과 타이머 (공격 강화 · 패링 판정 · 보호막)
   if (p.comboT > 0) p.comboT--;
+  if (p.followT > 0) p.followT--;
   if (p.counterT > 0) p.counterT--;
   if (p.execChainT > 0 && --p.execChainT === 0) p.execChain = 0;
 
@@ -126,9 +129,9 @@ export function updatePlayer(w, inp) {
 
   // 상태 시간 종료 처리
   const t = p.stateT;
-  if (p.state === 'attack' && p.combo === 2 && t === A.startupF && p.mods.str7)          // 힘 7: 3타 검기
+  if (p.state === 'attack' && p.combo === 2 && t === (p.startF ?? A.startupF) && p.mods.str7)          // 힘 7: 3타 검기
     w.projectiles.push({ x: p.face > 0 ? p.x + p.w : p.x - 24, y: p.y + 18, w: 24, h: 14, vx: p.face * 6, vy: 0, pdmg: Math.round(8 * p.mods.atkMul), owner: 'player', life: 32, echo: true, src: {} });
-  if (p.state === 'attack' && t >= A.startupF + A.activeF + A.recoveryF + (p.mods.atkLag || 0)) { p.comboT = A.comboWindowF; setState(p, 'idle'); }
+  if (p.state === 'attack' && t >= (p.startF ?? A.startupF) + A.activeF + A.recoveryF + (p.mods.atkLag || 0)) { p.comboT = A.comboWindowF; setState(p, 'idle'); }
   if (p.state === 'flurry') {
     const k = FL.hits.indexOf(t);
     if (k >= 0) { p.swing++; w.events.push({ type: 'flurryHit', k, x: p.x + p.w / 2, y: p.y + p.h, face: p.face }); }   // 타마다 새 휘두르기 (같은 적을 여러 번)
@@ -148,7 +151,7 @@ export function updatePlayer(w, inp) {
     const hp0 = p.hp; p.flasks--; p.flasksUsed = (p.flasksUsed || 0) + 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, CFG.flask.heal + (p.mods.flaskBonus || 0)));
     w.events.push({ type: 'heal', amount: p.hp - hp0, from: hp0, x: p.x + p.w / 2, y: p.y + p.h }); setState(p, 'idle');
   }
-  if (p.state === 'execute' && !p.chainNext && t >= (p.execMode === 'chain' ? CFG.execute.chainTotalF : CFG.execute.totalF)) { setState(p, 'idle'); p.execMode = null; }
+  if (p.state === 'execute' && !p.chainNext && t >= (p.execMode === 'chain' ? CFG.execute.chainTotalF : CFG.execute.totalF)) { setState(p, 'idle'); p.execMode = null; p.followT = CFG.attack.followWindowF; }
   if (p.state === 'relight' && t >= CFG.snuff.relightF + (p.mods.relightLag || 0)) {   // 다시 켬: 섬광
     setState(p, 'idle'); p.snuffCd = CFG.snuff.cdF; w.events.push({ type: 'relightFlash' });
   }
@@ -184,7 +187,7 @@ export function updatePlayer(w, inp) {
     }
   } else if (p.state === 'flurry' && p.onGround) {
     p.vx = t < FL.hits[FL.hits.length - 1] + 2 ? p.face * FL.lunge : 0;   // 앞으로 파고들며 벤다
-  } else if (p.state === 'attack' && p.onGround && t < A.startupF + A.activeF) {
+  } else if (p.state === 'attack' && p.onGround && t < (p.startF ?? A.startupF) + A.activeF) {
     p.vx = p.face * A.lunge;   // 휘두를 때 앞으로 살짝 내딛기
   } else if (p.onGround) {
     p.vx = 0;  // 공격·패링·피격 중 지상은 멈춤

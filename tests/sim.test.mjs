@@ -575,7 +575,7 @@ function hitWith(combo) {
   let stop = 0, x0 = d.x;
   for (let k = 0; k <= combo; k++) {
     tick(w, I({ attack: true }));
-    for (let i = 0; i < 12; i++) { tick(w, I()); if (w.events.some(e => e.type === 'attackHit')) stop = w.hitstop; }
+    for (let i = 0; i < 20; i++) { tick(w, I()); if (w.events.some(e => e.type === 'attackHit')) stop = w.hitstop; }
     if (k < combo) d.x = w.player.x + w.player.w + 4, x0 = d.x;
   }
   return { stop, push: d.x - x0, w, d };
@@ -683,4 +683,15 @@ test('연속 처형: 처형의 충격이 근처의 흔들리던 적(자세 절�
   tick(w, I({ attack: true })); steps(w, 140);
   ok(a.dead, '첫 처형'); ok(b.dead, '이어서 처형 ' + b.hp + '/' + b.stunT);
 });
+test('처형 직후 공격 = 바꿔 잡고 원을 그리며 올려베기 (3타 위력), 창이 지나면 보통 1타', () => {
+  const w = W(); settle(w); const p = w.player;
+  p.state = 'execute'; p.stateT = CFG.execute.totalF; p.execMode = null; p.chainNext = null;
+  tick(w, I()); ok(p.state === 'idle' && p.followT > 0, 'follow window ' + p.followT);
+  tick(w, I({ attack: true })); ok(p.state === 'attack' && p.follow && p.combo === 2, 'follow cut');
+  eq(p.startF, CFG.attack.startupFollowF);
+  const w2 = W(); settle(w2); const q = w2.player;
+  q.state = 'execute'; q.stateT = CFG.execute.totalF; tick(w2, I()); steps(w2, CFG.attack.followWindowF + 2);
+  tick(w2, I({ attack: true })); ok(q.state === 'attack' && !q.follow && q.combo === 0, 'plain attack after window');
+});
+
 run();

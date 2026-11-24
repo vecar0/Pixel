@@ -97,7 +97,7 @@ export class Renderer {
   spawnFx(w) {
     const p = w.player, feet = p.y + p.h;
     // 기본 공격: 동작마다 맞는 pixelfx 베기 하나만 (1타 내려베기 · 2타 올려베기 · 3타 가로 휘두르기). 타격 불꽃은 따로 안 띄움
-    if (p.state === 'attack' && p.stateT === CFG.attack.startupF) {
+    if (p.state === 'attack' && p.stateT === (p.startF ?? CFG.attack.startupF) && p.enchantT > 0) {   // 기본 궤적은 낫 그림에 (큰 호 잔상), 점화했을 때만 속성 색 베기를 덧그림
       const [id, dx, dy] = SLASH[p.combo] || SLASH[0];
       this.pfx.spawn(id, p.x + p.w / 2 + p.face * dx, feet + dy, { flip: p.face < 0, palette: p.enchantT > 0 ? EL_SLASH[p.element || null] : STEEL, light: p.enchantT > 0 ? 0.35 : 0.15, life: 30 });   // 점화한 검: 속성 색 궤적
     }
@@ -199,6 +199,11 @@ export class Renderer {
       const fr = this.lastFr, f = pl.face, swing = pl.state === 'attack' || pl.state === 'flurry', n = swing ? 9 : 5, P = EL_SLASH[pl.element || null];
       for (let k = 0; k < n; k++) { const row = M[(Math.random() * M.length) | 0], px = row[1][(Math.random() * row[1].length) | 0], life = 12 + Math.random() * 14;
         (this.flames = this.flames || []).push({ x: pl.x + pl.w / 2 + f * (px - fr.ax) + (Math.random() - 0.5) * 2, y: pl.y + pl.h + (row[0] - fr.ay), vx: (Math.random() - 0.5) * 0.35 - (swing ? f * 0.6 : 0), vy: -0.4 - Math.random() * 0.7, life, max: life, ph: Math.random() * 6.28, P }); } } }
+    else if (this.lastFr && this.blade && pl.state !== 'dead' && pl.state !== 'ghost' && !pl.dark) {   // 낫 날: 늘 잔불이 핥듯이 타오름 (점화하면 위처럼 크게)
+      const D = this.blade[this.lastFr.src], M = D && D.m; if (M && M.length) {
+        const fr = this.lastFr, f = pl.face, swing = pl.state === 'attack' || pl.state === 'flurry' || pl.state === 'execute', n = swing ? 3 : (w.t % 2 === 0 ? 1 : 0), P = EL_SLASH[null];
+        for (let k = 0; k < n; k++) { const row = M[(Math.random() * M.length) | 0], px = row[1][(Math.random() * row[1].length) | 0], life = 7 + Math.random() * 8;
+          (this.flames = this.flames || []).push({ x: pl.x + pl.w / 2 + f * (px - fr.ax) + (Math.random() - 0.5), y: pl.y + pl.h + (row[0] - fr.ay), vx: (Math.random() - 0.5) * 0.25 - (swing ? f * 0.4 : 0), vy: -0.35 - Math.random() * 0.5, life, max: life, ph: Math.random() * 6.28, P }); } } }
     if (pl.state === 'execute' && pl.execMode === 'chain' && pl.stateT < CFG.execute.chainHitF && pl.stateT % 2 === 0) this.ghosts.push({ x: pl.x, y: pl.y, face: pl.face, life: 14, st: 'execute', stT: pl.stateT, mode: 'chain', amber: true });   // 연속 처형 돌진 잔상
     for (const g of this.ghosts) g.life--;
     this.ghosts = this.ghosts.filter(g => g.life > 0);
@@ -471,14 +476,14 @@ export class Renderer {
       // 상태별 기울기: 공격은 앞으로, 패링은 살짝 뒤로 버팀, 피격은 뒤로 젖힘
       const A = CFG.attack;
       let lean = 0;
-      if (p.state === 'attack') lean = p.stateT < A.startupF ? -0.06 : p.stateT < A.startupF + A.activeF ? 0.14 : 0.06;
+      if (p.state === 'attack') { const s0 = p.startF ?? A.startupF; lean = p.stateT < s0 ? -0.06 : p.stateT < s0 + A.activeF ? 0.14 : 0.06; }
       else if (p.state === 'parry' && p.stateT < CFG.parry.normalF) lean = -0.08;
       else if (p.state === 'hurt') lean = -0.18;
       else if (p.state === 'run') lean = 0.06;
       const bob = p.state === 'run' ? Math.abs(Math.sin(w.t * 0.45)) * 2 : p.state === 'idle' ? Math.sin(w.t * 0.08) * 0.6 : 0;
       g.save(); g.translate(cx, feet - bob); g.rotate(lean * f); g.scale(sx * f, sy);
       const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50') : this.liraImg;
-      g.drawImage(img, -43, -85);
+      g.drawImage(img, -47, -107);
       g.restore();
       this.drawParryArc(g, p, cx, feet, f);
       return;
@@ -486,7 +491,7 @@ export class Renderer {
     g.save(); g.translate(cx, feet); g.scale(sx, sy); g.translate(-cx, -feet);
     const hurt = p.state === 'hurt';
     const run = p.state === 'run' ? Math.sin(w.t * 0.45) : 0;
-    const crouch = p.state === 'attack' && p.stateT < CFG.attack.startupF ? 2 : 0;
+    const crouch = p.state === 'attack' && p.stateT < (p.startF ?? CFG.attack.startupF) ? 2 : 0;
     const top = feet - 40 + crouch;
     // 포니테일
     if (this.tail) { g.fillStyle = C.hairD; for (const n of this.tail) g.fillRect(Math.round(n.x) - 1, Math.round(n.y) - 1, 3, 3); }
@@ -926,6 +931,7 @@ export class Renderer {
   }
   // 휘두르기 잔상: 베는 동안 매 프레임 칼날 픽셀(세계 좌표)을 기억했다가, 이전 몇 프레임의 칼날과 칼끝 사이를 옅은 호로 이어 그림
   captureSmear(w, p, fr, cx, feet, f, sx, sy) {
+    if (this.anims && this.anims.follow) { this.smear = []; return; }   // 새 리라: 큰 호 잔상이 그림에 들어 있음
     const swing = p.state === 'attack' || p.state === 'flurry' || (p.state === 'execute' && p.stateT < 26);
     this.smear = (this.smear || []).filter(s => w.t - s.t < 5);
     if (!swing) return;
@@ -1011,7 +1017,7 @@ export class Renderer {
   actorOf(ent, k = 1) {
     if (ent === this.lastW?.player || ent.relics) {
       const f = this.anims?.idle?.[0];
-      return f && f.img.naturalWidth ? actorFromImage(f.img, f.ax, f.ay, k) : actorFromImage(this.liraImg, 43, 85, k);
+      return f && f.img.naturalWidth ? actorFromImage(f.img, f.ax, f.ay, k) : actorFromImage(this.liraImg, 47, 107, k);
     }
     const f = this.enemyFrame({ t: 0 }, { kind: ent.kind, st: 'idle', vx: 0, x: 0 }, ENEMY_DEFS[ent.kind]);
     return f ? actorFromImage(f.img, f.ax, f.ay, k) : undefined;
@@ -1088,14 +1094,15 @@ export class Renderer {
     const A = this.anims; if (!A) return null;
     const C2 = CFG.attack, t = p.stateT;
     const span = (lo, hi, k) => Math.min(hi, lo + Math.floor(k * (hi - lo + 1)));   // k∈[0,1) → lo..hi
-    let n = 'idle', i = ((w.t / 7) | 0) % 8;
+    let n = 'idle', i = ((w.t / 9) | 0) % ((A.idle && A.idle.length) || 8);
     switch (p.state) {
-      case 'run': n = 'run'; i = ((w.t / 5) | 0) % 8; break;
+      case 'run': n = 'run'; i = ((w.t / 5) | 0) % ((A.run && A.run.length) || 8); break;
       case 'jump': n = 'jump'; i = p.vy < -2.5 ? 3 : p.vy < 1.5 ? 5 : 7; break;
       case 'attack': {
-        n = ['atk1', 'atk2', 'atk3'][p.combo] || 'atk1';
-        const s0 = C2.startupF, s1 = s0 + C2.activeF, end = s1 + C2.recoveryF;
-        i = t < s0 ? span(0, 2, t / s0) : t < s1 ? span(3, 4, (t - s0) / C2.activeF) : span(5, 7, (t - s1) / (end - s1));
+        n = p.follow && A.follow ? 'follow' : ['atk1', 'atk2', 'atk3'][p.combo] || 'atk1';
+        const PH = { atk1: [3, 5], atk2: [6, 8], atk3: [6, 8], follow: [5, 7] }[n] || [3, 5], N = (A[n] && A[n].length) || 8;   // 준비(+바꿔잡기) · 베기(초승달 잔상) · 여운 구간
+        const s0 = p.startF ?? C2.startupF, s1 = s0 + C2.activeF, end = s1 + C2.recoveryF;
+        i = t < s0 ? span(0, PH[0] - 1, t / s0) : t < s1 ? span(PH[0], PH[1] - 1, (t - s0) / C2.activeF) : span(PH[1], N - 1, (t - s1) / (end - s1));
         break;
       }
       case 'parry': {
@@ -1106,6 +1113,7 @@ export class Renderer {
       case 'execute': {                                                    // 처형: 3타 자세로 크게 베기 (느린 웅크림 → 베기 → 여운)
         const X = CFG.execute;
         if (p.execMode === 'chain' && A.flurry) { n = 'flurry'; i = t < X.chainHitF ? span(0, 1, t / X.chainHitF) : span(2, p.chainNext ? 5 : 11, (t - X.chainHitF) / (X.chainTotalF - X.chainHitF)); break; }   // 연속 처형: 돌진 → 가로 베기 → (마지막이면 뛰어올라 내려치고 착지)
+        if (A.exec) { n = 'exec'; i = Math.min(A.exec.length - 1, Math.floor(t / X.totalF * A.exec.length)); break; }   // 처형: 낫을 놓고 → 발로 차 올려 → 뛰어올라 잡고 → 사선 대참격 → 착지
         n = 'atk3';
         i = t < X.hitF ? span(0, 2, t / X.hitF) : t < X.hitF + 5 ? (t < X.hitF + 2 ? 3 : 4) : span(5, 7, (t - X.hitF - 5) / (X.totalF - X.hitF - 5));
         break;

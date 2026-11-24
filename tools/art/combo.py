@@ -9,7 +9,7 @@ sys.argv = ['reap_comp', 'body-v12.png', 'scythe-v12-nolan.png', '{"upper":[76.9
             'v15/raw/idle.gif', '/tmp/_x', ','.join(['0'] * 64), ','.join(['r'] * 64)]
 src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reap_comp.py')).read().split('PAD = 70')[0]
 exec(src)
-CW, CH, AX, AY = 340, 300, 160, 268
+CW, CH, AX, AY = 380, 360, 170, 320
 def load(d):
     meta = json.load(open(d + '/meta.json'))['frames']
     fx = np.median([m['feet'][0] for m in meta]); fy = np.median([m['feet'][1] for m in meta])
@@ -55,7 +55,7 @@ for n, it in enumerate(items):
     kind, cnt = it[0], it[1]
     if kind == 'circle':
         # ["circle", dir, [frame idxs], extra_turns, end_angle_deg]: scythe sweeps a full circle around her
-        _, cd, cidx, turns, end_deg = it
+        cd, cidx, turns, end_deg = it[1], it[2], it[3], it[4]
         cmeta, coff = load(cd); coff = coff + np.array([IMP[0], 0])
         gA = np.array(last['meta']['grip']) + last['off']; tA = last['meta']['th']
         tB = math.radians(end_deg); dd = (tB - tA) % (2 * math.pi) + 2 * math.pi * turns
@@ -73,7 +73,9 @@ for n, it in enumerate(items):
                 acc[yi, xi] = np.maximum(acc[yi, xi], .2 + .8 * u)
             acc = ndimage.grey_closing(acc, size=(4, 4)); sm = (acc > 0) & (res[..., 3] == 0)
             idx = np.where(acc > .8, 2, np.where(acc > .5, 1, 0)); res[sm, :3] = GREY[idx[sm]]; res[sm, 3] = 255
-            sc = place(g, g, th, CH, CW, Sa=(S_NOBLADE if j < nfr - 1 else S)); m_ = sc[..., 3] > 0; res[m_] = sc[m_]
+            sc = place(g, g, th, CH, CW, Sa=(S_NOBLADE if j < nfr - 1 else S)); m_ = sc[..., 3] > 0
+            if 'B' in it: m_ &= body[..., 3] == 0
+            res[m_] = sc[m_]
             res[hands] = body[hands]
             frames.append((res, 45 if j < nfr - 1 else 90)); pf, pt = g, th
         last = dict(d=cd, i=cidx[-1], meta=dict(cmeta[cidx[-1]], th=th), off=coff)
@@ -102,7 +104,9 @@ for n, it in enumerate(items):
         body, hands = (bodyA, handA) if t < .5 else (bodyB, handB)
         res = body.copy()
         if kind != 'bridge': smear(res, pf, pt, fm, th, GREY)
-        sc = place(fm, fm, th, CH, CW); sm = sc[..., 3] > 0; res[sm] = sc[sm]
+        sc = place(fm, fm, th, CH, CW); sm = sc[..., 3] > 0
+        if 'B' in it: sm &= body[..., 3] == 0
+        res[sm] = sc[sm]
         if kind != 'toss' or t > .8: res[hands] = body[hands]
         frames.append((res, 45 if kind != 'bridge' else 60)); pf, pt = fm, th
 os.makedirs(OUT, exist_ok=True)

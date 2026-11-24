@@ -8,7 +8,7 @@ body, sc, grip, gif, out = sys.argv[1:6]
 sys.argv = ['reap_comp', body, sc, grip, gif, out, ','.join(['0'] * 64), ','.join(['r'] * 64)]
 src = open(os.path.join(os.path.dirname(__file__), 'reap_comp.py')).read().split('PAD = 70')[0]
 exec(src)
-PAD = 70
+PAD = 110
 # per GIF frame: mode, hint/angle (deg), ms, layer ('front'|'behind'), smear ('', 'grey', 'red')
 PLAN = [
  ('hand', 0, 120, 'front', ''), ('hand', 0, 200, 'front', ''),
@@ -20,9 +20,11 @@ PLAN = [
  ('hand', 230, 80, 'behind', ''), ('hand', 235, 80, 'behind', ''), ('hand', 235, 160, 'behind', ''),
  ('hand', 235, 120, 'behind', ''), ('hand', 235, 420, 'behind', ''),
 ]
+if os.environ.get('PLAN'): PLAN = [tuple(x) for x in json.loads(open(os.environ['PLAN']).read())]
+_ys, _xs = np.nonzero(S[..., 3] > 0); SC_CM = np.array([_xs.mean(), _ys.mean()])   # balance point of the scythe
 frames = []; prev_th = prev_fm = None; last_hand = None
 for k, a in enumerate(fr[:len(PLAN)]):
-    mode, ang, ms, layer, smear = PLAN[k]
+    mode, ang, ms, layer, smear = PLAN[k][:5]; extra = PLAN[k][5:]
     o, m = pix(a); ny, nx = m.shape
     cv = np.zeros((ny + 2 * PAD, nx + 2 * PAD, 4), int)
     cv[PAD:PAD + ny, PAD:PAD + nx, :3] = o.round(); cv[PAD:PAD + ny, PAD:PAD + nx, 3] = m * 255
@@ -54,10 +56,16 @@ for k, a in enumerate(fr[:len(PLAN)]):
         lower = (yb + PAD > top + bh * .3)
         i = np.argmax(xb[lower]); foot = np.array([xb[lower][i] + PAD, yb[lower][i] + PAD])
         fm = foot + np.array([2, -2]); spark = foot
+    elif mode == 'fly':      # free flight at (dx, dy) relative to head-top / body centre
+        fm = np.array([cxb + extra[0], top + extra[1]])
+    elif mode == 'baton':    # one fist at the scythe's balance point, spinning
+        f0 = (c[0][0] + PAD) if c else (last_hand if last_hand is not None else np.array([cxb + 15, top + bh * .4]))
+        cs_, sn_ = math.cos(th), math.sin(th); v = SC_CM - GM
+        fm = f0 - np.array([cs_ * v[0] - sn_ * v[1], sn_ * v[0] + cs_ * v[1]]); last_hand = f0
     else:  # spin: rising in front of / above her
         n = ['spin'] and sum(1 for p in PLAN[:k] if p[0] == 'spin')
         fm = np.array([cxb + 14 - 4 * n, top - 6 - 10 * n])
-    if prev_th is not None and mode != 'spin':     # continue the rotation the short way
+    if prev_th is not None and mode not in ('spin', 'fly', 'baton'):     # continue the rotation the short way
         th = prev_th + ((th - prev_th + math.pi) % (2 * math.pi) - math.pi)
     if mode == 'hand':
         feet_y = bot
@@ -70,12 +78,12 @@ for k, a in enumerate(fr[:len(PLAN)]):
         acc = np.zeros(cv.shape[:2], float); dth = th - prev_th
         for i in range(48):
             t = i / 48
-            if t < (.62 if mode in ('free', 'kick', 'spin') else .25): continue
+            if t < (.62 if mode in ('free', 'kick', 'spin', 'fly', 'baton') else .25): continue
             p = blade_pts(prev_fm + (fm - prev_fm) * t, prev_th + dth * t)
             xi = np.clip(np.round(p[:, 0]).astype(int), 0, cv.shape[1] - 1); yi = np.clip(np.round(p[:, 1]).astype(int), 0, cv.shape[0] - 1)
             acc[yi, xi] = np.maximum(acc[yi, xi], t)
         acc = ndimage.grey_closing(acc, size=(3, 3)); smk = acc > 0
-        if True:
+        if smear == 'red':
             pal = np.array([[90, 10, 24], [190, 30, 40], [255, 120, 110]])
         else:
             pal = np.array([[120, 120, 132], [190, 190, 202], [245, 245, 255]])
@@ -85,8 +93,8 @@ for k, a in enumerate(fr[:len(PLAN)]):
     smk = sc_[..., 3] > 0
     if layer == 'behind': smk &= cv[..., 3] == 0
     res[smk] = sc_[smk]
-    if mode == 'hand':
-        for t in c:
+    if mode in ('hand', 'baton'):
+        for t in (c[:1] if mode == 'baton' else c):
             ff = np.zeros(cv.shape[:2], bool); ff[PAD:PAD + ny, PAD:PAD + nx] = ndimage.binary_dilation(t[1], K8)
             ff &= cv[..., 3] > 0; res[ff] = cv[ff]
     if spark is not None:   # kick impact: 8-ray pixel burst, crimson/violet

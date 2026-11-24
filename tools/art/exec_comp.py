@@ -60,7 +60,7 @@ for k, a in enumerate(fr[:len(PLAN)]):
         fm = np.array([cxb + extra[0], top + extra[1]])
     elif mode == 'baton':    # one fist at the scythe's balance point, spinning
         f0 = (c[0][0] + PAD) if c else (last_hand if last_hand is not None else np.array([cxb + 15, top + bh * .4]))
-        cs_, sn_ = math.cos(th), math.sin(th); v = SC_CM - GM
+        cs_, sn_ = math.cos(th), math.sin(th); v = G2 + (G2 - G1) * .6 - GM   # pivot near the shaft end = big circle
         fm = f0 - np.array([cs_ * v[0] - sn_ * v[1], sn_ * v[0] + cs_ * v[1]]); last_hand = f0
     else:  # spin: rising in front of / above her
         n = ['spin'] and sum(1 for p in PLAN[:k] if p[0] == 'spin')

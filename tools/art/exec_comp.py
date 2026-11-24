@@ -81,7 +81,7 @@ for k, a in enumerate(fr[:len(PLAN)]):
             if blade_pts(fm, t2)[:, 1].max() <= feet_y + 2: th = t2; break
     fast = mode in ('baton', 'fly', 'spin') and prev_th is not None and abs(th - prev_th) >= math.radians(60)
     if fast: spin_i += 1
-    whirl = mode == 'baton' and fast          # baton spin: no scythe at all, only the whirl
+    whirl = False
     smear_only = fast and spin_i % 2 == 0 and not whirl
     sc_ = place(fm, fm, th, *cv.shape[:2], Sa=(S_NOBLADE if smear_only else S))
     if whirl: sc_[...] = 0

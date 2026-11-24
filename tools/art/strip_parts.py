@@ -113,7 +113,7 @@ def run(a):
     rgb = a[..., :3].astype(int); l = 0.3*rgb[..., 0]+0.59*rgb[..., 1]+0.11*rgb[..., 2]
     fire = al & (rgb[..., 0] > 150) & (rgb[..., 0] - rgb[..., 2] > 70)
     nearfire = ndimage.binary_dilation(fire, structure=K8, iterations=3)
-    rust = al & ((rgb[..., 0] - rgb[..., 2]) > 20) & (l < 125) & ~nearfire & ~face
+    rust = np.zeros_like(al)  # disabled: kept brown detail (straps, shading)
     if rust.any():
         g = l[rust].astype(int)
         a[rust, 0] = g; a[rust, 1] = g; a[rust, 2] = (g + 2).clip(0, 255)
@@ -134,7 +134,7 @@ def run(a):
         L = 0.3*rgb[..., 0]+0.59*rgb[..., 1]+0.11*rgb[..., 2]
         nL = 0.3*nbr[..., 0]+0.59*nbr[..., 1]+0.11*nbr[..., 2]
         medL = np.nanmedian(np.where(nal, nL, np.nan), axis=0)
-        lone = al & (cnt >= 6) & ~face & ~fire & ((similar == 0) | ((similar <= 1) & (np.abs(L - np.nan_to_num(medL)) > 60)))
+        lone = al & (cnt >= 6) & ~face & ~fire & (similar == 0)
         if not lone.any(): break
         # replacement: the neighbour closest to the neighbours' median colour
         med = np.median(np.where(nal[..., None], nbr, np.nan), axis=0)
@@ -185,7 +185,7 @@ def run(a):
     minL = np.nanmin(np.where(nal, nL, np.nan), axis=0)
     sat = rgb.max(-1) - rgb.min(-1)
     grey_fringe = edge & (sat < 40) & (L > 35) & (L < 165) & (L > minL + 25)
-    odd = edge & ~face & ~fire & (((simedge == 0) & (L > minL + 40)) | grey_fringe)
+    odd = edge & ~face & ~fire & (simedge == 0) & (L > minL + 60)
     if odd.any():
         nbr = stack(rgb)
         darkest = np.where(nal, nL, 9999).argmin(0)

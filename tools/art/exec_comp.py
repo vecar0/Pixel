@@ -81,9 +81,24 @@ for k, a in enumerate(fr[:len(PLAN)]):
             if blade_pts(fm, t2)[:, 1].max() <= feet_y + 2: th = t2; break
     fast = mode in ('baton', 'fly', 'spin') and prev_th is not None and abs(th - prev_th) >= math.radians(60)
     if fast: spin_i += 1
-    smear_only = fast and spin_i % 2 == 0
+    whirl = mode == 'baton' and fast          # baton spin: no scythe at all, only the whirl
+    smear_only = fast and spin_i % 2 == 0 and not whirl
     sc_ = place(fm, fm, th, *cv.shape[:2], Sa=(S_NOBLADE if smear_only else S))
+    if whirl: sc_[...] = 0
     res = cv.copy()
+    if whirl:
+        piv = last_hand; tip = blade_all_pts(fm, th); dtp = np.linalg.norm(tip - piv, axis=1)
+        R = np.percentile(dtp, 92); lead = tip[np.argmax(dtp)] - piv; a_lead = math.atan2(lead[1], lead[0])
+        yy_, xx_ = np.mgrid[:cv.shape[0], :cv.shape[1]]; rr = np.hypot(xx_ - piv[0], yy_ - piv[1])
+        aa = np.arctan2(yy_ - piv[1], xx_ - piv[0]); back = (a_lead - aa) % (2 * math.pi)   # 0 at the leading edge
+        sweep = math.radians(230)
+        outer = (rr <= R + 1.5) & (rr >= R - 1.5 - 6.0 * (1 - back / sweep)) & (back <= sweep)
+        inner = (np.abs(rr - R * .52) <= 1.4) & (back <= sweep * .6)
+        PALW = np.array([[95, 95, 112], [170, 172, 190], [245, 245, 255]])
+        for msk, fade in ((inner, .55), (outer, 1.0)):
+            f_ = back / sweep / fade; idw = np.where(f_ < .25, 2, np.where(f_ < .6, 1, 0))
+            put = msk & (res[..., 3] == 0); res[put, :3] = PALW[idw[put]]; res[put, 3] = 255
+        smear = ''
     if smear_only:   # whirl frame: the blade becomes one swept disc-arc
         acc = np.zeros(cv.shape[:2], float); dth = th - prev_th
         for i in range(40):
@@ -129,6 +144,11 @@ for k, a in enumerate(fr[:len(PLAN)]):
     if mode == 'hand':
         for t in c: hm[PAD:PAD + ny, PAD:PAD + nx] |= ndimage.binary_dilation(t[1], K8)
     hm &= cv[..., 3] > 0
+    if mode == 'baton':
+        ph = spin_i * math.pi / 2
+        dy_ = -int(round(2.5 * abs(math.sin(ph)))); dx_ = int(round(2 * math.sin(ph / 2)))
+        res = np.roll(np.roll(res, dy_, 0), dx_, 1); cv = np.roll(np.roll(cv, dy_, 0), dx_, 1); hm = np.roll(np.roll(hm, dy_, 0), dx_, 1)
+        fm = fm + np.array([dx_, dy_])
     frames.append({'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'ms': ms, 'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(bot)], 'mode': mode})
     prev_th, prev_fm = th, fm
 os.makedirs(out, exist_ok=True)

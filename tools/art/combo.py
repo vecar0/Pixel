@@ -52,7 +52,17 @@ for n, it in enumerate(items):
         off = off + np.array([IMP[0], 0])
         i = idxs[-1]; last = dict(d=d, i=i, meta=meta[i], off=off)
         continue
-    kind, cnt = it[0], it[1]
+    kind = it[0]; cnt = it[1] if len(it) > 1 and not isinstance(it[1], str) else 0
+    if kind == 'auto':
+        nxt0 = items[n + 1]
+        nm0 = nxt0[3][nxt0[2][0]]; no0 = nxt0[4] + np.array([IMP[0], 0])
+        bA = layer(arr(last['d'] + '/body_%03d.png' % last['i']), last['off'])[..., 3] > 0
+        bB = layer(arr(nxt0[1] + '/body_%03d.png' % nxt0[2][0]), no0)[..., 3] > 0
+        hA = np.ptp(np.nonzero(bA)[0]); hB = np.ptp(np.nonzero(bB)[0])
+        gd = np.linalg.norm((np.array(last['meta']['grip']) + last['off']) - (np.array(nm0['grip']) + no0))
+        big = gd >= 45 or abs(hA - hB) / max(hA, hB) >= .15
+        it = ('twirl', 6 if big else 4, 2 if big else 1); kind, cnt = 'twirl', it[1]
+        print('connector', last['d'], '->', nxt0[1], 'grip move %.0f' % gd, 'height %d->%d' % (hA, hB), 'turns', it[2])
     if kind == 'circle':
         # ["circle", dir, [frame idxs], extra_turns, end_angle_deg]: scythe sweeps a full circle around her
         cd, cidx, turns, end_deg = it[1], it[2], it[3], it[4]
@@ -99,7 +109,7 @@ for n, it in enumerate(items):
     pf, pt = gA, tA
     for j in range(1, cnt + 1):
         t = j / (cnt + 1); te = t * t * (3 - 2 * t)
-        fm = gA + (gB - gA) * te; th = tA + (d + spins) * t
+        fm = gA + (gB - gA) * te; th = tA + (d + spins) * (te if kind == 'twirl' else t)
         if kind == 'bridge':      # stay in the hands of the body that is shown
             fm = gA if t < .5 else gB; th = (tA + d * .25) if t < .5 else (tA + d * .75)
         if kind == 'toss': fm = fm + np.array([0, -height * math.sin(math.pi * t)])

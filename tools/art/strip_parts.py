@@ -48,6 +48,14 @@ def run(a):
             t = ((l[onb] - 100) / 155.0).clip(0, 1)
             g = (30 + t * 70).astype(int)
             a[onb, 0] = g; a[onb, 1] = g; a[onb, 2] = (g + 4).clip(0, 255)
+        # trim the ragged smoke left where the flame stuck out of the blade
+        zone = ndimage.binary_dilation(kill & body, structure=K8, iterations=1)
+        for _ in range(4):
+            op = a[..., 3] > 0
+            nbc = ndimage.convolve(op.astype(int), np.ones((3, 3), int), mode='constant') - op
+            rm = zone & op & (nbc <= 4)
+            if not rm.any(): break
+            a[rm, 3] = 0
         # warm brown fringe of the flame on the body -> grey as well
         fr = kill & body & ~org & ((rgb[..., 0] - rgb[..., 2]) > 30)
         if fr.any():
@@ -100,6 +108,40 @@ def run(a):
         if fleck.any() and dark.any():
             _, (iy, ix) = ndimage.distance_transform_edt(~dark, return_indices=True)
             a[fleck, :3] = a[iy[fleck], ix[fleck], :3]
+    # (3b) rust specks: warm dark pixels away from fire/face become neutral grey (same lightness)
+    al = a[..., 3] > 0
+    rgb = a[..., :3].astype(int); l = 0.3*rgb[..., 0]+0.59*rgb[..., 1]+0.11*rgb[..., 2]
+    fire = al & (rgb[..., 0] > 150) & (rgb[..., 0] - rgb[..., 2] > 70)
+    nearfire = ndimage.binary_dilation(fire, structure=K8, iterations=3)
+    rust = al & ((rgb[..., 0] - rgb[..., 2]) > 20) & (l < 125) & ~nearfire & ~face
+    if rust.any():
+        g = l[rust].astype(int)
+        a[rust, 0] = g; a[rust, 1] = g; a[rust, 2] = (g + 2).clip(0, 255)
+    # (4) lone odd pixels: a pixel unlike all of its neighbours takes their typical colour
+    for _ in range(2):
+        al = a[..., 3] > 0
+        rgb = a[..., :3].astype(int)
+        H, W = al.shape
+        fire = (rgb[..., 0] > 150) & (rgb[..., 0] - rgb[..., 2] > 70)
+        P = np.pad(rgb, ((1, 1), (1, 1), (0, 0)))
+        PA = np.pad(al, 1)
+        offs = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
+        nbr = np.stack([P[1+dy:1+dy+H, 1+dx:1+dx+W] for dy, dx in offs])      # 8,H,W,3
+        nal = np.stack([PA[1+dy:1+dy+H, 1+dx:1+dx+W] for dy, dx in offs])     # 8,H,W
+        d = np.abs(nbr - rgb[None]).sum(-1)                                   # colour distance
+        similar = ((d < 70) & nal).sum(0)
+        cnt = nal.sum(0)
+        L = 0.3*rgb[..., 0]+0.59*rgb[..., 1]+0.11*rgb[..., 2]
+        nL = 0.3*nbr[..., 0]+0.59*nbr[..., 1]+0.11*nbr[..., 2]
+        medL = np.nanmedian(np.where(nal, nL, np.nan), axis=0)
+        lone = al & (cnt >= 6) & ~face & ~fire & ((similar == 0) | ((similar <= 1) & (np.abs(L - np.nan_to_num(medL)) > 60)))
+        if not lone.any(): break
+        # replacement: the neighbour closest to the neighbours' median colour
+        med = np.median(np.where(nal[..., None], nbr, np.nan), axis=0)
+        dm = np.abs(nbr - np.nan_to_num(med)[None]).sum(-1) + (~nal) * 9999
+        pick = dm.argmin(0)
+        ys, xs = np.nonzero(lone)
+        a[ys, xs, :3] = nbr[pick[ys, xs], ys, xs]
     return a
 
 src, dst = sys.argv[1:3]

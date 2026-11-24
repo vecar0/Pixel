@@ -31,7 +31,7 @@ def smear(res, f0, t0, f1, t1, pal):
     acc = ndimage.grey_closing(acc, size=(3, 3)); sm = (acc > 0) & (res[..., 3] == 0)
     idx = np.where(acc > .85, 2, np.where(acc > .7, 1, 0)); res[sm, :3] = pal[idx[sm]]; res[sm, 3] = 255
 GREY = np.array([[110, 110, 124], [180, 180, 194], [240, 240, 252]])
-frames = []; last = None   # last = dict(body, hands, grip, th, off)
+frames = []; last = None; IMP = [0]   # last = dict(body, hands, grip, th, off)
 items = []
 for it in spec:
     if it[0] == 'move':
@@ -41,12 +41,20 @@ for it in spec:
 for n, it in enumerate(items):
     if it[0] == 'move':
         _, d, idxs, meta, off = it
+        off = off + np.array([IMP[0], 0])
+        seen_f = False
         for i in idxs:
-            frames.append((layer(arr(d + '/frame_%03d.png' % i), off), meta[i].get('ms', 100)))
+            r_ = meta[i].get('role', '')
+            if r_ in ('S', 's', 'f') and not seen_f: IMP[0] += 3
+            ms = meta[i].get('ms', 100)
+            if r_ == 'f' and not seen_f: ms += 80; seen_f = True      # hitstop
+            frames.append((layer(arr(d + '/frame_%03d.png' % i), off + np.array([IMP[0], 0])), ms))
+        off = off + np.array([IMP[0], 0])
         i = idxs[-1]; last = dict(d=d, i=i, meta=meta[i], off=off)
         continue
     kind, cnt = it[0], it[1]
     nxt = items[n + 1]; nd, ni, nmeta, noff = nxt[1], nxt[2][0], nxt[3][nxt[2][0]], nxt[4]
+    noff = noff + np.array([IMP[0], 0])
     gA = np.array(last['meta']['grip']) + last['off']; gB = np.array(nmeta['grip']) + noff
     tA = last['meta']['th']; tB = nmeta['th']
     d = (tB - tA + math.pi) % (2 * math.pi) - math.pi

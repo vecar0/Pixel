@@ -13,12 +13,12 @@ PAD = 70
 PLAN = [
  ('hand', 0, 120, 'front', ''), ('hand', 0, 200, 'front', ''),
  ('free', 35, 90, 'front', ''), ('free', 110, 70, 'front', 'grey'),
- ('kick', 200, 130, 'front', 'grey'),
+ ('kick', 200, 220, 'front', 'grey'),
  ('spin', 350, 50, 'front', 'grey'), ('spin', 500, 50, 'front', 'grey'), ('spin', 650, 50, 'behind', 'grey'),
  ('hand', -40, 110, 'front', 'grey'),
  ('hand', 70, 50, 'front', 'red'), ('hand', 165, 260, 'front', 'red'),
- ('hand', 230, 80, 'front', ''), ('hand', 235, 80, 'front', ''), ('hand', 235, 160, 'front', ''),
- ('hand', 235, 120, 'front', ''), ('hand', 235, 420, 'front', ''),
+ ('hand', 230, 80, 'behind', ''), ('hand', 235, 80, 'behind', ''), ('hand', 235, 160, 'behind', ''),
+ ('hand', 235, 120, 'behind', ''), ('hand', 235, 420, 'behind', ''),
 ]
 frames = []; prev_th = prev_fm = None; last_hand = None
 for k, a in enumerate(fr[:len(PLAN)]):

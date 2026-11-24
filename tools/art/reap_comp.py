@@ -57,8 +57,10 @@ def fists(o, m):
     c = [t for t in c if t[2] >= 8]
     c = [t for t in c if not (top + bh * .55 < t[0][1] < top + bh * .8 and abs(t[0][0] - midx) < bh * .12)]
     return c
-def place(F_up, F_lo, th, H_, W_, Sa=S, lantern=True):
-    fm = (F_up + F_lo) / 2; out = np.zeros((H_, W_, 4), int); c, s = math.cos(th), math.sin(th)
+def place(F_up, F_lo, th, H_, W_, Sa=S, lantern=True, slide=0.0):
+    fm = (F_up + F_lo) / 2
+    ax_ = (G1 - G2) / np.linalg.norm(G1 - G2); cs_, sn_ = math.cos(th), math.sin(th)
+    fm = fm + slide * np.array([cs_ * ax_[0] - sn_ * ax_[1], sn_ * ax_[0] + cs_ * ax_[1]]); out = np.zeros((H_, W_, 4), int); c, s = math.cos(th), math.sin(th)
     yy, xx = np.mgrid[:H_, :W_]; dx, dy = xx - fm[0], yy - fm[1]
     sx = np.round(c * dx + s * dy + GM[0]).astype(int); sy = np.round(-s * dx + c * dy + GM[1]).astype(int)
     ok = (sx >= 0) & (sx < Sa.shape[1]) & (sy >= 0) & (sy < Sa.shape[0]); out[ok] = Sa[sy[ok], sx[ok]]
@@ -72,11 +74,19 @@ def place(F_up, F_lo, th, H_, W_, Sa=S, lantern=True):
 yy, xx = np.mgrid[:S.shape[0], :S.shape[1]]
 _L = .3 * S[..., 0] + .59 * S[..., 1] + .11 * S[..., 2]
 BLADE = (S[..., 3] > 0) & (yy < G1[1] - 18) & (_L > 120)      # the bright cutting edge only
+BLADE_ALL = (S[..., 3] > 0) & (yy < G1[1] - 18)
+S_NOBLADE = S.copy(); S_NOBLADE[BLADE_ALL] = 0
+def blade_all_pts(fm, th, slide=0.0):
+    ax_ = (G1 - G2) / np.linalg.norm(G1 - G2); c, s = math.cos(th), math.sin(th)
+    fm = fm + slide * np.array([c * ax_[0] - s * ax_[1], s * ax_[0] + c * ax_[1]])
+    ys, xs = np.nonzero(BLADE_ALL); dx, dy = xs - GM[0], ys - GM[1]
+    return np.stack([fm[0] + c * dx - s * dy, fm[1] + s * dx + c * dy], 1)
 def blade_pts(fm, th):
     ys, xs = np.nonzero(BLADE); c, s = math.cos(th), math.sin(th)
     dx, dy = xs - GM[0], ys - GM[1]
     return np.stack([fm[0] + c * dx - s * dy, fm[1] + s * dx + c * dy], 1)
-PAD = 70; hold_ref = None; frames = []; prev_th = None; prev_fm = None
+SLIDE = [float(x) for x in os.environ['SLIDE'].split(',')] if os.environ.get('SLIDE') else None
+PAD = 70; hold_ref = None; frames = []; prev_sl = 0.0; prev_th = None; prev_fm = None
 for k, a in enumerate(fr):
     if ROLE[k] == 'x': continue
     o, m = pix(a); ny, nx = m.shape
@@ -114,11 +124,13 @@ for k, a in enumerate(fr):
             bl = blade_pts(f_, t_)[:, 1].mean()
             if best is None or bl < best[0]: best = (bl, t_, ys_.max())
         th = best[1]; fm = feet + np.array([14, 0]) + np.array([0, feet[1] - best[2]])
+    if os.environ.get('OVR'): th += math.radians(float(os.environ['OVR'].split(',')[k]))
     if ROLE[k] != 'd':
         for dt in [0] + [d * sg for d in range(5, 95, 5) for sg in (1, -1)]:
             t2 = th + math.radians(dt)
             if blade_pts(fm, t2)[:, 1].max() <= feet[1] + 2: th = t2; break
-    sc = place(fm, fm, th, *cv.shape[:2], lantern=(tp < 0) and ROLE[k] != 'd')
+    sl = SLIDE[k] if SLIDE else 0.0
+    sc = place(fm, fm, th, *cv.shape[:2], Sa=(S_NOBLADE if ROLE[k] == 'S' else S), lantern=(tp < 0) and ROLE[k] != 'd', slide=sl)
     res = cv.copy()
     if tp >= 0 and LAN is not None:
         # lantern thrown: starts at the rear (non-scythe) hand, flies forward; chain from the pole end
@@ -135,6 +147,16 @@ for k, a in enumerate(fr):
         ty = np.round(ly - LAN_AT[1] + lp[1]).astype(int); tx = np.round(lx - LAN_AT[0] + lp[0]).astype(int)
         ok3 = (ty >= 0) & (ty < res.shape[0]) & (tx >= 0) & (tx < res.shape[1]); res[ty[ok3], tx[ok3]] = LAN[ly[ok3], lx[ok3]]
     # smear: area swept by the blade since the previous frame (swing frames only)
+    if ROLE[k] == 'S' and prev_th is not None:      # one big crescent replaces the blade
+        acc = np.zeros(cv.shape[:2], float); dth = (th - prev_th + math.pi) % (2 * math.pi) - math.pi
+        for i in range(40):
+            t = .15 + .85 * i / 39; p = blade_all_pts(prev_fm + (fm - prev_fm) * t, prev_th + dth * t, prev_sl + (sl - prev_sl) * t)
+            xi = np.clip(np.round(p[:, 0]).astype(int), 0, cv.shape[1] - 1); yi = np.clip(np.round(p[:, 1]).astype(int), 0, cv.shape[0] - 1)
+            acc[yi, xi] = np.maximum(acc[yi, xi], t)
+        acc = ndimage.grey_closing(acc, size=(3, 3)); sm = acc > 0
+        band = np.where(acc > .8, 250, np.where(acc > .5, 200, 135))
+        col = np.stack([band, band, band + 10], -1).clip(0, 255)
+        res[sm, :3] = col[sm]; res[sm, 3] = 255
     if ROLE[k] in ('s', 'f') and prev_th is not None:
         steps = 36; acc = np.zeros(cv.shape[:2], float)
         dth = (th - prev_th + math.pi) % (2 * math.pi) - math.pi
@@ -162,12 +184,12 @@ for k, a in enumerate(fr):
     for t in (c if ROLE[k] != 'd' else []):
         hm[PAD:PAD + ny, PAD:PAD + nx] |= ndimage.binary_dilation(t[1], K8)
     hm &= cv[..., 3] > 0
-    frames.append({'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th,
+    frames.append({'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'slide': sl,
                    'role': ROLE[k], 'angle': math.degrees(th), 'fists': len(c),
                    'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(yb.max()) + PAD]})
-    prev_th, prev_fm = th, fm
+    prev_th, prev_fm, prev_sl = th, fm, sl
 os.makedirs(out, exist_ok=True)
-DUR = {'r': 120, 'a': 220, 's': 50, 'f': 280, 'h': 120, 'l': 140, 'n': 80, 'j': 100, 'd': 150, 'T': 70}
+DUR = {'S': 45, 'r': 120, 'a': 220, 's': 50, 'f': 280, 'h': 120, 'l': 140, 'n': 80, 'j': 100, 'd': 150, 'T': 70}
 meta = []
 for i, f in enumerate(frames):
     Image.fromarray(f['img'].astype(np.uint8)).save(os.path.join(out, 'frame_%03d.png' % i))

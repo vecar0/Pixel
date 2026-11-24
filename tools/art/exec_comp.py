@@ -86,18 +86,17 @@ for k, a in enumerate(fr[:len(PLAN)]):
     sc_ = place(fm, fm, th, *cv.shape[:2], Sa=(S_NOBLADE if smear_only else S))
     if whirl: sc_[...] = 0
     res = cv.copy()
-    if whirl:
-        piv = last_hand; tip = blade_all_pts(fm, th); dtp = np.linalg.norm(tip - piv, axis=1)
-        R = np.percentile(dtp, 92); lead = tip[np.argmax(dtp)] - piv; a_lead = math.atan2(lead[1], lead[0])
-        yy_, xx_ = np.mgrid[:cv.shape[0], :cv.shape[1]]; rr = np.hypot(xx_ - piv[0], yy_ - piv[1])
-        aa = np.arctan2(yy_ - piv[1], xx_ - piv[0]); back = (a_lead - aa) % (2 * math.pi)   # 0 at the leading edge
-        sweep = math.radians(230)
-        outer = (rr <= R + 1.5) & (rr >= R - 1.5 - 6.0 * (1 - back / sweep)) & (back <= sweep)
-        inner = (np.abs(rr - R * .52) <= 1.4) & (back <= sweep * .6)
-        PALW = np.array([[95, 95, 112], [170, 172, 190], [245, 245, 255]])
-        for msk, fade in ((inner, .55), (outer, 1.0)):
-            f_ = back / sweep / fade; idw = np.where(f_ < .25, 2, np.where(f_ < .6, 1, 0))
-            put = msk & (res[..., 3] == 0); res[put, :3] = PALW[idw[put]]; res[put, 3] = 255
+    if whirl:   # the original crescent: path of the blade tip since the previous frame, no scythe drawn
+        acc = np.zeros(cv.shape[:2], float); dth = th - prev_th
+        for i in range(40):
+            t = .1 + .9 * i / 39; f_ = prev_fm + (fm - prev_fm) * t; p = blade_all_pts(f_, prev_th + dth * t)
+            dd_ = np.linalg.norm(p - f_, axis=1); p = p[dd_ > np.percentile(dd_, 70)]
+            xi = np.clip(np.round(p[:, 0]).astype(int), 0, cv.shape[1] - 1); yi = np.clip(np.round(p[:, 1]).astype(int), 0, cv.shape[0] - 1)
+            acc[yi, xi] = np.maximum(acc[yi, xi], t)
+        acc = ndimage.grey_closing(acc, size=(3, 3)); smk2 = acc > 0
+        pal2 = np.array([[95, 95, 110], [165, 165, 180], [235, 235, 248]])
+        idx2 = np.where(acc > .8, 2, np.where(acc > .5, 1, 0)); put2 = smk2 & (res[..., 3] == 0)
+        res[put2, :3] = pal2[idx2[put2]]; res[put2, 3] = 255
         smear = ''
     if smear_only:   # whirl frame: the blade becomes one swept disc-arc
         acc = np.zeros(cv.shape[:2], float); dth = th - prev_th

@@ -12,7 +12,7 @@ def frames_of(d, idxs):
     out = []
     for i in idxs:
         feet = fm[i].get('feet') if anchor is None else anchor
-        out.append((f'{B}/{d}/frame_{i:03d}.png', f'{B}/{d}/mask_{i:03d}.png', feet))
+        out.append((f'{B}/{d}/frame_{i:03d}.png', f'{B}/{d}/mask_{i:03d}.png', feet, fm[i].get('pole')))
     return out
 def anims_for():
     return {
@@ -46,7 +46,7 @@ for B, SUF in SETS:
     for name, lst in anims_for().items(): ALL.append((name + SUF, lst))
 for name, lst in ALL:
     lira[name] = []
-    for i, (fp, mp, feet) in enumerate(lst):
+    for i, (fp, mp, feet, pole) in enumerate(lst):
         src = f'assets/lira-{name}-{i}.png'
         im = np.array(Image.open(fp).convert('RGBA')); mk = np.array(Image.open(mp).convert('RGB'))
         al = im[..., 3] > 0; ys, xs = np.nonzero(al)
@@ -54,7 +54,9 @@ for name, lst in ALL:
         crop = im[y0:y1, x0:x1]; bm = mk[y0:y1, x0:x1, 0] > 0; fl = mk[y0:y1, x0:x1, 1] > 0
         Image.fromarray(crop.astype(np.uint8)).save(os.path.join(ROOT, src))
         ax, ay = int(round(feet[0] - x0)), int(round(feet[1] - y0))
-        lira[name].append({'src': src, 'ax': ax, 'ay': ay, 'w': int(x1 - x0), 'h': int(y1 - y0)})
+        fr_ = {'src': src, 'ax': ax, 'ay': ay, 'w': int(x1 - x0), 'h': int(y1 - y0)}
+        if pole: fr_['pe'] = [round(pole[0] - x0, 1), round(pole[1] - y0, 1)]   # 낫 자루 끝 (사슬이 나오는 곳)
+        lira[name].append(fr_)
         d1 = ndimage.binary_dilation(bm, K8); d2 = ndimage.binary_dilation(d1, K8)
         blade[src] = {'r1': rows(d1 & ~bm), 'r2': rows(d2 & ~d1), 'm': rows(bm), 'o': rows(fl)}
         # eyes: amber pixels in the upper part of the body, away from the lantern flame

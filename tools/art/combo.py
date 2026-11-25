@@ -31,7 +31,7 @@ def smear(res, f0, t0, f1, t1, pal):
     acc = ndimage.grey_closing(acc, size=(3, 3)); sm = (acc > 0) & (res[..., 3] == 0)
     idx = np.where(acc > .85, 2, np.where(acc > .7, 1, 0)); res[sm, :3] = pal[idx[sm]]; res[sm, 3] = 255
 GREY = np.array([[110, 110, 124], [180, 180, 194], [240, 240, 252]])
-frames = []; last = None; IMP = [0]; MASKS = []   # last = dict(body, hands, grip, th, off)
+frames = []; last = None; IMP = [0]; MASKS = []; POLES = []   # last = dict(body, hands, grip, th, off)
 items = []
 for it in spec:
     if it[0] == 'move':
@@ -50,6 +50,7 @@ for n, it in enumerate(items):
             if r_ == 'f' and not seen_f: ms += 80; seen_f = True      # hitstop
             mk = layer(arr(d + '/mask_%03d.png' % i), off + np.array([IMP[0], 0]))
             frames.append((layer(arr(d + '/frame_%03d.png' % i), off + np.array([IMP[0], 0])), ms)); MASKS.append(mk)
+            POLES.append((np.array(meta[i]['pole']) + off + np.array([IMP[0], 0])).tolist() if 'pole' in meta[i] else None)
         off = off + np.array([IMP[0], 0])
         i = idxs[-1]; last = dict(d=d, i=i, meta=meta[i], off=off)
         continue
@@ -89,7 +90,7 @@ for n, it in enumerate(items):
             res[m_] = sc[m_]
             res[hands] = body[hands]
             bm_, fl_ = masks(g, th, CH, CW, res=res, sc=sc); mk = np.zeros((CH, CW, 4), int); mk[..., 0] = bm_ * 255; mk[..., 1] = fl_ * 255; MASKS.append(mk)
-            frames.append((res, 45 if j < nfr - 1 else 90)); pf, pt = g, th
+            frames.append((res, 45 if j < nfr - 1 else 90)); POLES.append(pole_pt(g, th)); pf, pt = g, th
         last = dict(d=cd, i=cidx[-1], meta=dict(cmeta[cidx[-1]], th=th), off=coff)
         continue
     nxt = items[n + 1]
@@ -123,13 +124,13 @@ for n, it in enumerate(items):
         res[sm] = sc[sm]
         if kind != 'toss' or t > .8: res[hands] = body[hands]
         bm_, fl_ = masks(fm, th, CH, CW, res=res, sc=sc); mk = np.zeros((CH, CW, 4), int); mk[..., 0] = bm_ * 255; mk[..., 1] = fl_ * 255; MASKS.append(mk)
-        frames.append((res, 45 if kind != 'bridge' else 60)); pf, pt = fm, th
+        frames.append((res, 45 if kind != 'bridge' else 60)); POLES.append(pole_pt(fm, th)); pf, pt = fm, th
 os.makedirs(OUT, exist_ok=True)
 for f in glob.glob(OUT + '/*.png'): os.remove(f)
 for i, (im, ms) in enumerate(frames):
     Image.fromarray(im.astype(np.uint8)).save(OUT + '/frame_%03d.png' % i)
     Image.fromarray(MASKS[i][..., :3].astype(np.uint8)).save(OUT + '/mask_%03d.png' % i)
-json.dump({'anchor': [AX, AY], 'frames': [{'ms': ms} for _, ms in frames]}, open(OUT + '/meta.json', 'w'))
+json.dump({'anchor': [AX, AY], 'frames': [{'ms': ms, 'pole': POLES[i]} for i, (_, ms) in enumerate(frames)]}, open(OUT + '/meta.json', 'w'))
 json.dump([int(ms * float(os.environ.get('TSCALE', '1'))) for _, ms in frames], open(OUT + '/timing.json', 'w'))
 bg = np.array([40, 38, 52, 255])
 pics = []

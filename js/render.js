@@ -10,6 +10,7 @@ import { FxDirector } from './fxmap.js?v=mwvmp0sz';
 import { iconCanvas } from './icons.js?v=mwvmp0sz';
 import { bodyShade } from './shade.js?v=mwvmp0sz';
 import { lightSources } from './core/light.js?v=mwvmp0sz';
+import { ChainSim } from './chain.js?v=mwvmp0sz';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -474,17 +475,17 @@ export class Renderer {
   // 리라 임시 실루엣 (진짜 그림은 Higgsfield 단계에서 교체)
   // 던진 등불: 손(낫 자루 끝)에서 풀려나간 사슬 + 등불 (날아가는 중·놓인 곳·되돌아오는 중)
   drawLampOut(g, w, p) {
-    const Lp = p.lamp; if (!Lp || Lp.st === 'held') return;
-    const hx = p.x + p.w / 2 + p.face * 10, hy = p.y + 34, lx = Math.round(Lp.x), ly = Math.round(Lp.y);
-    const n = Math.max(2, Math.hypot(lx - hx, ly - hy) / 3 | 0), sag = Lp.st === 'placed' ? Math.min(22, Math.abs(lx - hx) * 0.08) : 0;
-    for (let i = 0; i <= n; i++) {                                     // 사슬 고리: 밝고 어두운 고리를 번갈아 (가운데가 처짐)
-      const t = i / n, x = Math.round(hx + (lx - hx) * t), y = Math.round(hy + (ly - hy) * t + sag * 4 * t * (1 - t));
-      g.fillStyle = i % 2 ? '#2a2630' : '#8a8494'; g.fillRect(x - 1, y - 1, 2, 2);
-    }
-    const im = this.lampImg; if (!im || !im.naturalWidth) return;
-    const sw = Math.sin(w.t * 0.12) * (Lp.st === 'placed' ? 0.06 : 0.25);
-    g.save(); g.translate(lx, ly); g.rotate(sw); g.drawImage(im, -Math.round(im.naturalWidth / 2), -Math.round(im.naturalHeight * 0.75)); g.restore();
-    if (Lp.offT > 0 && (w.t >> 2) & 1) { g.fillStyle = 'rgba(10,6,20,0.6)'; g.fillRect(lx - 8, ly - 18, 16, 20); }   // 암살자에게 맞아 꺼짐
+    if (w.town && !p.lamp) return;
+    const A = this.poleW || { x: p.x + p.w / 2 + p.face * 10, y: p.y + 34 };
+    const C = this.chain = this.chain || new ChainSim();
+    if (this.chainW !== w) { this.chainW = w; C.pts = null; this.chainT = w.t; }
+    const steps = Math.max(0, Math.min(3, w.t - (this.chainT ?? w.t))); this.chainT = w.t;   // 세계 틱마다 물리 한 걸음 (화면 주사율과 무관)
+    for (let i = 0; i < steps; i++) C.step(w, A, p.lamp, p.state === 'roll' || p.state === 'dead' ? null : p);
+    if (!C.pts) C.step(w, A, p.lamp, p);
+    const held = !p.lamp || p.lamp.st === 'held';
+    C.draw(g, this.lampImg, w.t, held);
+    const Lp = p.lamp;
+    if (Lp && Lp.offT > 0 && (w.t >> 2) & 1) { const e = C.lanternPos(); if (e) { g.fillStyle = 'rgba(10,6,20,0.6)'; g.fillRect(Math.round(e.x) - 8, Math.round(e.y) - 14, 16, 18); } }   // 암살자에게 맞아 꺼짐
   }
 
   drawLira(g, w, p) {
@@ -1188,6 +1189,7 @@ export class Renderer {
   drawAnim(g, w, p, fr, cx, feet, f) {
     if (p === w.player) this.lastFr = fr;                                  // 칼날 불꽃 위치용 (지금 프레임)
     const sq = this.squash, sy = 1 - sq * 0.15, sx = 1 + sq * 0.12;
+    if (p === w.player && fr.pe) this.poleW = { x: cx + f * sx * (fr.pe[0] - fr.ax), y: feet + sy * (fr.pe[1] - fr.ay) };   // 낫 자루 끝 (사슬이 나오는 곳)
     if (p === w.player) this.captureSmear(w, p, fr, cx, feet, f, sx, sy);
     const lit = p.enchantT > 0 || (p.state === 'cast' && p.spell === 'enchant'), off = p.dark || (p.state === 'relight' && p.stateT < CFG.snuff.relightF - 4);
     const base = p.element || lit || off ? this.elFrame(fr, p.element || null, lit && !off, off) : fr.img;   // 등불 = 속성 색, 두르면 칼도, 소등이면 등불이 꺼짐   // 등불 = 속성 색, 두르면 칼도

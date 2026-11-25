@@ -1,7 +1,7 @@
 // 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
-import { CFG } from './config.js?v=mwvri6pt';
-import { statMods, startStats } from './stats.js?v=mwvri6pt';
-import { createLamp } from './light.js?v=mwvri6pt';
+import { CFG } from './config.js?v=mwvyzlft';
+import { statMods, startStats } from './stats.js?v=mwvyzlft';
+import { createLamp } from './light.js?v=mwvyzlft';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, FL = CFG.flurry;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];

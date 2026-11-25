@@ -2,11 +2,11 @@
 // 적 객체에는 함수를 넣지 않는다 (structuredClone 가능 = 테스트 봇이 미래를 미리 볼 수 있음)
 // 공격 종류는 데이터로: reach(근접) · dash(2D 돌진) · charge(가로 돌진) · bolt(조준탄) · wave(바닥 충격파)
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
-import { clipBeam } from './gimmick.js?v=mwvri6pt';
-import { CFG } from './config.js?v=mwvri6pt';
-import { lightSources } from './light.js?v=mwvri6pt';
-import { moveAndCollide, overlap } from './player.js?v=mwvri6pt';
-import { BOSSES, bossPick, bossWant } from './boss.js?v=mwvri6pt';
+import { clipBeam } from './gimmick.js?v=mwvyzlft';
+import { CFG } from './config.js?v=mwvyzlft';
+import { lightSources } from './light.js?v=mwvyzlft';
+import { moveAndCollide, overlap } from './player.js?v=mwvyzlft';
+import { BOSSES, bossPick, bossWant } from './boss.js?v=mwvyzlft';
 
 export const ENEMY_DEFS = {
   // 소울류 조정: 적 하나하나가 위협 (체력↑ · 공격 2~3종 · 늦게 내려치는 공격 · 콤보) / flinch: 맞으면 움찔(예고 초반 끊김), 연타당하면 버티고 반격

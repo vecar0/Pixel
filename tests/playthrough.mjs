@@ -80,7 +80,7 @@ for (let guard = 0; guard < 2000; guard++) {
     return p.evaluate(() => window.__lk.world !== window.__oldW);
   }, 12000);
   moved || fail('출구로 못 나감 ' + JSON.stringify(st));
-  if ((st.room === 'combat' || st.room === 'elite') && !rewarded) fail('출구 뒤 보상 화면 없음 ' + JSON.stringify(st));
+  if (rewarded) fail('새 설계: 방을 나갈 때 단련 보상 화면이 뜨면 안 됨 ' + JSON.stringify(st));   // 성장은 등잔으로
 }
 await p.waitForTimeout(500); await p.screenshot({ path: path.join(out, 'run-end.png') });
 const end = await p.evaluate(() => document.querySelector('.card.result h2')?.textContent || '');

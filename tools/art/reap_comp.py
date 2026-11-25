@@ -105,10 +105,11 @@ def blade_all_pts(fm, th, slide=0.0):
     ys, xs = np.nonzero(BLADE_ALL); dx, dy = (xs - GM[0]) * K, (ys - GM[1]) * K
     return np.stack([fm[0] + c * dx - s * dy, fm[1] + s * dx + c * dy], 1)
 POLE = np.array([63.5, 117.5])                                     # 낫 자루 끝 (사슬이 나오는 곳)
-def pole_pt(fm, th, slide=0.0):
+def pole_pt(fm, th, slide=0.0, inward=0.0):
     ax_ = (G1 - G2) / np.linalg.norm(G1 - G2); c, s = math.cos(th), math.sin(th)
     fm = fm + slide * K * np.array([c * ax_[0] - s * ax_[1], s * ax_[0] + c * ax_[1]])
-    dx, dy = (POLE - GM) * K
+    Pp = POLE - inward * (POLE - G2) / np.linalg.norm(POLE - G2)        # inward > 0: 자루를 따라 안쪽 점 (방향 계산용)
+    dx, dy = (Pp - GM) * K
     return [float(fm[0] + c * dx - s * dy), float(fm[1] + s * dx + c * dy)]
 def blade_pts(fm, th):
     ys, xs = np.nonzero(BLADE); c, s = math.cos(th), math.sin(th)
@@ -223,7 +224,7 @@ for k, a in enumerate(fr):
         hm[PAD:PAD + ny, PAD:PAD + nx] |= ndimage.binary_dilation(t[1], K8)
     hm &= cv[..., 3] > 0
     bm_, fl_ = masks(fm, th, *res.shape[:2], slide=sl, res=res, sc=sc, lantern=(tp < 0) and ROLE[k] != 'd')
-    frames.append({'mask': (bm_, fl_), 'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'slide': sl, 'pole': pole_pt(fm, th, sl),
+    frames.append({'mask': (bm_, fl_), 'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'slide': sl, 'pole': pole_pt(fm, th, sl), 'pin': pole_pt(fm, th, sl, 10),
                    'role': ROLE[k], 'angle': math.degrees(th), 'fists': len(c),
                    'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(yb.max()) + PAD]})
     prev_th, prev_fm, prev_sl = th, fm, sl

@@ -149,7 +149,7 @@ for k, a in enumerate(fr[:len(PLAN)]):
         res = np.roll(np.roll(res, dy_, 0), dx_, 1); cv = np.roll(np.roll(cv, dy_, 0), dx_, 1); hm = np.roll(np.roll(hm, dy_, 0), dx_, 1); sc_ = np.roll(np.roll(sc_, dy_, 0), dx_, 1)
         fm = fm + np.array([dx_, dy_])
     bm_, fl_ = masks(fm, th, *res.shape[:2], res=res, sc=sc_)
-    frames.append({'mask': (bm_, fl_), 'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'pole': pole_pt(fm, th), 'ms': ms, 'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(bot)], 'mode': mode})
+    frames.append({'mask': (bm_, fl_), 'img': res, 'body': cv.copy(), 'hands': hm, 'grip': [float(fm[0]), float(fm[1])], 'th': th, 'pole': pole_pt(fm, th), 'pin': pole_pt(fm, th, 0, 10), 'ms': ms, 'feet': [float(np.median(xb[yb >= yb.max() - 3])) + PAD, float(bot)], 'mode': mode})
     prev_th, prev_fm = th, fm
 os.makedirs(out, exist_ok=True)
 meta = []

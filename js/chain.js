@@ -2,11 +2,12 @@
 // Verlet 로프 — 중력·관성·감쇠, 고리 길이 제약, 바닥·발판·리라 몸과 충돌.
 // 들고 있을 땐 짧게 매달려 흔들리고(등불이 추), 던지면 사슬이 풀려 늘어나며 등불을 따라가고, 회수하면 감겨 짧아진다.
 const N = 44;                     // 마디 수 (시뮬레이션 해상도)
-const HOLD_LEN = 30;              // 들고 있을 때 사슬 길이(px)
+const HOLD_LEN = 18;              // 들고 있을 때 사슬 길이(px): 자루 끝 고리에서 등불까지 짧게
 const GRAV = 0.32, DAMP = 0.986, ITER = 14;
 const LANTERN_W = 5;              // 등불 무게 (끝점이 다른 마디보다 이만큼 무거움)
-const LANTERN_H = 25;             // 등불 그림 높이: 끝점이 이만큼 위에서 바닥에 닿음 (등불이 땅에 묻히지 않게)
+const LANTERN_H = 14;             // 등불 그림 높이: 끝점이 이만큼 위에서 바닥에 닿음 (등불이 땅에 묻히지 않게)
 
+function solidsTop(solids, x, y) { for (const s of solids) if (x >= s.x && x <= s.x + s.w && Math.abs(y - s.y) < 1.5) return true; return false; }
 function groundBelow(solids, x, y) {
   let g = 1e9; for (const s of solids) if (x >= s.x && x <= s.x + s.w && s.y >= y - 30 && s.y < g) g = s.y; return g;
 }
@@ -18,9 +19,12 @@ export class ChainSim {
     this.len = HOLD_LEN;
   }
   // anchor: 자루 끝(세계 좌표) · lamp: 던진 등불 상태 · w: 세계 (바닥·발판) · body: 리라 몸 상자
-  step(w, anchor, lamp, body) {
+  // dir: 자루가 끝으로 향하는 방향 (사슬이 고리에서 이 방향으로 나가다 휘어짐)
+  step(w, anchor, lamp, body, dir) {
+    this.dir = dir;
     if (!this.pts || Math.hypot(this.pts[0].x - anchor.x, this.pts[0].y - anchor.y) > 140) this.reset(anchor.x, anchor.y);
     const P = this.pts, out = lamp && lamp.st !== 'held';
+    { const e = P[N - 1]; this.groundedEnd = !out && Math.abs(e.y - e.py) < 0.2 && solidsTop(w.solids || [], e.x, e.y + LANTERN_H); }
     // 사슬 길이: 들면 짧게, 던지면 등불까지 거리 + 여유(처짐)만큼 풀려나오고, 회수하면 감김
     let want = HOLD_LEN;
     if (out) { const d = Math.hypot(lamp.x - anchor.x, lamp.y - anchor.y); want = Math.max(HOLD_LEN, d * (lamp.st === 'placed' ? 1.08 : 1.02) + 6); }
@@ -40,7 +44,10 @@ export class ChainSim {
         a.x += dx * diff * wa / s; a.y += dy * diff * wa / s; b.x -= dx * diff * wb / s; b.y -= dy * diff * wb / s;
       }
       P[0].x = anchor.x; P[0].y = anchor.y;
-      if (out) { const e = P[N - 1]; e.x = lamp.x; e.y = Math.min(lamp.y - 17, groundBelow(solids, lamp.x, lamp.y) - LANTERN_H); }   // 던진 등불: 끝이 등불 고리에 걸림
+      if (dir) for (const [j, k2] of [[1, 0.75], [2, 0.35], [3, 0.12]]) {   // 자루 끝 고리: 처음 몇 고리는 자루 방향을 따라 나가다 무게에 휘어짐 (꺾임 없이)
+        const q = P[j], tx = anchor.x + dir.x * seg * j, ty = anchor.y + dir.y * seg * j; q.x += (tx - q.x) * k2; q.y += (ty - q.y) * k2;
+      }
+      if (out) { const e = P[N - 1]; e.x = lamp.x; e.y = lamp.st === 'placed' ? groundBelow(solids, lamp.x, lamp.y) - LANTERN_H : lamp.y - 7; }   // 던진 등불: 끝 고리가 등불에 걸림 (놓이면 땅 위에 섬)   // 던진 등불: 끝이 등불 고리에 걸림
       for (let i = 1; i < N; i++) {                                    // 충돌: 바닥·벽·발판 위 / 리라 몸 밖으로
         const p = P[i];
         for (const s of solids) {
@@ -83,11 +90,20 @@ export class ChainSim {
         }
       }
     }
-    const e = P[N - 1], q = P[N - 4];                                  // 끝의 등불: 마지막 고리 방향으로 매달림
+    const e = P[N - 1], q = P[N - 3];                                  // 끝의 등불: 마지막 고리에 걸려 매달림 (땅에 닿으면 똑바로 섬)
     if (lampImg && lampImg.naturalWidth) {
-      const ang = Math.atan2(e.y - q.y, e.x - q.x) - Math.PI / 2;
-      g.save(); g.translate(Math.round(e.x), Math.round(e.y)); g.rotate(held ? Math.max(-0.9, Math.min(0.9, ang)) : 0);
-      g.drawImage(lampImg, -Math.round(lampImg.naturalWidth / 2), -2); g.restore();
+      let ang = Math.atan2(e.y - q.y, e.x - q.x) - Math.PI / 2; while (ang > Math.PI) ang -= 2 * Math.PI; while (ang < -Math.PI) ang += 2 * Math.PI;
+      const rot = this.groundedEnd ? 0 : Math.max(-0.6, Math.min(0.6, ang));
+      g.save(); g.translate(Math.round(e.x), Math.round(e.y)); g.rotate(rot);
+      g.drawImage(lampImg, -Math.round(lampImg.naturalWidth / 2), -1); g.restore();
+    }
+    const A = P[0], d = this.dir;                                      // 자루 끝 고리 (쇠고리 + 쇠테): 사슬이 여기서 나옴
+    if (d) {
+      const nx = -d.y, ny = d.x, R = (u, v) => [Math.round(A.x + d.x * u + nx * v), Math.round(A.y + d.y * u + ny * v)];
+      for (const [u, v, c] of [[-1, -1, '#1a1620'], [-1, 1, '#1a1620'], [-1, 0, '#6e5a3e'], [0, -1, '#9a8058'], [0, 1, '#6e5a3e'],   // 쇠테 (자루 끝을 감싼 금속)
+        [1, -1, '#1a1620'], [1, 1, '#1a1620'], [2, -1, '#c8c2d0'], [2, 1, '#4a4452'], [3, 0, '#1a1620'], [2, 0, '#2a2430']]) {      // 고리
+        const [x, y] = R(u, v); g.fillStyle = c; g.fillRect(x, y, 1, 1);
+      }
     }
   }
   lanternPos() { const e = this.pts && this.pts[N - 1]; return e ? { x: e.x, y: e.y + 12 } : null; }

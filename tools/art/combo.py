@@ -50,7 +50,7 @@ for n, it in enumerate(items):
             if r_ == 'f' and not seen_f: ms += 80; seen_f = True      # hitstop
             mk = layer(arr(d + '/mask_%03d.png' % i), off + np.array([IMP[0], 0]))
             frames.append((layer(arr(d + '/frame_%03d.png' % i), off + np.array([IMP[0], 0])), ms)); MASKS.append(mk)
-            POLES.append((np.array(meta[i]['pole']) + off + np.array([IMP[0], 0])).tolist() if 'pole' in meta[i] else None)
+            POLES.append([(np.array(meta[i][k]) + off + np.array([IMP[0], 0])).tolist() if k in meta[i] else None for k in ('pole', 'pin')])
         off = off + np.array([IMP[0], 0])
         i = idxs[-1]; last = dict(d=d, i=i, meta=meta[i], off=off)
         continue
@@ -90,7 +90,7 @@ for n, it in enumerate(items):
             res[m_] = sc[m_]
             res[hands] = body[hands]
             bm_, fl_ = masks(g, th, CH, CW, res=res, sc=sc); mk = np.zeros((CH, CW, 4), int); mk[..., 0] = bm_ * 255; mk[..., 1] = fl_ * 255; MASKS.append(mk)
-            frames.append((res, 45 if j < nfr - 1 else 90)); POLES.append(pole_pt(g, th)); pf, pt = g, th
+            frames.append((res, 45 if j < nfr - 1 else 90)); POLES.append([pole_pt(g, th), pole_pt(g, th, 0, 10)]); pf, pt = g, th
         last = dict(d=cd, i=cidx[-1], meta=dict(cmeta[cidx[-1]], th=th), off=coff)
         continue
     nxt = items[n + 1]
@@ -124,13 +124,13 @@ for n, it in enumerate(items):
         res[sm] = sc[sm]
         if kind != 'toss' or t > .8: res[hands] = body[hands]
         bm_, fl_ = masks(fm, th, CH, CW, res=res, sc=sc); mk = np.zeros((CH, CW, 4), int); mk[..., 0] = bm_ * 255; mk[..., 1] = fl_ * 255; MASKS.append(mk)
-        frames.append((res, 45 if kind != 'bridge' else 60)); POLES.append(pole_pt(fm, th)); pf, pt = fm, th
+        frames.append((res, 45 if kind != 'bridge' else 60)); POLES.append([pole_pt(fm, th), pole_pt(fm, th, 0, 10)]); pf, pt = fm, th
 os.makedirs(OUT, exist_ok=True)
 for f in glob.glob(OUT + '/*.png'): os.remove(f)
 for i, (im, ms) in enumerate(frames):
     Image.fromarray(im.astype(np.uint8)).save(OUT + '/frame_%03d.png' % i)
     Image.fromarray(MASKS[i][..., :3].astype(np.uint8)).save(OUT + '/mask_%03d.png' % i)
-json.dump({'anchor': [AX, AY], 'frames': [{'ms': ms, 'pole': POLES[i]} for i, (_, ms) in enumerate(frames)]}, open(OUT + '/meta.json', 'w'))
+json.dump({'anchor': [AX, AY], 'frames': [{'ms': ms, 'pole': POLES[i][0], 'pin': POLES[i][1]} for i, (_, ms) in enumerate(frames)]}, open(OUT + '/meta.json', 'w'))
 json.dump([int(ms * float(os.environ.get('TSCALE', '1'))) for _, ms in frames], open(OUT + '/timing.json', 'w'))
 bg = np.array([40, 38, 52, 255])
 pics = []

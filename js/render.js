@@ -480,8 +480,8 @@ export class Renderer {
     const C = this.chain = this.chain || new ChainSim();
     if (this.chainW !== w) { this.chainW = w; C.pts = null; this.chainT = w.t; }
     const steps = Math.max(0, Math.min(3, w.t - (this.chainT ?? w.t))); this.chainT = w.t;   // 세계 틱마다 물리 한 걸음 (화면 주사율과 무관)
-    for (let i = 0; i < steps; i++) C.step(w, A, p.lamp, p.state === 'roll' || p.state === 'dead' ? null : p);
-    if (!C.pts) C.step(w, A, p.lamp, p);
+    for (let i = 0; i < steps; i++) C.step(w, A, p.lamp, p.state === 'roll' || p.state === 'dead' ? null : p, this.poleD);
+    if (!C.pts) C.step(w, A, p.lamp, p, this.poleD);
     const held = !p.lamp || p.lamp.st === 'held';
     C.draw(g, this.lampImg, w.t, held);
     const Lp = p.lamp;
@@ -1190,6 +1190,7 @@ export class Renderer {
     if (p === w.player) this.lastFr = fr;                                  // 칼날 불꽃 위치용 (지금 프레임)
     const sq = this.squash, sy = 1 - sq * 0.15, sx = 1 + sq * 0.12;
     if (p === w.player && fr.pe) this.poleW = { x: cx + f * sx * (fr.pe[0] - fr.ax), y: feet + sy * (fr.pe[1] - fr.ay) };   // 낫 자루 끝 (사슬이 나오는 곳)
+    if (p === w.player && fr.pe && fr.pi) { const dx = f * sx * (fr.pe[0] - fr.pi[0]), dy = sy * (fr.pe[1] - fr.pi[1]), l = Math.hypot(dx, dy) || 1; this.poleD = { x: dx / l, y: dy / l }; }   // 자루 방향 (끝 쪽)
     if (p === w.player) this.captureSmear(w, p, fr, cx, feet, f, sx, sy);
     const lit = p.enchantT > 0 || (p.state === 'cast' && p.spell === 'enchant'), off = p.dark || (p.state === 'relight' && p.stateT < CFG.snuff.relightF - 4);
     const base = p.element || lit || off ? this.elFrame(fr, p.element || null, lit && !off, off) : fr.img;   // 등불 = 속성 색, 두르면 칼도, 소등이면 등불이 꺼짐   // 등불 = 속성 색, 두르면 칼도

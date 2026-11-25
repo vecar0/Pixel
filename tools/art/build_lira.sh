@@ -1,10 +1,11 @@
 #!/bin/bash
 # Rebuild every Lira move (body GIFs in art/lira2/v15/raw + rigid scythe) into OUT at game scale.
-# usage: tools/art/build_lira.sh [OUT=art/lira2/v16] [SCALE=0.82]
+# usage: tools/art/build_lira.sh [OUT=art/lira2/v16] [SCALE=0.82] [nolamp]
 set -e
 cd "$(dirname "$0")/../../art/lira2"
 OUT=${1:-v16}; export SCALE=${2:-0.82}
-export LANTERN=lantern-v12.png,lantern-v12.json CLAMP=4
+export CLAMP=4
+if [ "$3" != nolamp ]; then export LANTERN=lantern-v12.png,lantern-v12.json; else unset LANTERN; fi   # nolamp: 등불을 던진 동안 쓰는 빈손 그림
 G='{"upper":[76.9,68.3],"lower":[72.7,84.4]}'; A="body-v12.png scythe-v12-nolan.png"
 RC=../../tools/art/reap_comp.py; EC=../../tools/art/exec_comp.py
 mkdir -p $OUT

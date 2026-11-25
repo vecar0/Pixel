@@ -16,6 +16,7 @@ import { SPELLS, STAT_SPELL, SPELL_TAGS, SPELL_PERK, SPELL_ELEMENT, STAT_ELEMENT
 import { STATS, STAT_BY_ID, tiersOn, weakOn, nextTier, PAIRS, OPP, canTrain, RESONANCES, resonancesOf, MASTERY, statNumbers, STAT_MAX, STAT_START, T_ABILITY, T_MASTER } from './core/stats.js?v=mwutyswe';
 import { takeTrain, runSpell, awaken } from './core/run.js?v=mwutyswe';
 import { GIMMICK_HINT } from './core/gimmick.js?v=mwutyswe';
+import { LAMP_COLORS, LIGHT_SHAPES, shrineCost, shapeChoices, lightShrine } from './core/light.js?v=mwutyswe';
 import { REGIONS, CHALLENGES, advanceRegion, regionOf, challengeDone, setRegion, RELICS, ROOM_TYPES, newRun, relicOffer, rand, takeRelic, nextStage, stageOf, applyRelics, applyStats, enterRoom, roomCleared, buildRoomWorld, saveFromWorld } from './core/run.js?v=mwutyswe';
 
 const $ = s => document.querySelector(s);
@@ -27,24 +28,20 @@ const TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in windo
 const showTouch = () => touch.classList.toggle('hidden', !TOUCH);
 input.onAny = () => sfx.unlock();
 // 터치 버튼: 픽셀 아이콘 + 작은 이름. 마법은 비용만큼 빛이 차오르면 켜지고, 기름병은 남은 개수
-const TB = { attack: ['sword', 'bone', '공격'], parry: ['parry', 'amber', '패링'], roll: ['roll', 'moon', '회피'], jump: ['jump', 'moon', '점프'], skill: ['ember', 'amber', '마법'], snuff: ['wick', 'bone', '소등'], flask: ['flask', 'heal', ''], pause: ['pause', 'bone', ''] };
+const TB = { attack: ['sword', 'bone', '공격'], parry: ['parry', 'amber', '패링'], roll: ['roll', 'moon', '회피'], jump: ['jump', 'moon', '점프'], skill: ['ember', 'amber', '등불'], flask: ['flask', 'heal', ''], pause: ['pause', 'bone', ''] };
 for (const [k, [ic, t, name]] of Object.entries(TB)) { const b = $('#b-' + k); b.setAttribute('aria-label', b.textContent); b.innerHTML = icon(ic, t) + (name ? `<small>${name}</small>` : '') + (k === 'flask' ? '<b>3</b>' : ''); }
 let hudKey = '';
 const setGauge = (el, color, frac, glow) => { const u = `url(${gaugeBtn(color, frac, { glow })})`; if (el._g !== u) { el._g = u; el.style.setProperty('--g', u); } };   // 픽셀 게이지 테두리
 function syncTouch() {
-  const p = world.player, key = (p.light | 0) + '/' + p.flasks + '/' + (p.spells || []).join() + '/' + Math.ceil(p.enchantT || 0) + '/' + (p.dark ? 'd' + Math.ceil(p.darkT / 10) : 'c' + Math.ceil((p.snuffCd || 0) / 10));
+  const p = world.player, Lp = p.lamp || { st: 'held', t: 0 }, key = Lp.st + '/' + ((Lp.t / 20) | 0) + '/' + p.flasks;
   if (key === hudKey) return; hudKey = key;
-  ['skill'].forEach((id, i) => {                               // 마법 버튼: 끼운 마법 그림, 비용만큼 차오르면 사용 가능
-    const sp = (p.spells || [])[i], b = $('#b-' + id);
-    if (b.dataset.spell !== String(sp)) { b.dataset.spell = String(sp); b.innerHTML = sp ? icon(SPELLS[sp].icon, SPELLS[sp].tone) + '<small>점화</small>' : '<small>점화</small>'; }   // 글씨는 늘 '마법' (그림이 지금 마법을 보여 줌)
-    if (!sp) { b.style.setProperty('--fill', '0%'); b.classList.remove('ready'); return; }
-    const lit = p.enchantT > 0, cost = Math.round(CFG.enchant.cost * (p.mods.costMul || 1));   // 점화한 동안: 테두리 = 남은 점화 시간 / 아니면: 점화 비용만큼 빛이 차오름
-    const f = lit ? Math.min(1, p.light / CFG.light.max) : Math.min(1, p.light / cost);   // 점화한 동안: 남은 빛 / 아니면: 점화 기준까지 찬 정도
-    b.style.setProperty('--p', (f * 100).toFixed(1)); setGauge(b, lit ? '#ffd27a' : '#ffb347', f, lit || p.light >= cost); b.classList.toggle('ready', lit || p.light >= cost); b.classList.toggle('lit', lit);
-    const lab = b.querySelector('small'); if (lab) lab.textContent = '점화';
-  });
-  const sn = $('#b-snuff'); if (sn) { const lab = sn.querySelector('small'); if (lab) lab.textContent = p.dark ? '켜기' : '소등'; sn.classList.toggle('lit', !!p.dark); sn.classList.toggle('cool', !p.dark && p.snuffCd > 0);   // 소등 버튼: 꺼진 동안 '켜기' + 남은 어둠 시간 테두리
-    const sf = p.dark ? p.darkT / (CFG.snuff.maxF + (p.mods.darkExtra || 0)) : p.snuffCd > 0 ? 1 - p.snuffCd / CFG.snuff.cdF : 1; sn.style.setProperty('--p', (sf * 100).toFixed(1)); setGauge(sn, '#b070e0', sf, !!p.dark); }
+  const b = $('#b-skill');                                             // 등불 버튼: 들고 있으면 '던지기'(길게 = 조준), 던졌으면 '회수' + 남은 빛 시간
+  if (b) {
+    const out = Lp.st !== 'held', lab = b.querySelector('small');
+    if (lab) lab.textContent = out ? '회수' : '던지기';
+    const fr = Lp.st === 'placed' ? Math.max(0, 1 - Lp.t / (CFG.lantern.placedF + 180 * ((p.shapes || {}).long || 0))) : out ? 1 : 1;
+    b.style.setProperty('--p', (fr * 100).toFixed(1)); setGauge(b, out ? '#8fc8ff' : '#ffb347', fr, !out); b.classList.toggle('ready', !out); b.classList.toggle('lit', out);
+  }
   const f = $('#b-flask'); f.querySelector('b').textContent = p.flasks; f.classList.toggle('empty', p.flasks <= 0);
   const ff = Math.min(1, p.flasks / Math.max(1, p.maxFlasks)); f.style.setProperty('--p', (ff * 100).toFixed(1)); setGauge(f, '#7fe08a', ff, false);   // 남은 기름병 = 픽셀 테두리 게이지
 }
@@ -115,9 +112,9 @@ const TUT = [
   () => `점프 ${K('스페이스 · W', '점프')} — 발판에 올라갈 수 있어요`,
   () => `공격 ${K('J', '공격')} — 항아리를 깨 보세요`,
   () => '불씨를 주우면 점수와 상점 화폐가 돼요',
-  () => `적의 공격이 번쩍이는 순간 패링 ${K('K', '패링')} — 완벽 패링은 빛을 크게 모아요`,
+  () => `적은 그림자 — 등불 빛 안에서만 베여요. 번쩍이는 순간 패링 ${K('K', '패링')} — 막힌 그림자는 빛에 데어 실체가 돼요`,
   () => `구르기 ${K('L · Shift', '회피')} — 무적으로 피하고 적을 지나갈 수 있어요`,
-  () => `빛이 10 이상이면 점화 ${K('I', '점화')} — 적을 모두 쓰러뜨리면 출구가 열려요`,
+  () => `등불 ${K('U · I', '등불')} 탭 = 던지기 · 길게 = 조준 · 다시 탭 = 회수 — 무너진 적은 빛 속에서 처형해 빛 조각을 얻어요`,
 ];
 function tutStep(n) { tut.step = n; if (n >= TUT.length) { R.say('튜토리얼 끝! 이제 순례를 이어 가세요', 200); save.tutorialDone = true; persist(); tut = null; return; } R.say(TUT[n](), 1e9); if (n === 4) world.holdWaves = false; }
 function tutTick() {
@@ -152,7 +149,7 @@ const runStat = () => {
   const path = run.route.map((t, i) => `<b class="${i < run.roomIdx ? 'done' : i === run.roomIdx ? 'now' : ''}">${icon(...(RI[t] || RI.combat))}</b>`).join('');
   return `<div class="runbar"><span>${regionOf(run).name}</span><span class="path">${path}</span>
     <span class="em">${icon('ember', 'amber')}${run.embers}</span>
-    <span class="spells" title="등불 속성 · 점화 단계">${icon('ember', elTone(run.element))}${run.element ? `${STAT_ELEMENT[run.element]} · ${TIER_NAME[enchTier(run.stats, run.element)]}` : '각성 전'}</span></div>`;
+    ${CFG.legacy ? `<span class="spells" title="등불 속성 · 점화 단계">${icon('ember', elTone(run.element))}${run.element ? `${STAT_ELEMENT[run.element]} · ${TIER_NAME[enchTier(run.stats, run.element)]}` : '각성 전'}</span>` : `<span class="spells" title="빛 조각 · 등잔 색">${icon('wick', 'amber')}조각 ${world && world.player && world.player.shards != null ? world.player.shards : run.shards || 0}${run.color ? ' · ' + LAMP_COLORS[run.color].name : ''}</span>`}</div>`;
 };
 // 스탯 판: 반대 스탯 쌍마다 한 칸(위 스탯 카드 · 20칸 저울 · 아래 스탯 카드). 글은 줄바꿈되어 잘리지 않는다
 // 카드 한 장 = 이름·값·능력 사다리(12~20) / 지금 수치 / 다음 능력 / 약점
@@ -310,7 +307,7 @@ function title() {
     <div class="tlogo"><div class="tl-pre">꺼져 가는 지하 왕국에서</div><h1 aria-label="등불지기"><canvas id="tlogo-cv"></canvas></h1>
       <div class="tl-rule"><i></i><b></b><i></i></div><div class="tl-sub">마지막 등불을 든 순례자, 리라</div></div>
     <div class="tl-start"><span>화면을 눌러 시작</span></div>
-    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 점화 I · 소등 E · 기름병 Q · Enter 시작</div><div class="tl-ver">v${(window.__V || '').slice(-4)}</div></div>`);
+    <div class="help">이동 A·D · 점프 W · 공격 J · 패링 K · 회피 L · 등불 U/I (길게 = 조준) · 기름병 Q · Enter 시작</div><div class="tl-ver">v${(window.__V || '').slice(-4)}</div></div>`);
   stopTitle && stopTitle(); stopTitle = startTitleScene($('#tcv'));
   drawLogo($('#tlogo-cv'), '등불지기');
   bind('go', town);
@@ -474,6 +471,23 @@ function attuneScreen() {
     restScreen();
   });
 }
+// 등잔: 빛 조각을 부어 켠다 → ① 색 (칼과 빛이 그림자에게 하는 일) ② 빛 모양 둘 중 하나
+function shrineScreen() {
+  const p = world.player, o = world.props.find(q => q.kind === 'lamp' && Math.abs(q.x - (p.x + p.w / 2)) < 60);
+  if (!o) return; if (o.lit) { R.say('이미 켜진 등잔이다'); return; }
+  const cost = shrineCost(p);
+  if ((p.shards || 0) < cost) { R.say(`꺼진 등잔 — 빛 조각 ${cost}개가 필요하다 (지금 ${p.shards || 0}) · 빛 속에서 처형하면 모인다`, 200); return; }
+  mode = 'rest'; touch.classList.add('hidden');
+  const colorCard = k => { const C = LAMP_COLORS[k]; return `<button class="pick door t-${C.tone}" data-id="${k}"><div class="niche">${icon(C.ic, C.tone)}</div><b>${C.name}${p.color === k ? ' (지금)' : ''}</b><span>빛: ${C.light}<br>칼: ${C.blade}</span></button>`; };
+  screen(`<div class="card wide"><h2>등잔에 불을 붙인다</h2><div class="quote">빛 조각 ${cost}개를 붓는다 (남는 조각 ${p.shards - cost}) — 먼저 빛의 색을 고른다</div><div class="picks">${Object.keys(LAMP_COLORS).map(colorCard).join('')}</div>
+    <div class="btns"><button class="btn alt" data-id="back">그만둔다</button></div></div>`);
+  bindPicks(col => {
+    if (col === 'back') { resume(); return; }
+    const sh = shapeChoices(p);
+    screen(`<div class="card wide"><h2>빛의 모양</h2><div class="quote">둘 중 하나 — 겹쳐 쌓인다</div><div class="picks">${sh.map(k => `<button class="pick door t-amber" data-id="${k}"><div class="niche">${icon('wick', 'amber')}</div><b>${LIGHT_SHAPES[k].name}</b><span>${LIGHT_SHAPES[k].desc}${(p.shapes || {})[k] ? ` (지금 ${(p.shapes || {})[k]})` : ''}</span></button>`).join('')}</div></div>`);
+    bindPicks(shp => { lightShrine(world, o, col, shp); resume(); sfx.play('ignite'); R.say(`등잔이 켜졌다 — ${LAMP_COLORS[col].name}의 빛 · ${LIGHT_SHAPES[shp].name}`, 200); });
+  });
+}
 function restScreen() {
   const p = world.player, fire = world.props.find(o => o.kind === 'campfire');
   if (fire.used) { R.say('불씨가 잦아들었다. 오른쪽 길로 나아가자'); return; }
@@ -482,8 +496,8 @@ function restScreen() {
   screen(`<div class="card wide"><h2>작은 등불</h2><div class="quote">모닥불 곁에서 잠시 숨을 고른다 — 하나만 고를 수 있다</div>${runStat()}<div class="picks">
     <button class="pick door t-red" data-id="heal" ${p.hp >= p.maxHp ? 'disabled' : ''}><div class="niche">${icon('heart', 'red')}</div><b>몸을 추스른다</b><span>체력 가득 (${p.hp} → ${p.maxHp})</span></button>
     <button class="pick door t-heal" data-id="oil" ${oilTo <= p.flasks ? 'disabled' : ''}><div class="niche">${icon('flask', 'heal')}</div><b>기름을 짠다</b><span>기름병 +1 (${p.flasks} → ${oilTo})</span></button>
-    <button class="pick door t-amber" data-id="train"><div class="niche">${icon('vigor', 'amber')}</div><b>검을 벼린다</b><span>단련 1점 (나갈 때)</span></button></div>
-    <div class="btns">${attuneTargets().length ? '<button class="btn alt" data-id="attune">등불 다시 붙이기 (속성 변경)</button>' : ''}<button class="btn alt" data-id="back">그냥 지나간다</button></div></div>`);
+    ${CFG.legacy ? `<button class="pick door t-amber" data-id="train"><div class="niche">${icon('vigor', 'amber')}</div><b>검을 벼린다</b><span>단련 1점 (나갈 때)</span></button>` : ''}</div>
+    <div class="btns">${CFG.legacy && attuneTargets().length ? '<button class="btn alt" data-id="attune">등불 다시 붙이기 (속성 변경)</button>' : ''}<button class="btn alt" data-id="back">그냥 지나간다</button></div></div>`);
   bindPicks(id => {
     if (id === 'attune') return attuneScreen();
     const hp0 = p.hp;
@@ -502,7 +516,7 @@ const WARES = {
   wick:   { name: '불쏘시개', tone: 'amber', ic: 'ember', desc: p => `스킬 게이지 가득 (${p.light | 0} → 100)`, price: r => 28 + 5 * r.region, ok: p => p.light < 100 },
   whet:   { name: '숫돌', tone: 'amber', ic: 'vigor', desc: () => '단련 1점 (나갈 때)', price: r => 70 + 15 * r.region, ok: () => run.pending !== 'train1' },
 };
-function shopStock(r) { r.flaskBuys = 0; return { wares: ['flask', 'salve', 'wick', 'whet'], sold: [] }; }   // 각인은 팔지 않음 (소모품·단련만)
+function shopStock(r) { r.flaskBuys = 0; return { wares: CFG.legacy ? ['flask', 'salve', 'wick', 'whet'] : ['flask', 'salve'], sold: [] }; }   // 각인은 팔지 않음 (소모품·단련만)
 function shopScreen() {
   mode = 'shop'; touch.classList.add('hidden');
   const st = world.props.find(o => o.kind === 'merchant');
@@ -531,13 +545,13 @@ function overlay(kind) {
   mode = kind; touch.classList.add('hidden');
   if (kind === 'cleared') {
     // 방을 비우면 출구만 열린다. 보상(단련)은 출구로 나가 아이리스가 검게 닫힌 뒤 찍는다 (leaveRoom). 강적방도 1점
-    world.rewarded = world.counted = true; run.pending = run.room === 'combat' ? 'train' : 'train2'; roomCleared(run);
+    world.rewarded = world.counted = true; run.pending = CFG.legacy ? (run.room === 'combat' ? 'train' : 'train2') : null; roomCleared(run);
     const fp = world.player, oilGot = fp.flasks < fp.maxFlasks; if (oilGot) fp.flasks++;   // 방을 비우면 기름병 1개 다시 채움
     addScore('room', 100);
     const sec = world.t / 60, par = world.par || 0, fast = par && sec <= par;
     const bonus = fast ? Math.round(200 * (1 - sec / par)) + 20 : 0;
     if (fast) { addScore('time', bonus); run.embers += 5; }
-    resume(); R.say((fast ? `빠른 정리! ${Math.ceil(sec)}초 / 목표 ${par}초 · 점수 +${bonus} · 불씨 +5 — ` : '') + (oilGot ? '기름병 +1 · ' : '') + (run.pending === 'train' ? '출구가 열렸다 — 나가면 단련 1점' : '출구가 열렸다 — 나가면 단련 1점'), fast ? 240 : 150);
+    resume(); R.say((fast ? `빠른 정리! ${Math.ceil(sec)}초 / 목표 ${par}초 · 점수 +${bonus} · 불씨 +5 — ` : '') + (oilGot ? '기름병 +1 · ' : '') + (CFG.legacy ? '출구가 열렸다 — 나가면 단련 1점' : '출구가 열렸다' + (world.props.some(o => o.kind === 'lamp' && !o.lit) ? ' · 꺼진 등잔이 있다' : '')), fast ? 240 : 150);
   } else if (kind === 'won') {
     saveFromWorld(run, world);
     const boss = regionOf(run).boss;
@@ -547,12 +561,21 @@ function overlay(kind) {
     run.noHitBoss = run.noHitBoss || false;
     if (advanceRegion(run)) {
       screen(`<div class="card intro"><div class="region">${ENEMY_DEFS[boss].name} 격파</div><h2>대등이 다시 켜졌다</h2><div class="line">체력이 모두 회복되었다. 더 깊은 곳으로.</div>${runStat()}<button class="btn" id="next">계속</button></div>`);
-      bind('next', () => rewardScreen(regionIntro, null, null, 1));   // 보스 보상: 단련 1점 (점수는 늘 한 번에 1점)
+      bind('next', () => CFG.legacy ? rewardScreen(regionIntro, null, null, 1) : regionIntro());   // 보스 보상: 단련 1점 (점수는 늘 한 번에 1점)
     } else finish(true);
   } else if (kind === 'dead') {
     if (practice) { screen(`<div class="card"><h2>연습 실패</h2><button class="btn" id="again">다시</button><button class="btn alt" id="back">마을로</button></div>`); bind('again', play); return bind('back', town); }
     saveFromWorld(run, world); finish(false);
   } else if (kind === 'pause') {
+    if (!CFG.legacy) {                                                    // 새 설계: 등불 성장만 보여 줌
+      const p = world.player, sh = Object.entries(p.shapes || {}).map(([k, n]) => LIGHT_SHAPES[k].name + (n > 1 ? ' ×' + n : '')).join(' · ') || '없음';
+      screen(`<div class="card">${runStat()}<h2>잠시 멈춤</h2><div class="quote">빛 조각 ${p.shards || 0} · 켠 등잔 ${p.shrinesLit || 0} · 다음 등잔 ${shrineCost(p)}</div>
+        <div class="line">빛의 색: <b>${p.color ? LAMP_COLORS[p.color].name : '없음'}</b>${p.color ? ` — 빛: ${LAMP_COLORS[p.color].light} · 칼: ${LAMP_COLORS[p.color].blade}` : ''}</div>
+        <div class="line">빛의 모양: ${sh}${p.bigLamp ? ` · 큰 등잔 ${p.bigLamp} (빛 +${15 * p.bigLamp}%)` : ''}</div>
+        <div class="line" style="opacity:.75">등불 버튼: 탭 = 던지기 · 길게 = 조준 · 던진 뒤 탭 = 회수 · 그림자는 빛 안에서만 베인다</div>
+        <div class="btns"><button class="btn" id="resume">계속</button><button class="btn alt" id="home">순례 포기</button></div></div>`);
+      bind('resume', resume); bind('home', () => { saveFromWorld(run, world); finish(false); }); return;
+    }
     screen(`<div class="card board pausecard">${runStat()}<div class="sboard"><div>${statGrid()}${spellMap()}</div>
       <div class="spanel"><h2>잠시 멈춤</h2>${enchantCard()}${resonanceBlock()}
       <div class="btns"><button class="btn" id="resume">계속</button><button class="btn alt" id="home">순례 포기</button></div></div></div></div>`);
@@ -620,7 +643,7 @@ function onEvents(w) {
       if (ev.type === 'exit') { newPilgrimage(); irisThen(startPilgrimage); }   // 오른쪽 길 = 출발 (제단에서 고른 설정으로)
       continue;
     }
-    if (ev.type === 'interact') { if (ev.kind === 'merchant') { if (run && !run.metMerchant) { run.metMerchant = true; talk('merchant', shopScreen); } else shopScreen(); } else if (ev.kind === 'campfire') restScreen(); }
+    if (ev.type === 'interact') { if (ev.kind === 'merchant') { if (run && !run.metMerchant) { run.metMerchant = true; talk('merchant', shopScreen); } else shopScreen(); } else if (ev.kind === 'campfire') restScreen(); else if (ev.kind === 'lamp') shrineScreen(); }
     if (ev.type === 'exit' && w.room === 'boss') { run.pending = 'bossWon'; leaveRoom(); return; }   // 보스 포탈
     if (ev.type === 'exit') { saveFromWorld(run, w); if (!w.counted) roomCleared(run); leaveRoom(); return; }
     if (ev.type === 'win') R.say(practice ? '포탈이 열렸다 — 들어가면 마을로' : '포탈이 열렸다 — 들어가면 다음 지역으로', 240);

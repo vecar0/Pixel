@@ -125,12 +125,13 @@ test('침수 사제: 조준탄 → 완벽 패링하면 반사', () => {
   }
   ok(reflected);
 });
-test('갑각 파수꾼: 정면 공격은 막히고 등 뒤는 들어간다', () => {
+test('갑각 파수꾼: 방패는 빛 쪽을 막는다 — 등불을 적 뒤에 두면 앞에서 베인다', () => {
   const { w, e } = arenaWith('shellguard', 40); e.cd = 9999; e.update = null; e.face = -1; e.st = 'idle';
   const hp0 = e.hp; tick(w, I({ attack: true })); steps(w, 8);
   eq(e.hp, hp0, 'front not blocked');
-  e.staggerT = 999; e.face = 1; e.hitBy = -1; steps(w, 20); tick(w, I({ attack: true })); steps(w, 8);   // 경직으로 방향 고정
-  ok(e.hp < hp0, 'back not hit');
+  e.staggerT = 999; e.hitBy = -1; const Lp = w.player.lamp; Lp.st = 'placed'; Lp.t = 0; Lp.x = e.x + e.w + 40; Lp.y = e.y + 20;   // 등불을 적 뒤에 두면 방패가 그쪽을 향함
+  steps(w, 20); tick(w, I({ attack: true })); steps(w, CFG.attack.startupChainF + 2);
+  ok(e.hp < hp0, 'front hit when light is behind');
 });
 test('그림자 자객: 순간이동 후에도 예고 ≥18틱', () => {
   const { w, e } = arenaWith('assassin', 260); e.cd = 0; let blinkT = -1, teleT = -1, hitT = -1;
@@ -152,7 +153,7 @@ test('흑염의 순례자: 리라의 공격을 패링하고 반격 예고', () =
   }
   ok(parried);
 });
-test('랜턴 기름: 각성 전 두르기 속성 (성유 = 빛, 귀화유 = 귀화, 정제유 = 등불 불꽃)', () => {
+test('[옛 체계] 랜턴 기름: 각성 전 두르기 속성 (성유 = 빛, 귀화유 = 귀화, 정제유 = 등불 불꽃)', () => {
   const el = oil => { const r = newRun(1, { oil }); enterRoom(r, 'combat'); return buildRoomWorld(r).player.element; };
   eq(el('blue'), 'wil'); eq(el('black'), 'lmp'); eq(el('refined'), null);
 });
@@ -188,7 +189,7 @@ test('적은 언덕 벽에 막히면 뛰어올라 넘어간다', () => {
   const w = createWorld({ room: 'arena', width: 1280, solids: [{ x: -40, y: 300, w: 1400, h: 60 }, { x: 400, y: 264, w: 200, h: 96 }] });
   w.waves = []; w.cleared = true; w.enemies.length = 0; w.player.x = 680; w.player.y = 238;
   const e = spawnEnemy(w, 'ghoul', 200, 300 - ENEMY_DEFS.ghoul.h - 2); e.cd = 99999;
-  steps(w, 400); ok(e.x > 600, 'ghoul passed hill: ' + e.x);
+  steps(w, 400); ok(e.x + e.w > 600, 'ghoul passed hill: ' + e.x);   // 언덕(400~600)을 넘음 (그 뒤엔 리라의 빛 가장자리에서 맴돎)
 });
 test('낮은 턱은 걸어서 오르고, 적은 언덕 위에 서서 등장', () => {
   const w = createWorld({ room: 'arena', width: 1280, solids: [{ x: -40, y: 300, w: 1400, h: 60 }, { x: 200, y: 286, w: 200, h: 74 }] });
@@ -221,7 +222,7 @@ test('스탯 한 점의 효과: 힘 1점 = 피해 +6%, 생명 2점 = 최대 체�
   ok(Math.abs(mk({ str: 11 }).player.mods.atkMul - 1.06) < 1e-9); ok(Math.abs(mk({ str: 12 }).player.mods.atkMul - 1.12) < 1e-9);
   eq(mk({ wil: 12 }).player.mods.perfectExtra, 1); eq(mk({ wil: 6 }).player.mods.perfectExtra, -2);
 });
-test('등불 각성: 14 이상 없으면 기름 마법, 처음 14가 된 스탯으로 각성(고정), 그 스탯 14/17/20마다 풀기 마법', () => {
+test('[옛 체계] 등불 각성: 14 이상 없으면 기름 마법, 처음 14가 된 스탯으로 각성(고정), 그 스탯 14/17/20마다 풀기 마법', () => {
   const r = newRun(5, { oil: 'blue' }); eq(runSpell(r), 'ward');
   eq(runSpell(newRun(5)), 'bolt');
   for (let i = 0; i < 3; i++) takeTrain(r, 'str'); eq(r.stats.str, 13); eq(awaken(r), null); eq(runSpell(r), 'ward');   // 힘 13: 아직 기름 마법
@@ -270,7 +271,7 @@ test('공명: 다른 쌍 두 스탯이 14 이상이면 열림, 같은 쌍끼리�
   eq(resonancesOf({ ...base, str: 13, wil: 20 }).length, 0);
   eq(resonancesOf({ ...base, str: 16, wil: 16, vit: 14 }).length, 3);
 });
-test('공명 효과: 철벽 반격·수호·따스한 등불', () => {
+test('[옛 체계] 공명 효과: 철벽 반격·수호·따스한 등불', () => {
   const mk = st => { const r = newRun(1); Object.assign(r.stats, st); enterRoom(r, 'combat'); const w = buildRoomWorld(r); w.enemies.length = 0; w.waves = []; steps(w, 20); return w; };
   const w = mk({ wil: 14, lmp: 6, vit: 14, fury: 6 }); const p = w.player, hp = p.hp; ok(p.mods.res.aegis);
   const hit = () => { const src = {}; w.hitboxes.push({ src, owner: null, x: p.x, y: p.y, w: p.w, h: p.h, dmg: 1, parryable: false, dir: -1 }); for (const hb of w.hitboxes) resolveHit(w, hb); w.hitboxes.length = 0; };

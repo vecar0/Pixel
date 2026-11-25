@@ -193,11 +193,13 @@ export function buildRoomWorld(r) {
     w = createWorld({ room: 'haven', width: W, solids: [{ x: -40, y: 0, w: 40, h: 360 }, { x: W, y: 0, w: 40, h: 360 }, { x: -40, y: 300, w: W + 80, h: 60 }] });
     w.haven = type;
     w.props = [{ kind: type === 'shop' ? 'merchant' : 'campfire', x: 480, used: false }, { kind: 'exit', x: W - 200 }];
+    if (type === 'rest') w.props.push({ kind: 'lamp', x: 300, lit: false });   // 휴식처: 등잔 늘 하나
   } else {
     const A = genArena(r);
     w = createWorld({ room: 'arena', solids: A.solids, width: A.width, hpMul });
     w.props = [{ kind: 'exit', x: A.width - 200, locked: true }];      // 출구: 적을 다 잡으면 열림 (오른쪽 끝 버튼 아래에 가리지 않게 안쪽으로)
     w.bgOff = A.bgOff;
+    if (!r.tutorial || r.roomIdx > 0) { if (rand(r) < CFG.shrine.chance) w.props.push({ kind: 'lamp', x: 300 + ((rand(r) * (A.width - 700)) | 0), lit: false }); }   // 전투방: 40%로 꺼진 등잔
     const lvl = r.roomIdx;                         // 뒤로 갈수록 적이 늘어난다
     const xs = () => 480 + ((rand(r) * (w.width - 600)) | 0);
     const kinds = g.enemies, mods = Object.keys(ELITE_MODS);
@@ -219,6 +221,9 @@ export function buildRoomWorld(r) {
   p.spells = [runSpell(r)]; p.element = r.element || OIL_EL[r.oil] || null;
   const v = r.element ? r.stats[r.element] : 0; p.enchTier = !r.element ? 0 : v >= 20 ? 3 : v >= 17 ? 2 : v >= 14 ? 1 : 0;   // 점화 단계
   p.oil = r.oil;
+  // 등불 성장: 빛 조각 · 켠 등잔 수 · 등잔 색 · 빛 모양 · 큰 등잔 (방·지역을 넘어 이어짐)
+  p.shards = r.shards || 0; p.shrinesLit = r.shrinesLit || 0; p.color = r.color || null; p.shapes = { ...(r.shapes || {}) }; p.bigLamp = r.bigLamp || 0;
+  if (!CFG.legacy) { p.element = p.color; p.enchantT = p.color ? 1 : 0; p.spells = []; }   // 칼의 색 = 등잔의 색 (점화·마법 버튼 없음)
   if (r.dark >= 5) p.maxFlasks = Math.max(1, p.maxFlasks - 1);   // 어둠 5+: 기름병 -1
   p.hp = r.hp == null ? p.maxHp : Math.min(r.hp, p.maxHp);
   p.flasks = r.flasks == null ? p.maxFlasks : r.flasks;
@@ -232,6 +237,7 @@ export function buildRoomWorld(r) {
 export function saveFromWorld(r, w) {
   const p = w.player;
   r.regionFlasksUsed += p.flasksUsed || 0;
+  r.shards = p.shards || 0; r.shrinesLit = p.shrinesLit || 0; r.color = p.color || null; r.shapes = { ...(p.shapes || {}) }; r.bigLamp = p.bigLamp || 0;
   r.hp = p.hp; r.flasks = p.flasks; r.light = p.light; r.enchant = p.enchantT > 0 && !p.enchLast ? 1 : 0; r.perfect += p.perfectParries; r.executes += p.executes || 0;
   if (r.room === 'boss' && w.won && !p.hurtCount) r.noHitBoss = true;
 }

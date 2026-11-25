@@ -9,6 +9,7 @@ import { FxLayer, ScreenFx, actorFromImage } from './fx.js?v=mwutyswe';
 import { FxDirector } from './fxmap.js?v=mwutyswe';
 import { iconCanvas } from './icons.js?v=mwutyswe';
 import { bodyShade } from './shade.js?v=mwutyswe';
+import { lightSources } from './core/light.js?v=mwutyswe';
 // 기본 공격 베기: [pixelfx id, 앞쪽 오프셋, 높이 오프셋] — 스프라이트 칼 궤적 자리에 맞춤
 const CINE = { in: 40, out: 150, out2: 185, end: 220 };   // 보스 등장 연출 틱: 페이드인 · 유지 · 페이드아웃 · 전체 방 페이드인
 const IRIS_SPEED = 0.6;   // 스테이지 전환 아이리스 속도 (1 = pixelfx 원래 속도)
@@ -59,6 +60,7 @@ export class Renderer {
     this.debug = /debug=1/.test(location.search);
     // 리라 픽셀 그림 (Higgsfield: 리라 디자인 + 사용자 샘플 화풍 → forge pixel_look로 픽셀 격자 맞춤). 기준점: 발 중앙 (43, 85)
     this.liraImg = loadImg('assets/lira.png' + VQ());
+    this.lampImg = loadImg('assets/lantern-throw.png' + VQ());   // 던진 등불
     // 동작 포즈 (Higgsfield 포즈 생성 → 기준 리라 격자로 읽음). 모두 132x111, 발 기준점 (69, 111)
     this.bgs = {}; this.region = 1;   // 지역별 배경은 처음 쓸 때 불러온다
     // 리라 8프레임 애니메이션 (Higgsfield GIF 생성 → 게임 크기·팔레트로 변환). 프레임마다 발 기준점(ax, ay)
@@ -291,17 +293,30 @@ export class Renderer {
       const bx = o.x + ox, by = 248 + oy, r = 150 * Math.min(1, o.litT / 40), bg = d.createRadialGradient(bx, by, 10, bx, by, r);
       bg.addColorStop(0, 'rgba(0,0,0,1)'); bg.addColorStop(0.7, 'rgba(0,0,0,0.85)'); bg.addColorStop(1, 'rgba(0,0,0,0)'); d.fillStyle = bg; d.fillRect(0, 0, vw, H);
     }
-    this.lampX = p.x + p.w / 2 + p.face * 30; this.lampY = p.y + p.h - 32; this.lampR = (110 + p.light * 0.9) * (this.death ? Math.max(0.12, 1 - Math.max(0, this.death - 70) / 90) : 1) * (p.dark ? 0.1 : p.state === 'relight' ? 0.1 + 0.9 * Math.min(1, p.stateT / CFG.snuff.relightF) : 1);   // 소등: 등불이 꺼짐   // 리라 손의 등불 = 이 세계의 광원 (죽으면 서서히 꺼짐)
-    if (this.death) { this.lampX = p.x + p.w / 2 + p.face * 34; this.lampY = p.y + p.h - 6; }   // 떨어진 등불 자리
+    const fade = this.death ? Math.max(0.12, 1 - Math.max(0, this.death - 70) / 90) : 1;   // 죽으면 등불이 서서히 꺼짐
+    this.lightS = w.town ? [{ x: p.x + p.w / 2, y: p.y + p.h / 2, r: 130, src: 'held' }] : lightSources(w);
+    const Ls = [...this.lightS]; if (!w.town && p.lamp && p.lamp.st !== 'held') Ls.push({ x: p.x + p.w / 2, y: p.y + p.h / 2, r: 30, src: 'none' });   // 등불을 던져 손이 비면 리라 곁은 거의 어둠 (몸만 겨우 보임 · 판정 없음)
+    const L0 = Ls[0] || { x: p.x + p.w / 2, y: p.y + p.h / 2, r: 30 }; this.lampX = L0.x; this.lampY = L0.y; this.lampR = L0.r * fade;
+    for (const L of Ls) {                                                 // 빛마다 둥근 구멍 (빛 = 벨 수 있는 곳)
+      const lx = L.x + ox, ly = L.y + oy, lr = L.r * fade * 1.12;
+      const lg = d.createRadialGradient(lx, ly, 8, lx, ly, lr); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(0.78, 'rgba(0,0,0,0.92)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
+      d.fillStyle = lg; d.fillRect(lx - lr, ly - lr, lr * 2, lr * 2);
+    }
     const lx = this.lampX + ox, ly = this.lampY + oy, lr = this.lampR;
-    const lg = d.createRadialGradient(lx, ly, 10, lx, ly, lr); lg.addColorStop(0, 'rgba(0,0,0,1)'); lg.addColorStop(0.5, 'rgba(0,0,0,0.9)'); lg.addColorStop(1, 'rgba(0,0,0,0)');
-    d.fillStyle = lg; d.fillRect(0, 0, vw, H);
     if (!w.town) this.groundBand(d, w, ox, oy, 0.72);                      // 땅(걷는 면)은 어둠 속에서도 보이게
     g.drawImage(this.dark, 0, 0);
     g.globalCompositeOperation = 'lighter';
-    const wg = g.createRadialGradient(lx, ly, 2, lx, ly, lr * 0.7); wg.addColorStop(0, `rgba(${w.player.enchantT > 0 ? EL_RGB[w.player.element || null] : '255,170,70'},${w.player.enchantT > 0 ? 0.3 : 0.22})`); wg.addColorStop(1, 'rgba(255,170,70,0)');   // 두르면 등불빛도 속성 색
-    g.fillStyle = wg; g.fillRect(0, 0, vw, H);
+    for (const L of Ls) {                                                 // 따스한 빛 (등잔 색이 있으면 그 색)
+      const x0 = L.x + ox, y0 = L.y + oy, r0 = L.r * fade, wg = g.createRadialGradient(x0, y0, 2, x0, y0, r0 * 0.75);
+      wg.addColorStop(0, `rgba(${p.color ? EL_RGB[p.color] : '255,170,70'},${L.src === 'temp' ? 0.12 : 0.22})`); wg.addColorStop(1, 'rgba(255,170,70,0)');
+      g.fillStyle = wg; g.fillRect(x0 - r0, y0 - r0, r0 * 2, r0 * 2);
+    }
     g.globalCompositeOperation = 'source-over';
+    if (!w.town) for (const L of Ls) if (L.src !== 'none' && L.src !== 'temp') {   // 빛의 가장자리: 점선 고리 (이 안의 그림자만 실체가 됨)
+      const x0 = Math.round(L.x + ox), y0 = Math.round(L.y + oy), r0 = L.r * fade, n = Math.max(24, (r0 * 0.5) | 0);
+      g.fillStyle = `rgba(${p.color ? EL_RGB[p.color] : '255,196,120'},0.32)`;
+      for (let i = 0; i < n; i += 2) { const a0 = i / n * Math.PI * 2 + w.t * 0.004; g.fillRect(Math.round(x0 + Math.cos(a0) * r0), Math.round(y0 + Math.sin(a0) * r0 * 0.92), 2, 1); }
+    }
 
     g.save(); g.translate(ox, oy);
     if (!w.town) this.drawGroundEdge(g, w, 0.16);                         // 멀리 있는 땅의 윤곽
@@ -319,7 +334,7 @@ export class Renderer {
     g.globalAlpha = 1;
     const hasBeacon = (w.props || []).some(o => o.kind === 'beacon');
     const trapped = bellOf(w).st === 'down' && bellOf(w).trapped;           // 대종에 갇힌 보스는 종 안 (그리지 않음). 허수아비는 그림 + 맞으면 흔들림
-    if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; const fk = this.farK(w, e); if (fk > 0) g.globalAlpha = Math.max(0, 1 - fk); this.drawEnemy(g, w, e); g.globalAlpha = 1; if (fk > 0.3) this.drawEyes(g, w, e, Math.min(1, fk) * 0.85); }   // 어둠 속 그림자는 흐릿하게
+    if (!this.irisBusy()) for (const e of w.enemies) { if (e === trapped) continue; if (e.dummy && this.img('scarecrow')) { const im = this.img('scarecrow'), k = e.flash > 0 ? Math.sin(e.flash * 1.6) * 0.12 : 0; g.save(); g.translate(e.x + e.w / 2, 300); g.rotate(k); if (e.flash > 3) g.filter = 'brightness(1.8)'; g.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight + 1); g.restore(); continue; } if (hasBeacon && e.boss && !e.exposed) g.globalAlpha = 0.55; const fk = e.solid === false ? 0 : this.farK(w, e); if (fk > 0) g.globalAlpha = Math.max(0, 1 - fk); this.drawEnemy(g, w, e); g.globalAlpha = 1; if (fk > 0.3) this.drawEyes(g, w, e, Math.min(1, fk) * 0.85); else if (e.solid === false) this.drawEyes(g, w, e, 0.9); }   // 어둠 속 그림자는 흐릿하게
     if (w.bossDeath && w.bossDeath.t < BOSS_DEATH_F) this.drawBossDeath(g, w);   // 쓰러지는 보스
     for (const e of w.enemies) if (e.elB > 0 && !e.dead && !e.boss) {        // 속성 게이지 (점화한 검으로 쌓임): 머리 위 작은 막대
       const k = Math.min(1, e.elB / CFG.enchant.hits), x = Math.round(e.x + e.w / 2 - 12), y = Math.round(e.y - 8);
@@ -347,6 +362,7 @@ export class Renderer {
     g.globalAlpha = 1;
     g.translate(-ox, -oy); this.pfx.draw(g, camX, sx, sy); g.translate(ox, oy);
     if (!hideChars) this.drawLira(g, w, p);
+    if (!hideChars) this.drawLampOut(g, w, p);                           // 던진 등불 + 사슬
     this._liraDone = true;
     this.drawSmear(g, w);
     if (this.flames && this.flames.length) {                               // 칼 불길: 흰 심지 → 밝은 불 → 속성 색 → 잉걸 → 연기. 어릴수록 크고 밝게 (덧칠로 빛남)
@@ -456,6 +472,21 @@ export class Renderer {
   }
 
   // 리라 임시 실루엣 (진짜 그림은 Higgsfield 단계에서 교체)
+  // 던진 등불: 손(낫 자루 끝)에서 풀려나간 사슬 + 등불 (날아가는 중·놓인 곳·되돌아오는 중)
+  drawLampOut(g, w, p) {
+    const Lp = p.lamp; if (!Lp || Lp.st === 'held') return;
+    const hx = p.x + p.w / 2 + p.face * 10, hy = p.y + 34, lx = Math.round(Lp.x), ly = Math.round(Lp.y);
+    const n = Math.max(2, Math.hypot(lx - hx, ly - hy) / 3 | 0), sag = Lp.st === 'placed' ? Math.min(22, Math.abs(lx - hx) * 0.08) : 0;
+    for (let i = 0; i <= n; i++) {                                     // 사슬 고리: 밝고 어두운 고리를 번갈아 (가운데가 처짐)
+      const t = i / n, x = Math.round(hx + (lx - hx) * t), y = Math.round(hy + (ly - hy) * t + sag * 4 * t * (1 - t));
+      g.fillStyle = i % 2 ? '#2a2630' : '#8a8494'; g.fillRect(x - 1, y - 1, 2, 2);
+    }
+    const im = this.lampImg; if (!im || !im.naturalWidth) return;
+    const sw = Math.sin(w.t * 0.12) * (Lp.st === 'placed' ? 0.06 : 0.25);
+    g.save(); g.translate(lx, ly); g.rotate(sw); g.drawImage(im, -Math.round(im.naturalWidth / 2), -Math.round(im.naturalHeight * 0.75)); g.restore();
+    if (Lp.offT > 0 && (w.t >> 2) & 1) { g.fillStyle = 'rgba(10,6,20,0.6)'; g.fillRect(lx - 8, ly - 18, 16, 20); }   // 암살자에게 맞아 꺼짐
+  }
+
   drawLira(g, w, p) {
     if (p.state !== 'ghost' && p.state !== 'dead' && p.iframes > 0 && (w.t >> 2) % 2 && p.state !== 'hurt') return;   // 죽는 중엔 깜빡이지 않음 (세계가 멈춰 깜빡임이 '안 보임'에 고정되던 버그)
     const f = p.face, cx = Math.round(p.x + p.w / 2), feet = Math.round(p.y + p.h);
@@ -572,6 +603,19 @@ export class Renderer {
     const near = nearProp(w);
     for (const d of w.decor || []) { const im = this.img(d.img); if (im) g.drawImage(im, Math.round(d.x - im.naturalWidth / 2), 300 - im.naturalHeight + 1); }   // 마을 장식 (상호작용 없음, 소품 뒤)
     for (const o of w.props) {
+      if (o.kind === 'lamp') {                                           // 등잔: 돌기둥 위 기름 그릇 (꺼지면 잿빛, 켜면 등잔 색 불꽃)
+        const x = Math.round(o.x), P = EL_SLASH[o.lit ? (w.player.color || null) : null];
+        g.fillStyle = '#1a1620'; g.fillRect(x - 6, 262, 12, 38); g.fillStyle = '#3a3442'; g.fillRect(x - 5, 263, 10, 36); g.fillStyle = '#54495e'; g.fillRect(x - 5, 263, 2, 36);
+        g.fillStyle = '#1a1620'; g.fillRect(x - 11, 254, 22, 9); g.fillStyle = '#6e5a3e'; g.fillRect(x - 10, 255, 20, 6); g.fillStyle = '#9a8058'; g.fillRect(x - 10, 255, 20, 2);
+        if (o.lit) {
+          const fl = Math.sin(w.t * 0.3 + x) > 0 ? 1 : 0, gl = g.createRadialGradient(x, 246, 2, x, 246, 46);
+          gl.addColorStop(0, `rgba(${EL_RGB[w.player.color || null]},0.4)`); gl.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gl; g.fillRect(x - 46, 200, 92, 92);
+          g.fillStyle = P[3]; g.fillRect(x - 4, 244 - fl, 8, 10 + fl); g.fillStyle = P[5]; g.fillRect(x - 2, 247 - fl, 4, 7 + fl); g.fillStyle = P[6]; g.fillRect(x - 1, 250, 2, 3);
+        } else { g.fillStyle = '#2a2430'; g.fillRect(x - 3, 251, 6, 3); }
+        if (near === o && !o.lit) { const c = 10 + 5 * (w.player.shrinesLit || 0), ok = (w.player.shards || 0) >= c;
+          g.font = '10px Galmuri9, monospace'; g.textAlign = 'center'; g.fillStyle = '#0d0a11'; g.fillText(`등잔 — 빛 조각 ${c} (공격)`, x + 1, 236); g.fillStyle = ok ? '#ffd27a' : '#9a8fa6'; g.fillText(`등잔 — 빛 조각 ${c} (공격)`, x, 235); }
+        continue;
+      }
       if (o.kind === 'merchant' && this.img('merchant')) {
         const im = this.img('merchant'), gl = g.createRadialGradient(o.x - 20, 250, 4, o.x - 20, 250, 70);
         gl.addColorStop(0, 'rgba(255,170,70,0.28)'); gl.addColorStop(1, 'rgba(255,170,70,0)');
@@ -1076,11 +1120,18 @@ export class Renderer {
       const t = this.tinted(e.mods && e.mods.includes('mirage') ? '#c890ff' : '#ff5a4a', f.img), a = 0.75 + 0.25 * Math.sin(w.t * 0.12);
       g.globalAlpha = a; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) g.drawImage(t, -f.ax + dx, -f.ay + dy); g.globalAlpha = 1;
     }
-    g.drawImage(img, -f.ax, -f.ay);
+    const sh = e.solid === false ? 1 - Math.min(1, (e.inT || 0) / CFG.lantern.solidInF) * 0.6 : 0;   // 그림자: 반투명 검은 몸 (빛에 들면 또렷해짐)
+    if (sh > 0) {                                                          // 그림자: 옅은 보랏빛 테두리 + 반투명 검은 몸 (눈빛은 따로) — 어둠 속에서도 형체는 읽힘
+      const rim = this.tinted('#7a68a8', f.img), wob = Math.sin(w.t * 0.15 + e.x) > 0 ? 1 : 0;
+      g.globalAlpha = 0.45; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1 - wob], [0, 1]]) g.drawImage(rim, -f.ax + dx, -f.ay + dy);
+      g.globalAlpha = 0.78; g.drawImage(this.tinted('#120c1c', f.img), -f.ax, -f.ay);
+      g.globalAlpha = 0.22 * (1 - sh); g.drawImage(img, -f.ax, -f.ay); g.globalAlpha = 1;
+    }
+    else g.drawImage(img, -f.ax, -f.ay);
     if (d && d.tint && !hitFlash) { g.globalCompositeOperation = 'color'; g.globalAlpha = 0.75; g.drawImage(this.tinted(d.tint, f.img), -f.ax, -f.ay); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }   // 변종: 원래 그림을 다른 색으로
     const EY = this.eyes && this.eyes[f.src];                               // 이 프레임의 실제 눈 위치 → 세계 좌표로 기억 (어둠 속 눈빛)
     if (EY) { const M = M0.inverse().multiply(g.getTransform()), q = M.transformPoint(new DOMPoint(EY[0] - f.ax, EY[1] - f.ay)); e._eye = [q.x, q.y, w.t, M, f, EY]; }
-    this.applyLight(g, f.img, f.ax, f.ay, e.x + e.w / 2, e.y + e.h / 2, e.face > 0);
+    if (!(sh > 0)) this.applyLight(g, f.img, f.ax, f.ay, e.x + e.w / 2, e.y + e.h / 2, e.face > 0);   // 그림자는 빛을 받지 않음
     if (e.frozenT > 0) { g.globalAlpha = 0.5; g.drawImage(this.tinted('#a8dcff', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }   // 빙결: 얼음빛
     if (e.hot) { g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.13 + 0.07 * Math.sin(w.t * 0.18); g.drawImage(this.tinted('#ff6a1a', f.img), -f.ax, -f.ay); g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; }   // 달아오른 갑옷
     else if (e.crackT > 0) { g.globalAlpha = 0.25; g.drawImage(this.tinted('#b8c4d0', f.img), -f.ax, -f.ay); g.globalAlpha = 1; }   // 식어서 잿빛, 금 간 갑옷
@@ -1128,6 +1179,7 @@ export class Renderer {
       case 'hurt': n = 'hurt'; i = span(0, 5, t / CFG.player.hurtStunF); break;
       case 'dead': if (A.death) { n = 'death'; i = Math.min(9, Math.floor(t / 9)); } else { n = 'hurt'; i = 1; } break;   // 쓰러짐 10프레임 → 마지막에 멈춤
     }
+    if (p.lamp && p.lamp.st !== 'held' && A[n + '_nl']) n = n + '_nl';   // 등불을 던진 동안: 손에 등불이 없는 그림
     const f = A[n] && A[n][i];
     if (f && okImg(f.img)) return f;
     return (A[n] || []).find(q => okImg(q.img)) || (A.idle || []).find(q => okImg(q.img)) || null;   // 못 불러온 프레임은 건너뜀 (빈 그림을 그려 캐릭터가 사라지지 않게)
@@ -1357,20 +1409,30 @@ export class Renderer {
     }
     g.fillStyle = '#120e16'; for (let i = 1; i < p.maxHp; i++) g.fillRect(hx + i * 11, hy, 1, 7);
     // 빛 게이지: 랜턴 + 4칸 눈금. 가득 차면 깜빡임
-    const full = p.light >= CFG.light.max, k = Math.min(1, p.light / CFG.light.max), gx = 22, gy = 25, gw = 64;
-    g.drawImage(I('parry', 'amber'), 7, 21);
-    g.fillStyle = '#120e16'; g.fillRect(gx - 1, gy - 1, gw + 2, 7); g.fillStyle = '#2e2537'; g.fillRect(gx, gy, gw, 5);
-    // 빛 = 점화한 칼의 기름. 눈금 = 점화할 수 있는 빛 (넘으면 밝게). 점화한 동안엔 휘두를 때마다 줄어듦
-    const costs = [Math.round(CFG.enchant.cost * (p.mods.costMul || 1))], c1 = costs[0], c2 = p.enchantT > 0 ? 999 : c1;
-    g.fillStyle = p.light >= c2 ? ((w.t >> 3) & 1 ? '#fff0c8' : '#ffb347') : p.light >= c1 ? '#e08a2a' : '#8c4a14'; g.fillRect(gx, gy, Math.round(gw * k), 5);
-    g.fillStyle = '#ffd27a'; g.fillRect(gx, gy, Math.round(gw * k), 1);
-    for (const c of costs) { const mx = gx + Math.round(gw * c / CFG.light.max); g.fillStyle = p.light >= c ? '#fff0c8' : '#4a3e57'; g.fillRect(mx, gy - 2, 1, 9); }
+    const gx = 22, gy = 25, gw = CFG.legacy ? 64 : 46;
+    if (!CFG.legacy) {                                                    // 새 설계: 등불 상태 + 빛 조각
+      const Lp = p.lamp || { st: 'held' }, P = EL_SLASH[p.color || null];
+      g.drawImage(I('wick', p.color ? 'amber' : 'bone'), 7, 21);
+      g.fillStyle = P[4]; g.fillText(Lp.st === 'held' ? (Lp.offT > 0 ? '꺼짐' : '손') : Lp.st === 'placed' ? '놓임' : '…', gx, gy - 3);
+      if (Lp.st === 'placed') { const k2 = 1 - Lp.t / (CFG.lantern.placedF + 180 * ((p.shapes || {}).long || 0)); g.fillStyle = '#120e16'; g.fillRect(gx + 22, gy, 22, 3); g.fillStyle = P[4]; g.fillRect(gx + 22, gy, Math.round(22 * Math.max(0, k2)), 3); }
+      if (p.shardsSeen !== p.shards) { this.shT = 30; p.shardsSeen = p.shards; } if (this.shT > 0) this.shT--;
+      g.fillStyle = this.shT > 0 ? '#ffffff' : '#ffd27a'; g.fillRect(gx + 50 + (gw - 46), gy - 1, 3, 3); g.fillRect(gx + 51 + (gw - 46), gy - 2, 1, 5);   // 빛 조각 (작은 별)
+    } else {
+      const full = p.light >= CFG.light.max, k = Math.min(1, p.light / CFG.light.max);
+      g.drawImage(I('parry', 'amber'), 7, 21);
+      g.fillStyle = '#120e16'; g.fillRect(gx - 1, gy - 1, gw + 2, 7); g.fillStyle = '#2e2537'; g.fillRect(gx, gy, gw, 5);
+      // 빛 = 점화한 칼의 기름. 눈금 = 점화할 수 있는 빛 (넘으면 밝게). 점화한 동안엔 휘두를 때마다 줄어듦
+      const costs = [Math.round(CFG.enchant.cost * (p.mods.costMul || 1))], c1 = costs[0], c2 = p.enchantT > 0 ? 999 : c1;
+      g.fillStyle = p.light >= c2 ? ((w.t >> 3) & 1 ? '#fff0c8' : '#ffb347') : p.light >= c1 ? '#e08a2a' : '#8c4a14'; g.fillRect(gx, gy, Math.round(gw * k), 5);
+      g.fillStyle = '#ffd27a'; g.fillRect(gx, gy, Math.round(gw * k), 1);
+      for (const c of costs) { const mx = gx + Math.round(gw * c / CFG.light.max); g.fillStyle = p.light >= c ? '#fff0c8' : '#4a3e57'; g.fillRect(mx, gy - 2, 1, 9); }
+    }
     for (let i = 0; i < Math.max(p.maxFlasks, p.flasks); i++) { g.globalAlpha = i < p.flasks ? 1 : 0.25; g.drawImage(I('flask', 'heal'), gx + gw + 3 + i * 9, gy - 4, 9, 9); }
     g.globalAlpha = 1;
     // 완벽 패링 수: 늘어나는 순간 잠깐 밝게
     if (p.perfectParries !== this.ppSeen) { this.ppSeen = p.perfectParries; this.ppT = 30; }
     if (this.ppT > 0) this.ppT--;
-    g.fillStyle = this.ppT > 0 ? '#fff0c8' : '#b89a6a'; g.fillText('완벽 패링 ' + p.perfectParries + (p.chainN ? '  연쇄 ×' + p.chainN : ''), 8, 33);
+    g.fillStyle = this.ppT > 0 ? '#fff0c8' : '#b89a6a'; g.fillText(CFG.legacy ? '완벽 패링 ' + p.perfectParries + (p.chainN ? '  연쇄 ×' + p.chainN : '') : '빛 조각 ' + (p.shards || 0) + '  완벽 패링 ' + p.perfectParries, 8, 33);
     // 방 진행 (마름모) + 불씨
     if (this.runInfo) {
       const r = this.runInfo, n = r.length, cx = Math.round(this.vw / 2), x0 = cx - n * 7;   // 정해진 길: 스테이지마다 아이콘

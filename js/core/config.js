@@ -1,5 +1,6 @@
 // 모든 수치는 여기 한 곳에. 시간 단위는 틱(1/60초), 거리 단위는 px.
 export const CFG = {
+  get legacy() { return !!globalThis.__LEGACY; },   // 옛 체계(점화·소등·마법·스탯 단련·상성): 테스트에서만 켬
   TICK: 60,
   VIEW_W: 640, VIEW_H: 360, VIEW_W_MAX: 900,   // 폭이 넓은 폰(2.2:1 이상)도 양옆 검은 띠 없이
   // 리라 72px 그림에 맞춰 전체 스케일 약 1.33배 (점프 체공 시간은 그대로)
@@ -20,8 +21,13 @@ export const CFG = {
     perfectF: 6, normalF: 12, whiffF: 18, successRecoverF: 4, reach: 40, projReach: 30, projPad: 14,   // projReach/Pad: 탄을 패링으로 받는 앞쪽·위아래 여유(px)
     hitstopPerfect: 8, hitstopNormal: 3, staggerF: 30, staggerPush: 8,
   },
+  // 등불 (설계 1-1·1-2): 든 빛 90 · 던진 빛 110 · 탭 160px · 길게 조준 60~260 · 0.4초 날아가 6초 빛 · 회수 0.3초
+  lantern: { heldR: 90, thrownR: 110, tapF: 12, throwDist: 160, aimMin: 60, aimMax: 260, aimSpeed: 4, flyF: 24, placedF: 360, recallF: 18,
+    solidInF: 18, shadowOutF: 30, recallSolidF: 60, burnPerfectF: 180, burnNormalF: 90, offF: 120 },
+  shards: { normal: 3, elite: 10, boss: 30 },   // 빛 조각: 처형으로만
+  shrine: { chance: 0.4, cost0: 10, costStep: 5 },   // 등잔: 전투방 40% · 휴식처 항상, 켤 때마다 +5
   roll: { totalF: 22, dist: 128, iStart: 2, iEnd: 13, endLagF: 6 },
-  poise: { perfect: 0.25, normal: 0.08, hit: 0.02, stunF: 180, mobStunF: 150, mobRes: 1.6, regenDelayF: 120, regenPerF: 0.002, executeFrac: 0.15 },   // mob*: 일반 적 그로기 (더 잘 무너지고 2.5초)
+  poise: { perfect: 0.3, normal: 0.1, hit: 0.02, stunF: 180, mobStunF: 150, mobRes: 1.6, regenDelayF: 120, regenPerF: 0.002, executeFrac: 0.15 },   // mob*: 일반 적 그로기 (더 잘 무너지고 2.5초)
   execute: { hitF: 22, totalF: 42, slow: 0.35, chainF: 300, chainLight: 5, chainRange: 340, chainGapF: 6, chainHitF: 14, chainTotalF: 34 },   // chainRange 안에 그로기 적이 또 있으면 이어서 연속 처형 (돌진 베기)   // chainF: 이 틱 안에 다음 처형 → 연속 처형 보너스
   flurry: { window: 45, hits: [12, 20, 28, 40], activeF: 4, totalF: 50, iEnd: 42, range: 56, dmg: [10, 10, 10, 24], poise: [0.08, 0.08, 0.08, 0.3], hitstop: [3, 3, 3, 10], lunge: 2.6 },   // 완벽 패링 직후 공격 = 반격 연참 (앞으로 파고들며 4연속 베기, 마지막 일격이 큼, 도는 동안 무적)
   light: { max: 100, perfect: 10, normal: 3, kill: 3 },

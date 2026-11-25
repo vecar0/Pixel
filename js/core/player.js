@@ -1,6 +1,7 @@
 // 리라: 이동·점프·공격·패링·회피·기름병·등불 마법 상태기계 (순수 로직)
 import { CFG } from './config.js?v=mwutyswe';
 import { statMods, startStats } from './stats.js?v=mwutyswe';
+import { createLamp } from './light.js?v=mwutyswe';
 
 const P = CFG.player, A = CFG.attack, PR = CFG.parry, RO = CFG.roll, FL = CFG.flurry;
 export const ACTIONS = ['attack', 'parry', 'roll', 'jump', 'skill', 'flask'];
@@ -15,6 +16,7 @@ export function createPlayer(x, y) {
     state: 'idle', stateT: 0, combo: 0, comboT: 0,
     iframes: 0, buffer: null,
     parryOk: false, recoverWait: 0, dropT: 0, perfectParries: 0, rollDir: 1, swing: 0,
+    lamp: createLamp(), shards: 0, shapes: {}, color: null, shrinesLit: 0, bigLamp: 0,
   };
 }
 
@@ -75,14 +77,16 @@ function start(w, p, action, inp) {
       if (!p.onGround) { p.airAttacked = true; p.combo = 0; p.follow = false; p.startF = CFG.attack.startupF; }
       p.swing++; useSwing(p); setState(p, 'attack'); return true;
     }
-    case 'parry': setState(p, 'parry'); p.parryOk = false; p.recoverWait = 0; return true;
+    case 'parry': if (p.lamp && p.lamp.st !== 'held') return false;   // 던진 동안 패링 불가 (등불이 손에 없음)
+      setState(p, 'parry'); p.parryOk = false; p.recoverWait = 0; return true;
     case 'roll':
       p.rollDir = inp.left ? -1 : inp.right ? 1 : p.face; p.face = p.rollDir;
       setState(p, 'roll'); return true;
     case 'flask':
       if (p.flasks <= 0 || p.hp >= p.maxHp) return false;
       setState(p, 'flask'); return true;
-    case 'skill': {                                 // 불꽃 점화: 빛이 점화 기준(10) 이상이면 점화할 수 있음 (점화할 때는 빛을 안 씀). 점화한 채 휘두를 때마다 빛이 줄고, 바닥나면 꺼짐
+    case 'skill': {                                 // 불꽃 점화 (옛 체계)
+      if (!CFG.legacy) return false;   // 빛이 점화 기준(10) 이상이면 점화할 수 있음 (점화할 때는 빛을 안 씀). 점화한 채 휘두를 때마다 빛이 줄고, 바닥나면 꺼짐
       if (p.enchantT > 0 && !p.enchLast) return false;                // 이미 점화한 상태
       if (p.light < enchMin(p)) return false;
       p.spell = 'enchant'; p.elB = 0; setState(p, 'cast'); w.events.push({ type: 'castStart', spell: 'enchant', el: p.element || null }); return true;
@@ -96,6 +100,7 @@ function start(w, p, action, inp) {
 export const enchMin = p => Math.round(CFG.enchant.cost * (p.mods.costMul || 1));          // 점화할 수 있는 빛 (HUD 막대의 눈금)
 export const swingCost = p => Math.max(1, Math.round(CFG.enchant.swingCost * (p.mods.costMul || 1)));
 function useSwing(p) {                                                 // 점화한 채 휘두르면 빛을 씀. 다음 한 번 휘두를 빛이 안 남으면 이번 베기를 끝으로 꺼짐
+  if (!CFG.legacy) return;                                             // 새 설계: 칼의 색은 등잔이 정함 (빛을 쓰지 않음)
   if (!(p.enchantT > 0) || p.enchLast) return;
   const c = swingCost(p); p.light = Math.max(0, p.light - c);
   if (p.light < c) p.enchLast = true;
@@ -112,7 +117,7 @@ export function updatePlayer(w, inp) {
   if (p.enchLast && p.state !== 'attack' && p.state !== 'flurry') { p.enchLast = false; p.enchantT = 0; w.events.push({ type: 'enchantEnd' }); }   // 마지막으로 점화한 베기가 끝나면 불꽃이 꺼짐
   // 소등: 버튼 한 번에 끄기 / 다시 누르면(또는 시간이 다 되면) 다시 켬 → 무방비 동작 뒤 섬광
   const SN = CFG.snuff; if (p.snuffCd > 0) p.snuffCd--; if (p.noiseT > 0) p.noiseT--;
-  if (inp.snuff && p.state !== 'dead' && p.state !== 'relight' && p.state !== 'execute') {
+  if (CFG.legacy && inp.snuff && p.state !== 'dead' && p.state !== 'relight' && p.state !== 'execute') {
     if (p.dark) relight(w, p);
     else if (!(p.snuffCd > 0)) { p.dark = true; p.darkT = SN.maxF + (p.mods.darkExtra || 0); w.events.push({ type: 'snuff', x: p.x + p.w / 2, y: p.y + p.h / 2 }); }
   }
@@ -171,7 +176,7 @@ export function updatePlayer(w, inp) {
   }
 
   // 가로 이동
-  const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
+  const dir = p.aiming || (p.lamp && p.lamp.holdT > 0) ? 0 : (inp.right ? 1 : 0) - (inp.left ? 1 : 0);   // 등불 조준 중엔 멈춰 섬
   const free = p.state === 'idle' || p.state === 'run' || p.state === 'jump';
   if (p.state === 'roll') {
     p.vx = t < RO.totalF ? p.rollDir * RO.dist * p.mods.rollMul / RO.totalF : 0;

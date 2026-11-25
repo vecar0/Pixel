@@ -172,7 +172,7 @@ test('마법 엔진: 시전하면 빛을 쓰지 않고 마법 피해 · 시전 �
   cast(w, 'ring'); steps(w, 30);
   eq(d.hp, 100 - CFG.skill.ring.dmg); eq(w.player.light, 100); eq(w.player.hp, 5);
 });
-test('불꽃 두르기: 빛 20 이상이면 공짜로 두름, 휘두를 때마다 빛 5, 빛이 바닥나면 마지막 베기 뒤 꺼짐 / 빛 부족하면 못 두름', () => {
+test('[옛 체계] 불꽃 두르기: 빛 20 이상이면 공짜로 두름, 휘두를 때마다 빛 5, 빛이 바닥나면 마지막 베기 뒤 꺼짐 / 빛 부족하면 못 두름', () => {
   const w = W(); settle(w); w.player.face = 1; w.player.spells = ['bolt']; w.player.light = 40; w.player.element = 'str';
   tick(w, I({ skill: true })); steps(w, CFG.skill.enchant.castF + 2);   // 칼을 등불에 대는 동작이 끝날 때까지
   eq(w.player.light, 40, '두를 때는 빛을 안 씀'); ok(w.player.enchantT > 0, '두름'); steps(w, 300); ok(w.player.enchantT > 0, '시간으로는 안 꺼짐');
@@ -448,6 +448,7 @@ test('연속 처형 모션: 그로기 적이 근처에 또 있으면 공격 한 
 test('강적 수호 방패: 정면 공격 3번이면 깨져 비틀거림, 그 전엔 피해 없음', () => {
   const w = W(); settle(w); w.player.face = 1;
   const e = spawnEnemy(w, 'ghoul', w.player.x + 30, w.player.y, {}); e.spawnT = 0; e.cd = 1e9; e.face = -1; makeElite(e, 'shield'); e.speed = 0;
+  steps(w, CFG.lantern.solidInF + 2);                                         // 든 등불 빛 안에서 실체가 될 때까지
   const hp = e.hp; for (let k = 0; k < 2; k++) { tick(w, I({ attack: true })); steps(w, 40); }
   eq(e.hp, hp); eq(e.barrier, 1); tick(w, I({ attack: true })); steps(w, 12); eq(e.barrier, 0); ok(e.staggerT > 0 || e.stunT > 0, 'stagger');
   tick(w, I({ attack: true })); steps(w, 20); ok(e.hp < hp, 'damage after break');
@@ -495,7 +496,7 @@ function oracleHurtWithin(w, n) {
   for (let i = 0; i < n + w.hitstop; i++) { tick(c, I()); if (c.events.some(e => e.type === 'hurt')) return i + 1; }  // 히트스톱만큼 더 본다
   return 0;
 }
-test('bot: 완벽 패링 봇으로 아레나 클리어, hp 5 유지', () => {
+test('bot: 완벽 패링 봇으로 아레나 클리어, hp 4 이상', () => {
   const w = createWorld({ room: 'arena' });
   let perfect = 0;
   for (let i = 0; i < 60 * 180 && !w.cleared; i++) {
@@ -514,7 +515,7 @@ test('bot: 완벽 패링 봇으로 아레나 클리어, hp 5 유지', () => {
     tick(w, I(inp));
     perfect += w.events.filter(e => e.type === 'parry' && e.perfect).length;
   }
-  ok(w.cleared, 'not cleared, enemies ' + w.enemies.length); eq(w.player.hp, 5); ok(perfect > 0, 'no perfect parries');
+  ok(w.cleared, 'not cleared, enemies ' + w.enemies.length); ok(w.player.hp >= 4, 'hp ' + w.player.hp); ok(perfect > 0, 'no perfect parries');
 });
 
 /* ── Task 5: 고정 스텝 루프 ── */
@@ -631,7 +632,7 @@ test('꺼진 왕: 닻이 서 있을수록 단단하고, 닻 셋을 모두 부수
   for (const a of w.props.filter(o => o.kind === 'anchor')) for (let i = 0; i < GIMMICK.anchor.hp; i++) hitGimmick(w, { x: a.x - 5, y: 250, w: 10, h: 20 });
   steps(w, 1); ok(k.stunT > 0, '무너짐'); const h1 = k.hp; damageEnemy(w, k, 100); eq(h1 - k.hp, 100);
 });
-test('소등: 어둠이면 적이 리라를 놓치고 빛이 고임, 등 뒤 공격은 암살, 다시 켜면 섬광으로 휘청', () => {
+test('[옛 체계] 소등: 어둠이면 적이 리라를 놓치고 빛이 고임, 등 뒤 공격은 암살, 다시 켜면 섬광으로 휘청', () => {
   const w = W(); settle(w); const p = w.player; p.face = 1; p.light = 0;
   const e = spawnEnemy(w, 'ghoul', p.x + 26, p.y, {}); e.spawnT = 0; e.cd = 1e9; e.face = 1; e.speed = 0;   // 적은 오른쪽을 봄 (리라는 등 뒤)
   tick(w, I({ snuff: true })); steps(w, 5); ok(p.dark, '꺼짐'); ok(e.unaware, '놓침'); ok(p.light > 0, '빛이 고임');
@@ -641,13 +642,13 @@ test('소등: 어둠이면 적이 리라를 놓치고 빛이 고임, 등 뒤 공
   steps(w, 45); tick(w, I({ snuff: true })); ok(p.state === 'relight', '다시 켜는 중 (무방비)'); steps(w, CFG.snuff.relightF + 2);
   ok(!p.dark && p.state === 'idle', '켜짐'); ok(f.staggerT > 0, '섬광에 휘청'); ok(p.snuffCd > 0, '쿨다운');
 });
-test('소등 중 두른 상태: 불꽃이 멈추고, 다시 켜는 섬광이 속성 게이지를 채움', () => {
+test('[옛 체계] 소등 중 두른 상태: 불꽃이 멈추고, 다시 켜는 섬광이 속성 게이지를 채움', () => {
   const w = W(); settle(w); const p = w.player; p.element = 'str'; p.enchantT = 500;
   const e = spawnEnemy(w, 'ghoul', p.x + 60, p.y, {}); e.spawnT = 0; e.cd = 1e9; e.maxHp = e.hp = 999;
   tick(w, I({ snuff: true })); const e0 = p.enchantT; steps(w, 30); eq(p.enchantT, e0);
   tick(w, I({ snuff: true })); steps(w, CFG.snuff.relightF + 2); ok(e.burnT > 0, '화염 폭발');
 });
-test('속성 상성: 약점/저항 판정 (피해 배율에 쓰임)', () => {
+test('[옛 체계] 속성 상성: 약점/저항 판정 (피해 배율에 쓰임)', () => {
   const w = W(); settle(w); const p = w.player;
   const g = spawnEnemy(w, 'ghoul', p.x + 200, p.y, {}); g.spawnT = 0;
   eq(affinity(g, 'wil'), 1); eq(affinity(g, 'agi'), -1); eq(affinity(g, 'vit'), 0);

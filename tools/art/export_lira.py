@@ -1,11 +1,11 @@
 """Export built Lira moves (tools/art/build_lira.sh output) into the game: assets/lira-<anim>-<i>.png,
 anims.json['lira'], blade.json (m blade, r1/r2 rings, o lantern flame) and eyes.json for every frame.
-usage: export_lira.py <build dir e.g. art/lira2/v16>"""
+usage: export_lira.py <build dir e.g. art/lira2/v16> [lanternless build dir → *_nl anims]"""
 import sys, os, json
 import numpy as np
 from PIL import Image
 from scipy import ndimage
-B = sys.argv[1]; ROOT = os.path.join(os.path.dirname(__file__), '../..'); AS = os.path.join(ROOT, 'assets')
+SETS = [(sys.argv[1], '')] + ([(sys.argv[2], '_nl')] if len(sys.argv) > 2 else []); ROOT = os.path.join(os.path.dirname(__file__), '../..'); AS = os.path.join(ROOT, 'assets')
 def frames_of(d, idxs):
     meta = json.load(open(f'{B}/{d}/meta.json'))
     anchor = meta.get('anchor'); fm = meta['frames']
@@ -14,22 +14,23 @@ def frames_of(d, idxs):
         feet = fm[i].get('feet') if anchor is None else anchor
         out.append((f'{B}/{d}/frame_{i:03d}.png', f'{B}/{d}/mask_{i:03d}.png', feet))
     return out
-ANIMS = {
-    'idle': frames_of('idle', range(6)),
-    'run': frames_of('run', range(8)),
-    'jump': frames_of('jump', range(8)),
-    'atk1': frames_of('reap', range(8)),
-    'atk2': frames_of('c_atk2', range(1, 12)),
-    'atk3': frames_of('c_atk3', range(1, 12)),
-    'follow': frames_of('c_follow', range(1, 10)),
-    'parry': frames_of('block', [0, 1, 1, 2, 3, 4, 5, 5]),
-    'roll': frames_of('run', range(8)),
-    'hurt': frames_of('hurt', range(6)),
-    'death': frames_of('death', list(range(8)) + [7, 7]),
-    'exec': frames_of('exec', range(16)),
-    'flurry': frames_of('exec', [int(round(x)) for x in np.linspace(0, 15, 12)]),
-    'enchant': frames_of('twirl', list(range(10)) + [9, 9]),
-}
+def anims_for():
+    return {
+        'idle': frames_of('idle', range(6)),
+        'run': frames_of('run', range(8)),
+        'jump': frames_of('jump', range(8)),
+        'atk1': frames_of('reap', range(8)),
+        'atk2': frames_of('c_atk2', range(1, 12)),
+        'atk3': frames_of('c_atk3', range(1, 12)),
+        'follow': frames_of('c_follow', range(1, 10)),
+        'parry': frames_of('block', [0, 1, 1, 2, 3, 4, 5, 5]),
+        'roll': frames_of('roll', range(8)),
+        'hurt': frames_of('hurt', range(6)),
+        'death': frames_of('death', list(range(8)) + [7, 7]),
+        'exec': frames_of('exec', range(16)),
+        'flurry': frames_of('exec', [int(round(x)) for x in np.linspace(0, 15, 12)]),
+        'enchant': frames_of('twirl', list(range(10)) + [9, 9]),
+    }
 anims = json.load(open(f'{AS}/anims.json')); blade = json.load(open(f'{AS}/blade.json')); eyes = json.load(open(f'{AS}/eyes.json'))
 for k in [k for k in blade if '/lira-' in k]: del blade[k]
 for k in [k for k in eyes if '/lira-' in k]: del eyes[k]
@@ -40,7 +41,10 @@ def rows(mask):
         if len(xs): r.append([int(y), [int(x) for x in xs]])
     return r
 K8 = np.ones((3, 3), bool); lira = {}; cache = {}
-for name, lst in ANIMS.items():
+ALL = []
+for B, SUF in SETS:
+    for name, lst in anims_for().items(): ALL.append((name + SUF, lst))
+for name, lst in ALL:
     lira[name] = []
     for i, (fp, mp, feet) in enumerate(lst):
         src = f'assets/lira-{name}-{i}.png'

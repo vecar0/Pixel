@@ -4,6 +4,7 @@
 //                      · rain(낙하 파편) · beam(긴 광선) · ring(몸 주변 고리)
 import { clipBeam } from './gimmick.js?v=mwutyswe';
 import { CFG } from './config.js?v=mwutyswe';
+import { lightSources } from './light.js?v=mwutyswe';
 import { moveAndCollide, overlap } from './player.js?v=mwutyswe';
 import { BOSSES, bossPick, bossWant } from './boss.js?v=mwutyswe';
 
@@ -85,6 +86,7 @@ export const AFFINITY = {
 export const ENEMY_NAME = { ghoul: '구울', moth: '나방', spearman: '창병', priest: '순례자', shellguard: '갑각수호자', assassin: '암살자', ghoulRot: '썩은 구울', priestDrowned: '익사한 순례자', mothCrystal: '수정 나방', shadeAssassin: '그늘 암살자', emberGuard: '잿불 수호자', starSpear: '별빛 창병' };
 export const nameOf = k => ENEMY_NAME[k] || (ENEMY_DEFS[k] && ENEMY_DEFS[k].name) || k;
 export function affinity(e, el) {                          // 1 약점 · -1 저항 · 0 보통
+  if (!CFG.legacy) return 0;                                  // 새 설계: 상성 없음
   const A = el && AFFINITY[e.kind]; if (!A) return 0;
   return A.weak.includes(el) ? 1 : A.resist.includes(el) ? -1 : 0;
 }
@@ -199,7 +201,7 @@ export function updateEnemy(w, e) {
   let dx = (p.x + p.w / 2) - (e.x + e.w / 2);
   e.stT++;
   if (e.blindT > 0) e.blindT--; if (e.hitT > 0) e.hitT--; if (e.armorT > 0) e.armorT--;
-  const vis = seesPlayer(w, e), was = e.unaware; e.unaware = !vis;        // 소등: 리라를 못 보면 마지막으로 본 자리를 뒤진다
+  const vis = seesPlayer(w, e) && !e.ghostBlind, was = e.unaware; e.unaware = !vis;   // 귀화 등잔: 빛 안의 그림자는 리라를 못 봄        // 소등: 리라를 못 보면 마지막으로 본 자리를 뒤진다
   if (vis) { e.lastX = p.x + p.w / 2; e.searchT = 0; }
   const RX = DARK_REACT[e.kind];
   if (vis && was && p.dark && RX && RX.alarm && !e.boss) {               // 경계병: 어둠 속에서 찾아내면 주변 적이 그쪽으로
@@ -214,7 +216,9 @@ export function updateEnemy(w, e) {
     if (e.cd > 0) e.cd--;
     const sp0 = e.speed; if (e.rootT > 0) e.speed = 0; else if (e.slowT > 0) e.speed *= 0.5;   // 발 묶음 · 둔화: 이동 속도만
     if (RX && RX.litSpeed && !p.dark && !e.boss) e.speed *= RX.litSpeed;  // 나방: 등불빛을 쫓아 빨라짐
-    if (e.boss) bossMove(w, e, dx);
+    if (e.lightSlow && e.lightSlow < 1) e.speed *= e.lightSlow;           // 얼음 등잔: 빛 안의 그림자는 느려짐
+    if (!e.boss && lightReact(w, e, dx)) { /* 빛 반응이 움직임을 정함 */ }
+    else if (e.boss) bossMove(w, e, dx);
     else if (d.fly) mothHover(w, e, dx);
     else if (d.keepAway) keepDistance(w, e, dx, d.keepAway);
     else walkToward(w, e, dx);
@@ -347,10 +351,31 @@ function bossMove(w, e, dx) {
   physics(w, e);
 }
 
-function mothHover(w, e, dx) {
+// 그림자들의 빛 반응 (설계 1-5). 움직임을 정했으면 true
+//   구울·창병·순례자: 빛을 싫어해 공격할 때가 아니면 빛 밖으로 물러남 (가장자리를 맴돎)
+//   나방: 던진 등불로 달려듦 · 암살자: 놓인 등불을 노려 끔 (2초)
+function lightReact(w, e, dx) {
+  const k = baseOf(e.kind), p = w.player, Lp = p.lamp; if (!Lp) return false;
+  const out = Lp.st === 'placed' || Lp.st === 'fly';
+  if (k === 'moth' && out) { mothHover(w, e, dx, { x: Lp.x, y: Lp.y }); return true; }
+  if (k === 'assassin' && Lp.st === 'placed' && !(Lp.offT > 0) && Math.abs(Lp.x - (e.x + e.w / 2)) < Math.abs(dx) + 40) {
+    const lx = Lp.x - (e.x + e.w / 2); e.face = Math.sign(lx) || e.face;
+    if (Math.abs(lx) < 26) { Lp.offT = CFG.lantern.offF; e.cd = Math.max(e.cd, 70); w.events.push({ type: 'lampSnuffed', x: Lp.x, y: Lp.y }); e.vx = 0; }
+    else e.vx = e.face * e.speed * 1.2;
+    physics(w, e); return true;
+  }
+  if ((k === 'ghoul' || k === 'spearman' || k === 'priest') && e.inLightNow && !(e.burnSolidT > 0) && e.cd > 0) {
+    const S = lightSources(w); let best = null, bd = 1e9;
+    for (const s of S) { const dd = Math.hypot(s.x - (e.x + e.w / 2), s.y - (e.y + e.h / 2)); if (dd < bd) { bd = dd; best = s; } }
+    if (best) { e.face = Math.sign(dx) || e.face; e.vx = Math.sign((e.x + e.w / 2) - best.x || -e.face) * e.speed * (k === 'priest' ? 1.2 : 1); physics(w, e); return true; }
+  }
+  return false;
+}
+
+function mothHover(w, e, dx, lure) {
   const p = w.player;
   const side = dx > 0 ? -1 : 1;                          // 리라 기준 자기 쪽에 머묾
-  const tx = p.x + side * 120, ty = p.y - 60;
+  const tx = lure ? lure.x + Math.sin(w.t * 0.05 + e.x) * 30 : p.x + side * 120, ty = lure ? lure.y - 30 : p.y - 60;   // 던진 등불이 있으면 그 둘레를 맴돎
   const mx = tx - e.x, my = ty - e.y, l = Math.hypot(mx, my);
   if (l > 4) { e.vx = mx / l * e.speed; e.x += e.vx; e.y += my / l * e.speed; }
   e.y += Math.sin(w.t * 0.1) * 0.3;

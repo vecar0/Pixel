@@ -6,6 +6,7 @@ import { createPlayer, updatePlayer, overlap } from './player.js?v=mwutyswe';
 import { spawnEnemy, updateEnemy, ENEMY_DEFS, makeElite, updateElite } from './enemies.js?v=mwutyswe';
 import { resolveEnemyHit, resolvePlayerAttacks, resolveSkill, landSkill, updatePoise, damageEnemy, updateExecute, spellPerk, relightFlash } from './combat.js?v=mwutyswe';
 import { ACTIONS } from './player.js?v=mwutyswe';
+import { updateLamp, updateSolidity } from './light.js?v=mwutyswe';
 
 export const BOSS_DEATH_F = 160, BOSS_FALL_F = 96;   // 보스 사망 연출 길이 · 마지막 폭발 시점 (틱)
 // 보스마다 다른 넓은 무대 (폭 1600). 벽·바닥 + 언덕(높이 있는 바닥) + 통과 발판
@@ -23,7 +24,7 @@ export const BOSS_ARENAS = {
 export const EMPTY_INPUT = Object.freeze({
   left: false, right: false, down: false, jumpHeld: false,
   jump: false, attack: false, parry: false, roll: false, skill: false, flask: false,
-  snuff: false,
+  snuff: false, lamp: false, lampHeld: false,
 });
 
 const ROOMS = {
@@ -73,7 +74,7 @@ export function createWorld({ room = 'arena', solids, spawn, width, boss = 'bell
 export const INTERACT_R = 56;
 export function nearProp(w) {
   const p = w.player, cx = p.x + p.w / 2;
-  return (w.props || []).find(o => ['merchant', 'campfire', 'altar', 'keeper', 'board', 'rack'].includes(o.kind) && Math.abs(o.x - cx) < INTERACT_R) || null;
+  return (w.props || []).find(o => ['merchant', 'campfire', 'altar', 'keeper', 'board', 'rack', 'lamp'].includes(o.kind) && Math.abs(o.x - cx) < INTERACT_R) || null;
 }
 // 오브젝트: 상인·모닥불은 공격 버튼으로 이용, 출구는 열려 있으면 닿는 순간 나감 (전투방은 적을 다 잡아야 열림)
 function propInput(w, inp) {
@@ -137,6 +138,8 @@ export function tick(w, inp) {
   if (w.props) inp = propInput(w, inp);
   for (const o of w.props || []) if (o.cd > 0) o.cd--;
   updatePlayer(w, inp);
+  updateLamp(w, inp);
+  updateSolidity(w);
   updateExecute(w);
   for (const ev of [...w.events]) if (ev.type === 'skill') resolveSkill(w, ev); else if (ev.type === 'relightFlash') relightFlash(w);   // 다시 켠 등불의 섬광
   for (const d of w.pending) if (--d.t <= 0) landSkill(w, d);             // 지연 마법: 이펙트가 떨어지는 순간 피해
@@ -147,6 +150,7 @@ export function tick(w, inp) {
     if (e.flash > 0) e.flash--;
     if (e.roarT > 0) { e.roarT--; e.vx = 0; continue; }                   // 2막 포효 중: 멈춤·무적
     if (e.burnT > 0 && --e.burnT % 60 === 0) { damageEnemy(w, e, 3); if (e.dead) continue; }   // 화상
+    if (e._lightBurn) { e._lightBurn = false; damageEnemy(w, e, 1, 0, true); if (e.dead) continue; }   // 화염 등잔: 빛 안의 그림자가 탐
     updatePoise(e);
     if (e.elite || e.decoy) updateElite(w, e);
     if (e.dead) continue;
@@ -214,7 +218,7 @@ function updateProjectiles(w) {
       if (r === 'perfect') { b.vx *= -1.5; b.owner = 'player'; b.done = false; b.life = 90; b.reflected = true; }
       else if (r !== 'ignored') b.dead = true;
     } else {
-      const e = w.enemies.find(e => !e.dead && !(e.spawnT > 0) && overlap(b, e) && !(b.hits && b.hits.includes(e)));
+      const e = w.enemies.find(e => !e.dead && !(e.spawnT > 0) && e.solid !== false && overlap(b, e) && !(b.hits && b.hits.includes(e)));   // 그림자는 통과
       if (e) {
         let dmg = b.pdmg ?? b.dmg * 15;                                     // 반사탄은 dmg×15, 마법·검기는 pdmg
         if (breakVeil(w, e, b)) { b.dead = true; dmg = damageEnemy(w, e, GIMMICK.veil.breakDmg, GIMMICK.veil.breakPoise); w.hitstop = Math.max(w.hitstop, 8); w.shake = Math.max(w.shake, 10); w.events.push({ type: 'attackHit', x: e.x + e.w / 2, y: e.y + e.h / 2, combo: 2, face: Math.sign(b.vx) || 1, dmg, crit: true }); continue; }   // 물의 장막 깨기

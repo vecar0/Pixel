@@ -3,7 +3,7 @@ import { hitGimmick, gimmickDamageMul } from './gimmick.js?v=mwutyswe';
 import { hitLevel } from './level.js?v=mwutyswe';
 import { STAT_SPELL } from './spells.js?v=mwutyswe';
 import { CFG } from './config.js?v=mwutyswe';
-import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT, telegraphOf } from './enemies.js?v=mwutyswe';
+import { ENEMY_DEFS, ELITE, AFFINITY, affinity, DARK_REACT, telegraphOf, baseOf } from './enemies.js?v=mwutyswe';
 import { attackBox, invulnerable, overlap, flurryHit } from './player.js?v=mwutyswe';
 
 const PR = CFG.parry, PO = CFG.poise;
@@ -36,6 +36,7 @@ export function resolveEnemyHit(w, hb) {
     w.hitstop = Math.max(w.hitstop, perfect ? PR.hitstopPerfect : PR.hitstopNormal);
     if (perfect) { p.perfectParries++; w.shake = 8; }
     const o = hb.owner;
+    if (o && !o.dead) o.burnSolidT = Math.max(o.burnSolidT || 0, perfect ? CFG.lantern.burnPerfectF : CFG.lantern.burnNormalF);   // 패링: 공격한 그림자가 빛에 데어 실체화 (빛 밖이어도)
     if (o && p.enchantT > 0 && (p.element || null) === 'wil') elBuild(w, o, 1);   // 빛 점화: 패링으로 게이지
     if (o && o.poiseMax) addPoise(w, o, (perfect || p.mods.normalAsPerfect ? PO.perfect : PO.normal) * (p.mods.poiseMul || 1));   // 의지 16
     if (o && perfect && !o.boss && o.st) {   // 완벽 패링: 일반 적은 공격이 끊기고 튕겨나며 잠깐 무방비
@@ -60,6 +61,7 @@ export function resolveEnemyHit(w, hb) {
     p.aegisReady = false; p.iframes = 30; w.hitstop = Math.max(w.hitstop, 6);
     w.events.push({ type: 'aegis', x: p.x + p.w / 2, y: p.y + 20 }); return 'blocked';
   }
+  if (hb.owner && baseOf(hb.owner.kind) === 'assassin' && p.lamp && p.lamp.st === 'held') { p.lamp.offT = CFG.lantern.offF; w.events.push({ type: 'lampSnuffed', x: p.x + p.w / 2, y: p.y + 30 }); }   // 암살자: 등불을 쳐서 2초 끔
   p.hp -= hb.dmg; p.chainN = 0; p.hitChain = 0; p.hurtCount = (p.hurtCount || 0) + 1;
   if (p.enchantT > 0 && p.element === 'vit' && hb.owner && !hb.owner.dead && hb.owner.hp != null) elBuild(w, hb.owner, 1);   // 생명 점화: 받은 피해가 불꽃이 됨
   p.iframes = Math.round(CFG.player.iframesHurt * (p.mods.hurtIMul || 1));   // 생명 18
@@ -122,8 +124,14 @@ export function resolvePlayerAttacks(w) {
   for (const e of w.enemies) {
     if (e.dead || e.spawnT > 0 || e.hitBy === p.swing || !overlap(box, e)) continue;
     e.hitBy = p.swing;
+    if (e.solid === false) { w.events.push({ type: 'phase', x: e.x + e.w / 2, y: e.y + e.h / 2 }); continue; }   // 그림자: 칼이 통과
     const front = Math.sign((p.x + p.w / 2) - (e.x + e.w / 2)) === e.face;
-    if (e.shield && front && e.st !== 'active' && e.stunT <= 0 && p.state !== 'flurry') {   // 반격 연참은 방패를 넘긴다       // 갑각 파수꾼: 정면 방패
+    let shieldFront = front;
+    if (e.shield && !CFG.legacy && p.lamp) {                                    // 갑각수호자: 방패를 빛 쪽으로 든다 → 빛을 뒤에 두고 앞에서 베면 뚫림
+      const Lp = p.lamp, lx = Lp.st === 'held' ? p.x + p.w / 2 : Lp.x;
+      shieldFront = Math.sign((p.x + p.w / 2) - (e.x + e.w / 2)) === Math.sign(lx - (e.x + e.w / 2) || e.face);
+    }
+    if (e.shield && shieldFront && e.st !== 'active' && e.stunT <= 0 && p.state !== 'flurry') {   // 반격 연참은 방패를 넘긴다       // 갑각 파수꾼: 정면 방패
       w.hitstop = Math.max(w.hitstop, 3); p.vx = -p.face * 2; e.poise = Math.min(1, e.poise + 0);
       w.events.push({ type: 'block', x: e.face > 0 ? e.x + e.w : e.x, y: e.y + e.h / 2 }); continue;
     }
@@ -149,7 +157,7 @@ export function resolvePlayerAttacks(w) {
       if (!e.elite || p.mods.shadowElite) { e.stunT = 1; e.poise = 1; w.events.push({ type: 'assassinate', x: e.x + e.w / 2, y: e.y }); }
       else { addPoise(w, e, 0.6); w.events.push({ type: 'assassinate', x: e.x + e.w / 2, y: e.y, elite: true }); }
     }
-    if (e.stunT > 0) {                      // 그로기 → 처형 모션 시작 (피해는 베는 순간에)
+    if (e.stunT > 0 && (CFG.legacy || e.inLightNow)) {   // 무너진 적은 빛 안에서만 처형 (그로기 → 처형 모션, 피해는 베는 순간에)
       p.state = 'execute'; p.stateT = 0; p.execTarget = e; p.buffer = null; e.executing = true; p.execMode = null; p.chainNext = null;
       w.events.push({ type: 'executeStart', x: e.x + e.w / 2, y: e.y + e.h / 2 });
       return;
@@ -163,7 +171,8 @@ export function resolvePlayerAttacks(w) {
       if (p.crit) { p.crit = false; w.events.push({ type: 'crit', x: e.x + e.w / 2, y: e.y }); }
       const spin = p.state === 'flurry', FL = CFG.flurry, fk = spin ? Math.max(0, flurryHit(p)) : 0, last = spin && fk === FL.hits.length - 1;
       const base = spin ? FL.dmg[fk] : CFG.attack.dmg[p.combo], pz = spin ? FL.poise[fk] : PO.hit * (p.combo === 2 ? p.mods.str3Poise || 1 : 1);   // 힘 16: 3타 자세 2배
-      const dealt = damageEnemy(w, e, Math.round(base * mul), pz * (p.mods.poiseMul || 1));
+      const shade = e.boss && !CFG.legacy && !e.inLightNow ? 0.4 : 1;   // 보스의 그림자 부위: 빛을 비추지 않으면 잘 안 베임
+      const dealt = damageEnemy(w, e, Math.round(base * mul * shade), pz * (p.mods.poiseMul || 1) * shade);
       if (wasCrit && p.mods.critLight) p.light = Math.min(CFG.light.max, p.light + p.mods.critLight);   // 투지 16
       if (!e.dead) p.hitChain = (p.hitChain || 0) + 1;
       if (p.dark) { p.noiseT = 20; p.noiseR = CFG.snuff.noiseAtk * (p.mods.quietMul || 1); }   // 어둠 속에서 베면 소리가 나 다른 적이 돌아봄 (휘두르는 것만으론 소리 없음)
@@ -352,6 +361,12 @@ export function updateExecute(w) {
     if (p.mods.str10) for (const o of w.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 320) addPoise(w, o, 0.4);   // 힘 10
     if ((p.mods.res || {}).slayer) { p.light = Math.min(CFG.light.max, p.light + 30); p.crit = true; }   // 공명 처단
     w.events.push({ type: 'execute', x: e.x + e.w / 2, y: e.y + e.h / 2, boss: !!e.boss });
+    if (!e.dummy && !e.decoy) {                                           // 빛 조각: 처형으로만 (일반 3 · 강적 10 · 보스 30)
+      const sh = e.boss ? CFG.shards.boss : e.elite ? CFG.shards.elite : CFG.shards.normal; p.shards = (p.shards || 0) + sh;
+      w.events.push({ type: 'shards', n: sh, x: e.x + e.w / 2, y: e.y + e.h / 2 });
+      if (e.boss) { p.bigLamp = (p.bigLamp || 0) + 1; w.events.push({ type: 'bigLamp', x: e.x + e.w / 2, y: e.y }); }   // 큰 등잔: 보스 처형 = 빛 최대 반경 +15%
+      if (p.color === 'vit' && p.hp < p.maxHp) { const h0 = p.hp; p.hp++; w.events.push({ type: 'heal', amount: 1, from: h0, x: p.x + p.w / 2, y: p.y + p.h }); }   // 생명 등잔: 처형마다 체력 1
+    }
     if (e.sigil) {                                                        // 마법 각인이 새겨진 적을 처형: 처형의 일격과 함께 속성 마법이 터진다
       const ev = { type: 'skill', spell: e.sigil, x: p.x + p.w / 2, y: p.y + 24, face: p.face, auto: true, exec: true }; e.sigil = null;
       w.events.push(ev); resolveSkill(w, ev);
@@ -365,11 +380,11 @@ export function updateExecute(w) {
     }
     p.execTarget = null;
     // 처형의 충격: 근처에서 이미 흔들리던 적(자세 절반 이상 또는 체력 35% 이하) 하나가 무너짐 → 연속 처형으로 이어짐
-    { const cx0 = e.x + e.w / 2, weak = w.enemies.filter(o => o !== e && !o.dead && !o.boss && !o.dummy && !(o.spawnT > 0) && !(o.stunT > 0) && !o.executing && o.poiseMax && Math.abs(o.x + o.w / 2 - cx0) < X.chainRange && Math.abs(o.y - e.y) < 140 && (o.poise >= 0.45 || o.hp <= o.maxHp * 0.35))
+    { const cx0 = e.x + e.w / 2, weak = w.enemies.filter(o => o !== e && !o.dead && !o.boss && !o.dummy && !(o.spawnT > 0) && !(o.stunT > 0) && !o.executing && o.poiseMax && (CFG.legacy || o.inLightNow) && Math.abs(o.x + o.w / 2 - cx0) < X.chainRange && Math.abs(o.y - e.y) < 140 && (o.poise >= 0.45 || o.hp <= o.maxHp * 0.35))
         .sort((a, b) => Math.abs(a.x - cx0) - Math.abs(b.x - cx0))[0];
       if (weak) { addPoise(w, weak, 1); w.events.push({ type: 'execShock', x: weak.x + weak.w / 2, y: weak.y }); } }
     // 근처에 그로기 적이 또 있으면 이어서 처형 (놓치지 않게 미리 붙잡아 둠)
-    const cx = e.x + e.w / 2, nx = w.enemies.filter(o => o !== e && !o.dead && o.stunT > 0 && !o.executing && Math.abs(o.x + o.w / 2 - cx) < X.chainRange && Math.abs(o.y - e.y) < 140)
+    const cx = e.x + e.w / 2, nx = w.enemies.filter(o => o !== e && !o.dead && o.stunT > 0 && !o.executing && (CFG.legacy || o.inLightNow) && Math.abs(o.x + o.w / 2 - cx) < X.chainRange && Math.abs(o.y - e.y) < 140)
       .sort((a, b) => Math.abs(a.x - cx) - Math.abs(b.x - cx))[0];
     if (nx) { p.chainNext = nx; nx.executing = true; }
   }

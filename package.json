@@ -1,1 +1,1 @@
-{"type":"module","name":"lantern-keeper","private":true,"scripts":{"test":"node tests/sim.test.mjs && node tests/run.test.mjs && node tests/qa.test.mjs","e2e":"node tests/e2e.mjs","playthrough":"node tests/playthrough.mjs"}}
+{"type":"module","name":"lantern-keeper","private":true,"scripts":{"test":"node tests/sim.test.mjs && node tests/run.test.mjs && node tests/qa.test.mjs && node tests/light.test.mjs","e2e":"node tests/e2e.mjs","playthrough":"node tests/playthrough.mjs"}}

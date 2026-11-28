@@ -14,6 +14,13 @@ K = float(os.environ.get('SCALE', '1')); BODY_H = BODY_H * K
 S = np.array(Image.open(sc_p)).astype(int)
 g = json.loads(grip_s); G1 = np.array(g['upper'], float); G2 = np.array(g['lower'], float)
 GA = math.atan2(*(G2 - G1)[::-1]); GM = (G1 + G2) / 2
+if os.environ.get('FLIPBLADE'):   # 공격용: 낫을 자루 축으로 뒤집어 날이 앞(적 쪽)을 향하게
+    _u = (G2 - G1) / np.linalg.norm(G2 - G1); _W = S.shape[1] + 64
+    _yy, _xx = np.mgrid[:S.shape[0], :_W]; _P = np.stack([_xx + .5, _yy + .5], -1) - G1
+    _R = G1 + 2 * (_P @ _u)[..., None] * _u - _P                    # 반사는 자기 자신이 역변환
+    _sx = np.floor(_R[..., 0]).astype(int); _sy = np.floor(_R[..., 1]).astype(int)
+    _ok = (_sx >= 0) & (_sx < S.shape[1]) & (_sy >= 0) & (_sy < S.shape[0])
+    _F = np.zeros((S.shape[0], _W, 4), int); _F[_ok] = S[_sy[_ok], _sx[_ok]]; S = _F
 LAN = None
 if os.environ.get('LANTERN'):
     lp, lj = os.environ['LANTERN'].split(',')
@@ -170,9 +177,13 @@ for k, a in enumerate(fr):
         th = best[1]; fm = feet + np.array([14, 0]) + np.array([0, feet[1] - best[2]])
     if os.environ.get('OVR') and not two_fists: th += math.radians(float(os.environ['OVR'].split(',')[k]))
     if ROLE[k] != 'd':
-        for dt in [0] + [d * sg for d in range(2, (10 if two_fists else 95), 2 if two_fists else 5) for sg in (1, -1)]:
-            t2 = th + math.radians(dt)
-            if blade_pts(fm, t2)[:, 1].max() <= feet[1] + 2: th = t2; break
+        _rng = 10 if two_fists else (40 if os.environ.get('FLIPBLADE') else 95)   # 앞날: 땅에 닿을 듯 스치게, 크게 돌리지 않음
+        _bst = None
+        for dt in [0] + [d * sg for d in range(2, _rng, 2 if two_fists else 5) for sg in (1, -1)]:
+            t2 = th + math.radians(dt); _my = blade_pts(fm, t2)[:, 1].max()
+            if _my <= feet[1] + (10 if os.environ.get('FLIPBLADE') else 2): _bst = None; th = t2; break   # 앞날은 땅을 살짝 파고드는 것까지 허용
+            if _bst is None or _my < _bst[0]: _bst = (_my, t2)
+        if _bst is not None and os.environ.get('FLIPBLADE'): th = _bst[1]
     sl = SLIDE[k] if SLIDE else 0.0
     sc = place(fm, fm, th, *cv.shape[:2], Sa=(S_NOBLADE if ROLE[k] == 'S' else S), lantern=(tp < 0) and ROLE[k] != 'd', slide=sl)
     res = cv.copy()

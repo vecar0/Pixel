@@ -1,8 +1,11 @@
 // 사슬 물리 (그림 전용, 판정 없음): 낫 자루 끝에서 나온 사슬 + 끝의 등불.
 // Verlet 로프 — 중력·관성·감쇠, 고리 길이 제약, 바닥·발판·리라 몸과 충돌.
-// 들고 있을 땐 짧게 매달려 흔들리고(등불이 추), 던지면 사슬이 풀려 늘어나며 등불을 따라가고, 회수하면 감겨 짧아진다.
+// 들고 있을 땐 사슬이 자루에 감겨 묶여 있고 등불은 자루 끝에 짧게 매달려 거의 흔들리지 않는다.
+// 던지면 감긴 사슬이 풀리며 늘어나 등불을 따라가고, 회수하면 다시 감겨 짧아진다.
 const N = 44;                     // 마디 수 (시뮬레이션 해상도)
-const HOLD_LEN = 18;              // 들고 있을 때 사슬 길이(px): 자루 끝 고리에서 등불까지 짧게
+const HOLD_LEN = 7;               // 들고 있을 때 늘어진 사슬 길이(px): 자루 끝 고리에서 등불까지 아주 짧게
+const WRAP = 16;                  // 들고 있을 때 자루에 감긴 사슬 길이(px): 던지면 이만큼 먼저 풀려나감
+const HELD_DAMP = 0.72;           // 묶인 사슬: 흔들림이 금방 멎음
 const GRAV = 0.32, DAMP = 0.986, ITER = 14;
 const LANTERN_W = 5;              // 등불 무게 (끝점이 다른 마디보다 이만큼 무거움)
 const LANTERN_H = 14;             // 등불 그림 높이: 끝점이 이만큼 위에서 바닥에 닿음 (등불이 땅에 묻히지 않게)
@@ -13,7 +16,7 @@ function groundBelow(solids, x, y) {
 }
 
 export class ChainSim {
-  constructor() { this.pts = null; this.len = HOLD_LEN; this.lastT = -1; }
+  constructor() { this.pts = null; this.len = HOLD_LEN; this.wrap = WRAP; this.lastT = -1; }
   reset(x, y) {
     this.pts = Array.from({ length: N }, (_, i) => ({ x, y: y + i * HOLD_LEN / (N - 1), px: x, py: y + i * HOLD_LEN / (N - 1) }));
     this.len = HOLD_LEN;
@@ -29,10 +32,12 @@ export class ChainSim {
     let want = HOLD_LEN;
     if (out) { const d = Math.hypot(lamp.x - anchor.x, lamp.y - anchor.y); want = Math.max(HOLD_LEN, d * (lamp.st === 'placed' ? 1.08 : 1.02) + 6); }
     this.len += (want - this.len) * (want > this.len ? 0.55 : 0.35);
+    this.wrap = Math.max(0, WRAP - (this.len - HOLD_LEN));            // 감긴 길이: 풀린 만큼 줄어듦
+    const held = !out && this.len < HOLD_LEN + 2, damp = held ? HELD_DAMP : DAMP;
     const seg = this.len / (N - 1);
     // 적분: 관성 + 중력 (끝 등불은 무거워 흔들림이 느리고 크게)
     for (let i = 1; i < N; i++) {
-      const p = P[i], vx = (p.x - p.px) * DAMP, vy = (p.y - p.py) * DAMP;
+      const p = P[i], vx = (p.x - p.px) * damp, vy = (p.y - p.py) * damp;
       p.px = p.x; p.py = p.y; p.x += vx; p.y += vy + GRAV * (i === N - 1 ? 1.15 : 1);
     }
     P[0].px = P[0].x; P[0].py = P[0].y; P[0].x = anchor.x; P[0].y = anchor.y;   // 자루 끝에 고정 (자루가 휘두르면 그 힘이 사슬로 전해짐)
@@ -44,7 +49,7 @@ export class ChainSim {
         a.x += dx * diff * wa / s; a.y += dy * diff * wa / s; b.x -= dx * diff * wb / s; b.y -= dy * diff * wb / s;
       }
       P[0].x = anchor.x; P[0].y = anchor.y;
-      if (dir) for (const [j, k2] of [[1, 0.75], [2, 0.35], [3, 0.12]]) {   // 자루 끝 고리: 처음 몇 고리는 자루 방향을 따라 나가다 무게에 휘어짐 (꺾임 없이)
+      if (dir) for (const [j, k2] of held ? [[1, 0.9], [2, 0.6], [3, 0.35], [4, 0.15]] : [[1, 0.75], [2, 0.35], [3, 0.12]]) {   // 자루 끝 고리: 처음 몇 고리는 자루 방향을 따라 나가다 무게에 휘어짐 (꺾임 없이)
         const q = P[j], tx = anchor.x + dir.x * seg * j, ty = anchor.y + dir.y * seg * j; q.x += (tx - q.x) * k2; q.y += (ty - q.y) * k2;
       }
       if (out) { const e = P[N - 1]; e.x = lamp.x; e.y = lamp.st === 'placed' ? groundBelow(solids, lamp.x, lamp.y) - LANTERN_H : lamp.y - 7; }   // 던진 등불: 끝 고리가 등불에 걸림 (놓이면 땅 위에 섬)   // 던진 등불: 끝이 등불 고리에 걸림
@@ -98,6 +103,15 @@ export class ChainSim {
       g.drawImage(lampImg, -Math.round(lampImg.naturalWidth / 2), -1); g.restore();
     }
     const A = P[0], d = this.dir;                                      // 자루 끝 고리 (쇠고리 + 쇠테): 사슬이 여기서 나옴
+    if (d && this.wrap > 0.5) {                                         // 자루에 감긴 사슬: 자루를 가로지르는 고리들 (앞면 밝게 · 뒷면 어둡게)
+      const nx = -d.y, ny = d.x;
+      for (let u = 1.5; u <= this.wrap; u += 2.4) {
+        const k = Math.round(u / 2.4) % 2, cx = A.x - d.x * u, cy = A.y - d.y * u;
+        for (const [v, c] of k ? [[-2, '#1a1620'], [-1, '#8a8494'], [0, '#c8c2d0'], [1, '#8a8494'], [2, '#1a1620']] : [[-2, '#1a1620'], [-1, '#4a4452'], [1, '#4a4452'], [2, '#1a1620']]) {
+          g.fillStyle = c; g.fillRect(Math.round(cx + nx * v - d.x * k * 0.6 * v / 2), Math.round(cy + ny * v - d.y * k * 0.6 * v / 2), 1, 1);
+        }
+      }
+    }
     if (d) {
       const nx = -d.y, ny = d.x, R = (u, v) => [Math.round(A.x + d.x * u + nx * v), Math.round(A.y + d.y * u + ny * v)];
       for (const [u, v, c] of [[-1, -1, '#1a1620'], [-1, 1, '#1a1620'], [-1, 0, '#6e5a3e'], [0, -1, '#9a8058'], [0, 1, '#6e5a3e'],   // 쇠테 (자루 끝을 감싼 금속)

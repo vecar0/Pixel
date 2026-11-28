@@ -10,13 +10,13 @@ test('들고 있을 때: 자루 끝에 고정, 등불은 바닥 위, 사슬 길�
   const e = c.pts[c.pts.length - 1]; ok(e.y <= 300 - 14 + 0.5, 'lantern not in ground ' + e.y);   // 등불 높이 14
   for (const p of c.pts) ok(p.y <= 300 + 0.01, 'link under ground ' + p.y);
 });
-test('자루를 휘두르면 사슬이 따라 출렁이고 다시 가라앉음 (관성·감쇠)', () => {
+test('들고 있을 땐 자루에 묶여 거의 안 흔들리고 금방 멎음', () => {
   const c = new ChainSim(); let A = { x: 100, y: 200 };
   for (let i = 0; i < 120; i++) c.step(W, A, { st: 'held' }, null);
   const rest = { ...c.pts[c.pts.length - 1] };
   for (let i = 0; i < 6; i++) { A = { x: 100 + i * 8, y: 200 - i * 4 }; c.step(W, A, { st: 'held' }, null); }
   for (let i = 0; i < 6; i++) c.step(W, A, { st: 'held' }, null);
-  const moved = Math.hypot(c.pts[c.pts.length - 1].x - rest.x, c.pts[c.pts.length - 1].y - rest.y); ok(moved > 6, 'swings ' + moved);
+  const moved = Math.hypot(c.pts[c.pts.length - 1].x - rest.x, c.pts[c.pts.length - 1].y - rest.y); ok(moved < 10, 'barely moves ' + moved); ok(c.wrap > 10, 'wrapped on shaft ' + c.wrap);
   for (let i = 0; i < 400; i++) c.step(W, A, { st: 'held' }, null);
   const e = c.pts[c.pts.length - 1], p = c.pts[c.pts.length - 2]; ok(Math.abs(e.x - p.x) < 1.5 || e.y >= 274, 'settles');
 });
@@ -25,10 +25,10 @@ test('던지면 등불까지 풀려나가고 (길이 ≥ 거리), 회수하면 �
   for (let i = 0; i < 30; i++) c.step(W, A, { st: 'held' }, null);
   const L = { st: 'placed', x: 360, y: 288 };
   for (let i = 0; i < 90; i++) c.step(W, A, L, null);
-  ok(c.len >= 250, 'paid out ' + c.len); ok(near(c.pts[c.pts.length - 1], { x: 360, y: 300 - 14 }, 1), 'end on lantern (lantern stands on ground)');
+  ok(c.len >= 250, 'paid out ' + c.len); ok(c.wrap === 0, 'unwound ' + c.wrap); ok(near(c.pts[c.pts.length - 1], { x: 360, y: 300 - 14 }, 1), 'end on lantern (lantern stands on ground)');
   for (const p of c.pts) ok(p.y <= 300.01, 'sag rests on ground');
   for (let i = 0; i < 90; i++) c.step(W, A, { st: 'held' }, null);
-  ok(c.len < 40, 'reeled in ' + c.len);
+  ok(c.len < 40, 'reeled in ' + c.len); ok(c.wrap > 5, 'rewound ' + c.wrap);
 });
 test('언덕 옆면에 막힘 (뚫고 지나가거나 순간이동하지 않음)', () => {
   const c = new ChainSim(), A = { x: 470, y: 270 };

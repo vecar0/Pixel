@@ -515,7 +515,7 @@ export class Renderer {
       const bob = p.state === 'run' ? Math.abs(Math.sin(w.t * 0.45)) * 2 : p.state === 'idle' ? Math.sin(w.t * 0.08) * 0.6 : 0;
       g.save(); g.translate(cx, feet - bob); g.rotate(lean * f); g.scale(sx * f, sy);
       const img = p.state === 'hurt' && (w.t >> 1) % 2 ? this.tinted('#ff3c50') : this.liraImg;
-      g.drawImage(img, -47, -107);
+      g.drawImage(img, -37, -85);
       g.restore();
       this.drawParryArc(g, p, cx, feet, f);
       return;
@@ -1062,7 +1062,7 @@ export class Renderer {
   actorOf(ent, k = 1) {
     if (ent === this.lastW?.player || ent.relics) {
       const f = this.anims?.idle?.[0];
-      return f && f.img.naturalWidth ? actorFromImage(f.img, f.ax, f.ay, k) : actorFromImage(this.liraImg, 47, 107, k);
+      return f && f.img.naturalWidth ? actorFromImage(f.img, f.ax, f.ay, k) : actorFromImage(this.liraImg, 37, 85, k);
     }
     const f = this.enemyFrame({ t: 0 }, { kind: ent.kind, st: 'idle', vx: 0, x: 0 }, ENEMY_DEFS[ent.kind]);
     return f ? actorFromImage(f.img, f.ax, f.ay, k) : undefined;

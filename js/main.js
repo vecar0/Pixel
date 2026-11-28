@@ -364,7 +364,7 @@ function prepScreen() {   // 순례 제단: 어둠 단계·랜턴 기름 고르�
   mode = 'prep'; touch.classList.add('hidden');
   const d = dailySeed(), dailyDone = save.daily[d.key], oils = oilsOwned(save), oi = Math.max(0, oils.indexOf(save.oil)), r = save.records;
   screen(`<div class="town">
-    <div class="hero"><h2>순례 제단</h2><img class="lira" alt="리라" src="assets/lira-idle.png">
+    <div class="hero"><h2>순례 제단</h2><img class="lira" alt="리라" src="assets/lira.png">
       <div class="shards">${icon('afterglow', 'amber')}최고 점수 ${save.records.bestScore || 0}</div>
       <div class="stats">순례 ${r.runs}회 · 귀환 ${r.wins}회<br>완벽 패링 누적 ${r.perfectTotal}</div></div>
     <div class="acts">

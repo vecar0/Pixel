@@ -23,7 +23,7 @@ export function startTitleScene(cv) {
   const bg = load('assets/title-bg.png');
   let idle = [];
   fetch('assets/anims.json' + V()).then(r => r.json()).then(J => { idle = J.lira.idle.map(f => ({ ...f, img: load(f.src) })); }).catch(() => {});
-  const fallback = Array.from({ length: 8 }, (_, i) => ({ img: load(`assets/lira-idle-${i}.png`), ax: 43, ay: 85 }));
+  const fallback = Array.from({ length: 8 }, (_, i) => ({ img: load(`assets/lira-idle-${i}.png`), ax: 37, ay: 85 }));
   const rnd = (a, b) => a + Math.random() * (b - a);
   const lamp = () => [LIRA[0] + LAMP_OFF[0], LIRA[1] + LAMP_OFF[1]];
   const ember = any => { const [lx, ly] = lamp(); return { x: lx + rnd(-3, 3), y: any ? rnd(40, ly) : ly, vx: rnd(-0.05, 0.12), vy: -rnd(0.1, 0.28), life: rnd(140, 320), hot: Math.random() < 0.4 }; };

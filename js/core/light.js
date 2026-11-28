@@ -1,7 +1,7 @@
 // 빛과 실체 (설계: 「빛 속에서만 벨 수 있다」)
 // 적은 그림자다. 등불 빛 안에 0.3초 머물면 실체가 되어 베이고, 빛을 0.5초 벗어나면 다시 그림자가 된다.
 // 등불: 들기(리라 둘레 빛) · 던지기(떨어진 자리 6초 빛) · 회수(되돌아오는 길의 그림자 1초 실체화)
-import { CFG } from './config.js?v=mwzt5ovx';
+import { CFG } from './config.js?v=mwztnyz8';
 
 const L = () => CFG.lantern;
 
